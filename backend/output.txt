@@ -1,0 +1,30 @@
+{
+    "aggregatedMetrics": {
+        "OP": 77.9,
+        "IR": 1.02,
+        "CS": 0.78,
+        "TT": 6
+    },
+    "aggregatedInsights": {
+        "keyStrengths": [
+            "Demonstrates robust conceptual mastery across subjects.",
+            "Applies strong analytical and problem-solving skills effectively.",
+            "Exhibits excellent factual recall and knowledge application."
+        ],
+        "areasForImprovement": [
+            "Prioritize conceptual clarity in core Physics and Chemistry topics, especially Thermodynamics, Kinetics, Waves, and Organic Chemistry fundamentals.",
+            "Enhance problem-solving skills and accuracy in Physics and Chemistry numericals, alongside targeted practice for Zoology match-the-column questions.",
+            "Reinforce factual recall in Zoology (Animal Kingdom, Biomolecules) and strengthen foundational concepts in Botany and key Biology chapters like Cell Cycle and Inheritance."
+        ],
+        "quickRecommendations": [
+            "Prioritize Zoology and Botany: Deepen understanding of classifications, key features, and Biomolecules.",
+            "Reinforce Chemical Kinetics & Equilibrium: Focus on reaction rates, order, calculations, and equilibrium principles through targeted exercises.",
+            "Revisit Foundational Chemistry: Address gaps in Organic Nitrogen Compounds and Solid State to strengthen core concepts."
+        ],
+        "yetToDecide": [
+            "Sharply focus Physics & Chemistry review on key conceptual gaps: Motion, Electricity, Magnetism, Waves (Physics); Basic Concepts, Solutions, Polymers, Reactions (Chemistry).",
+            "Implement broad Botany concept reinforcement, particularly in Ecology (Environmental, Biodiversity) and Plant Physiology (Transport), to address consistently low scores.",
+            "Develop student proficiency in calculation and conceptual matching question types across all science subjects to mitigate common error patterns."
+        ]
+    }
+}

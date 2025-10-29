@@ -1,0 +1,41 @@
+@import url('https://fonts.cdnfonts.com/css/tenorite');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Tenorite', sans-serif;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+.solution-card {
+  transition: transform 0.5s ease-out, opacity 0.5s ease-out;
+  opacity: 0;
+  transform: translateY(20px);
+  will-change: transform, opacity;
+}
+
+.solution-card.in-view {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@keyframes slowspin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.animate-slowspin {
+  animation: slowspin 40s linear infinite;
+}
+
+@keyframes gridpulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.04); }
+}
+.animate-gridpulse {
+  animation: gridpulse 2s ease-in-out infinite;
+}

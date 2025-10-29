@@ -1,0 +1,1984 @@
+{
+    "questions": [
+        {
+            "question_number": 1,
+            "question": "Which of the following is not an attribute of a population ?",
+            "options": {
+                "1": "Sex ratio",
+                "2": "Natality",
+                "3": "Mortality",
+                "4": "Species interaction"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 2,
+            "question": "The process of growth is maximum during :",
+            "options": {
+                "1": "Log phase",
+                "2": "Lag phase",
+                "3": "Senescence",
+                "4": "Dormancy"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 3,
+            "question": "The roots that originate from the base of the stem are :",
+            "options": {
+                "1": "Fibrous roots",
+                "2": "Primary roots",
+                "3": "Prop roots",
+                "4": "Lateral roots"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 4,
+            "question": "Match the following diseases with the causative organism and select the correct option.",
+            "options": {
+                "1": "(a) (i) (b) (ii) (c) (iii) (d) (iv)",
+                "2": "(a) (ii) (b) (iii) (c) (iv) (d) (i)",
+                "3": "(a) (iii) (b) (ii) (c) (i) (d) (iv)",
+                "4": "(a) (iv) (b) (i) (c) (ii) (d) (iii)"
+            },
+            "im_desp": "Column - I: (a) Typhoid, (b) Pneumonia, (c) Filariasis, (d) Malaria; Column - II: (i) Wuchereria, (ii) Plasmodium, (iii) Salmonella, (iv) Haemophilus"
+        },
+        {
+            "question_number": 5,
+            "question": "In which of the following techniques, the embryos are transferred to assist those females who cannot conceive ?",
+            "options": {
+                "1": "ZIFT and IUT",
+                "2": "GIFT and ZIFT",
+                "3": "ICSI and ZIFT",
+                "4": "GIFT and ICSI"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 6,
+            "question": "Identify the wrong statement with reference to the gene 'I' that controls ABO blood groups.",
+            "options": {
+                "1": "The gene (I) has three alleles.",
+                "2": "A person will have only two of the three alleles.",
+                "3": "When I\u1d2c and I\u1d2e are present together, they express same type of sugar.",
+                "4": "Allele 'i' does not produce any sugar."
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 7,
+            "question": "Choose the correct pair from the following :",
+            "options": {
+                "1": "Ligases - Join the two DNA molecules",
+                "2": "Polymerases - Break the DNA into fragments",
+                "3": "Nucleases - Separate the two strands of DNA",
+                "4": "Exonucleases - Make cuts at specific positions within DNA"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 8,
+            "question": "Select the correct match.",
+            "options": {
+                "1": "Haemophilia - Y linked",
+                "2": "Phenylketonuria - Autosomal dominant trait",
+                "3": "Sickle cell anaemia - Autosomal recessive trait, chromosome-11",
+                "4": "Thalassemia - X linked"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 9,
+            "question": "Match the following columns and select the correct option.",
+            "options": {
+                "1": "(a) (b) (c) (d) (i)",
+                "2": "(a) (iv) (b) (i) (ii) (iii)",
+                "3": "(a) (iii) (b) (ii) (iv) (i)",
+                "4": "(a) (iv) (b) (i) (iii) (ii)"
+            },
+            "im_desp": "Column - I: (a) Gregarious, polyphagous pest, (b) Adult with radial symmetry and larva with bilateral symmetry, (c) Book lungs, (d) Bioluminescence; Column - II: (i) Asterias, (ii) Scorpion, (iii) Ctenoplana, (iv) Locusta"
+        },
+        {
+            "question_number": 10,
+            "question": "The infectious stage of Plasmodium that enters the human body is :",
+            "options": {
+                "1": "Trophozoites",
+                "2": "Sporozoites",
+                "3": "Female gametocytes",
+                "4": "Male gametocytes"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 11,
+            "question": "Identify the substances having glycosidic bond and peptide bond, respectively in their structure :",
+            "options": {
+                "1": "Chitin, cholesterol",
+                "2": "Glycerol, trypsin",
+                "3": "Cellulose, lecithin",
+                "4": "Insulin, insulin"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 12,
+            "question": "The plant parts which consist of two generations - one within the other :",
+            "options": {
+                "1": "Pollen grains inside the anther",
+                "2": "Germinated pollen grain with two male gametes",
+                "3": "Seed inside the fruit",
+                "4": "Embryo sac inside the ovule"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 13,
+            "question": "The product(s) of reaction catalyzed by nitrogenase in root nodules of leguminous plants is/are :",
+            "options": {
+                "1": "Ammonia alone",
+                "2": "Nitrate alone",
+                "3": "Ammonia and oxygen",
+                "4": "Ammonia and hydrogen"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 14,
+            "question": "Identify the correct statement with regard to G\u2081 phase (Gap 1) of interphase.",
+            "options": {
+                "1": "DNA synthesis or replication takes place.",
+                "2": "Reorganisation of all cell components takes place.",
+                "3": "Cell is metabolically active, grows but does not replicate its DNA.",
+                "4": "Nuclear Division takes place."
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 15,
+            "question": "Cuboidal epithelium with brush border of microvilli is found in :",
+            "options": {
+                "1": "lining of intestine",
+                "2": "ducts of salivary glands",
+                "3": "proximal convoluted tubule of nephron",
+                "4": "eustachian tube"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 16,
+            "question": "Which of the following statements about inclusion bodies is incorrect ?",
+            "options": {
+                "1": "They are not bound by any membrane.",
+                "2": "These are involved in ingestion of food particles.",
+                "3": "They lie free in the cytoplasm.",
+                "4": "These represent reserve material in cytoplasm."
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 17,
+            "question": "Which is the important site of formation of glycoproteins and glycolipids in eucaryotic cells ?",
+            "options": {
+                "1": "Endoplasmic reticulum",
+                "2": "Peroxisomes",
+                "3": "Golgi bodies",
+                "4": "Polysomes"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 18,
+            "question": "In gel electrophoresis, separated DNA fragments can be visualised with the help of :",
+            "options": {
+                "1": "Acetocarmine in bright blue light",
+                "2": "Ethidium bromide in UV radiation",
+                "3": "Acetocarmine in UV radiation",
+                "4": "Ethidium bromide in infrared radiation"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 19,
+            "question": "Identify the wrong statement with reference to transport of oxygen.",
+            "options": {
+                "1": "Binding of oxygen with haemoglobin is mainly related to partial pressure of O\u2082.",
+                "2": "Partial pressure of CO\u2082 can interfere with O\u2082 binding with haemoglobin.",
+                "3": "Higher H\u207a conc. in alveoli favours the formation of oxyhaemoglobin.",
+                "4": "Low pCO\u2082 in alveoli favours the formation of oxyhaemoglobin."
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 20,
+            "question": "Ray florets have :",
+            "options": {
+                "1": "Inferior ovary",
+                "2": "Superior ovary",
+                "3": "Hypogynous ovary",
+                "4": "Half inferior ovary"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 21,
+            "question": "The specific palindromic sequence which is recognized by EcoRI is :",
+            "options": {
+                "1": "5' - GAATTC - 3'",
+                "2": "5' - CTTAAG - 3'",
+                "3": "5' - GGATCC - 3'",
+                "4": "5' - CCTAGG - 5'"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 22,
+            "question": "Identify the wrong statement with regard to Restriction Enzymes.",
+            "options": {
+                "1": "Each restriction enzyme functions by inspecting the length of a DNA sequence.",
+                "2": "They cut the strand of DNA at palindromic sites.",
+                "3": "They are useful in genetic engineering.",
+                "4": "Sticky ends can be joined by using DNA ligases."
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 23,
+            "question": "Which of the following is put into Anaerobic sludge digester for further sewage treatment ?",
+            "options": {
+                "1": "Primary sludge",
+                "2": "Floating debris",
+                "3": "Effluents of primary treatment",
+                "4": "Activated sludge"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 24,
+            "question": "Select the correct events that occur during inspiration.",
+            "options": {
+                "1": "(a) and (b)",
+                "2": "(c) and (d)",
+                "3": "(a), (b) and (d)",
+                "4": "only (d)"
+            },
+            "im_desp": "(a) Contraction of diaphragm, (b) Contraction of external inter-costal muscles, (c) Pulmonary volume decreases, (d) Intra pulmonary pressure increases"
+        },
+        {
+            "question_number": 25,
+            "question": "If the head of cockroach is removed, it may live for few days because :",
+            "options": {
+                "1": "the supra-oesophageal ganglia of the cockroach are situated in ventral part of abdomen.",
+                "2": "the cockroach does not have nervous system.",
+                "3": "the head holds a small proportion of a nervous system while the rest is situated along the ventral part of its body.",
+                "4": "the head holds a 1/3rd of a nervous system while the rest is situated along the dorsal part of its body."
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 26,
+            "question": "Which of the following statements are true for the phylum-Chordata ?",
+            "options": {
+                "1": "(d) and (c)",
+                "2": "(c) and (a)",
+                "3": "(a) and (b)",
+                "4": "(b) and (c)"
+            },
+            "im_desp": "(a) In Urochordata notochord extends from head to tail and it is present throughout their life., (b) In Vertebrata notochord is present during the embryonic period only., (c) Central nervous system is dorsal and hollow., (d) Chordata is divided into 3 subphyla : Hemichordata, Tunicata and Cephalochordata."
+        },
+        {
+            "question_number": 27,
+            "question": "Match the organism with its use in biotechnology.",
+            "options": {
+                "1": "(a) (b) (c) (d) (i)",
+                "2": "(a) (iv) (b) (i) (ii) (iii)",
+                "3": "(a) (iii) (b) (ii) (iv) (i)",
+                "4": "(a) (ii) (b) (iii) (iv) (i)"
+            },
+            "im_desp": "Column - I: (a) Bacillus thuringiensis, (b) Thermus aquaticus, (c) Agrobacterium tumefaciens, (d) Salmonella typhimurium; Column - II: (i) Cloning vector, (ii) Construction of first rDNA molecule, (iii) DNA polymerase, (iv) Cry proteins"
+        },
+        {
+            "question_number": 28,
+            "question": "Match the following concerning essential elements and their functions in plants.",
+            "options": {
+                "1": "(a) (b) (c) (d) (i)",
+                "2": "(a) (iv) (b) (iii) (ii) (i)",
+                "3": "(a) (iv) (b) (i) (ii) (iii)",
+                "4": "(a) (iii) (b) (iv) (i) (ii)"
+            },
+            "im_desp": "Column - I: (a) Iron, (b) Zinc, (c) Boron, (d) Manganese; Column - II: (i) Photolysis of water, (ii) Pollen germination, (iii) Required for chlorophyll biosynthesis, (iv) IAA biosynthesis"
+        },
+        {
+            "question_number": 29,
+            "question": "Identify the incorrect statement.",
+            "options": {
+                "1": "Heart wood does not conduct water but gives mechanical support.",
+                "2": "Sapwood is involved in conduction of water and minerals from root to leaf.",
+                "3": "Sapwood is the innermost secondary xylem and is lighter in colour.",
+                "4": "Due to deposition of tannins, resins, oils etc., heart wood is dark in colour."
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 30,
+            "question": "Match the following :",
+            "options": {
+                "1": "(a) (b) (c) (d) (i)",
+                "2": "(a) (ii) (b) (iii) (iv) (i)",
+                "3": "(a) (ii) (b) (i) (iv) (iii)",
+                "4": "(a) (iii) (b) (iv) (i) (ii)"
+            },
+            "im_desp": "Column - I: (a) Inhibitor of catalytic activity, (b) Possess peptide bonds, (c) Cell wall material in fungi, (d) Secondary metabolite; Column - II: (i) Ricin, (ii) Malonate, (iii) Chitin, (iv) Collagen"
+        },
+        {
+            "question_number": 31,
+            "question": "Meiotic division of the secondary oocyte is completed :",
+            "options": {
+                "1": "Prior to ovulation",
+                "2": "At the time of copulation",
+                "3": "After zygote formation",
+                "4": "At the time of fusion of a sperm with an ovum"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 32,
+            "question": "According to Robert May, the global species diversity is about :",
+            "options": {
+                "1": "1.5 million",
+                "2": "20 million",
+                "3": "50 million",
+                "4": "7 million"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 33,
+            "question": "The first phase of translation is :",
+            "options": {
+                "1": "Binding of mRNA to ribosome",
+                "2": "Recognition of DNA molecule",
+                "3": "Aminoacylation of tRNA",
+                "4": "Recognition of an anti-codon"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 34,
+            "question": "Which of the following regions of the globe exhibits highest species diversity ?",
+            "options": {
+                "1": "Western Ghats of India",
+                "2": "Madagascar",
+                "3": "Himalayas",
+                "4": "Amazon forests"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 35,
+            "question": "Which of the following statements is not correct ?",
+            "options": {
+                "1": "In man insulin is synthesised as a proinsulin.",
+                "2": "The proinsulin has an extra peptide called C-peptide",
+                "3": "The functional insulin has A and B chains linked together by hydrogen bonds.",
+                "4": "Genetically engineered insulin is produced in E-Coli."
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 36,
+            "question": "The transverse section of a plant shows following anatomical features :",
+            "options": {
+                "1": "Monocotyledonous stem",
+                "2": "Monocotyledonous root",
+                "3": "Dicotyledonous stem",
+                "4": "Dicotyledonous root"
+            },
+            "im_desp": "(a) Large number of scattered vascular bundles surrounded by bundle sheath., (b) Large conspicuous parenchymatous ground tissue., (c) Vascular bundles conjoint and closed., (d) Phloem parenchyma absent. Identify the category of plant and its part :"
+        },
+        {
+            "question_number": 37,
+            "question": "Match the following columns and select the correct option.",
+            "options": {
+                "1": "(a) (b) (c) (d) (i)",
+                "2": "(a) (iii) (b) (iv) (i) (ii)",
+                "3": "(a) (ii) (b) (iii) (iv) (i)",
+                "4": "(a) (iv) (b) (ii) (iii) (i)"
+            },
+            "im_desp": "Column - I: (a) 6 - 15 pairs of gill slits, (b) Heterocercal caudal fin, (c) Air Bladder, (d) Poison sting; Column - II: (i) Trygon, (ii) Cyclostomes, (iii) Chondrichthyes, (iv) Osteichthyes"
+        },
+        {
+            "question_number": 38,
+            "question": "From his experiments, S.L. Miller produced amino acids by mixing the following in a closed flask :",
+            "options": {
+                "1": "CH\u2084, H\u2082, NH\u2083 and water vapor at 800\u00b0C",
+                "2": "CH\u2083, H\u2082, NH\u2083 and water vapor at 800\u00b0C",
+                "3": "CH\u2084, H\u2082, NH\u2082 and water vapor at 600\u00b0C",
+                "4": "CH\u2083, H\u2082, NH\u2082 and water vapor at 600\u00b0C"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 39,
+            "question": "Embryological support for evolution was disapproved by :",
+            "options": {
+                "1": "Karl Ernst von Baer",
+                "2": "Alfred Wallace",
+                "3": "Charles Darwin",
+                "4": "Oparin"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 40,
+            "question": "The process responsible for facilitating loss of water in liquid form from the tip of grass blades at night and in early morning is :",
+            "options": {
+                "1": "Transpiration",
+                "2": "Root pressure",
+                "3": "Imbibition",
+                "4": "Plasmolysis"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 41,
+            "question": "Secondary metabolites such as nicotine, strychnine and caffeine are produced by plants for their :",
+            "options": {
+                "1": "Nutritive value",
+                "2": "Growth response",
+                "3": "Defence action",
+                "4": "Effect on reproduction"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 42,
+            "question": "The oxygenation activity of RuBisCO enzyme in photorespiration leads to the formation of :",
+            "options": {
+                "1": "2 molecules of 3-C compound",
+                "2": "1 molecule of 3-C compound",
+                "3": "1 molecule of 6-C compound",
+                "4": "1 molecule of 4-C compound and 1 molecule of 2-C compound"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 43,
+            "question": "Bt cotton variety that was developed by the introduction of toxin gene of Bacillus thuringiensis (Bt) is resistant to :",
+            "options": {
+                "1": "Insect pests",
+                "2": "Fungal diseases",
+                "3": "Plant nematodes",
+                "4": "Insect predators"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 44,
+            "question": "Which of the following refer to correct example(s) of organisms which have evolved due to changes in environment brought about by anthropogenic action ?",
+            "options": {
+                "1": "only (a)",
+                "2": "(a) and (c)",
+                "3": "(b), (c) and (d)",
+                "4": "only (d)"
+            },
+            "im_desp": "(a) Darwin's Finches of Galapagos islands., (b) Herbicide resistant weeds., (c) Drug resistant eukaryotes., (d) Man-created breeds of domesticated animals like dogs."
+        },
+        {
+            "question_number": 45,
+            "question": "Identify the wrong statement with reference to immunity.",
+            "options": {
+                "1": "When exposed to antigen (living or dead) antibodies are produced in the host's body. It is called \u201cActive immunity\u201d.",
+                "2": "When ready-made antibodies are directly given, it is called \u201cPassive immunity\u201d.",
+                "3": "Active immunity is quick and gives full response.",
+                "4": "Foetus receives some antibodies from mother, it is an example for passive immunity."
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 46,
+            "question": "By which method was a new breed 'Hisardale' of sheep formed by using Bikaneri ewes and Marino rams ?",
+            "options": {
+                "1": "Out crossing",
+                "2": "Mutational breeding",
+                "3": "Cross breeding",
+                "4": "Inbreeding"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 47,
+            "question": "Identify the correct statement with reference to human digestive system.",
+            "options": {
+                "1": "Ileum opens into small intestine.",
+                "2": "Serosa is the innermost layer of the alimentary canal.",
+                "3": "Ileum is a highly coiled part.",
+                "4": "Vermiform appendix arises from duodenum."
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 48,
+            "question": "Match the following columns and select the correct option.",
+            "options": {
+                "1": "(a) (b) (c) (d) (i)",
+                "2": "(a) (iv) (b) (i) (ii) (iii)",
+                "3": "(a) (ii) (b) (iii) (iv) (i)",
+                "4": "(a) (iii) (b) (iv) (i) (ii)"
+            },
+            "im_desp": "Column - I: (a) Clostridium butylicum, (b) Trichoderma polysporum, (c) Monascus purpureus, (d) Aspergillus niger; Column - II: (i) Cyclosporin-A, (ii) Butyric Acid, (iii) Citric Acid, (iv) Blood cholesterol lowering agent"
+        },
+        {
+            "question_number": 49,
+            "question": "Presence of which of the following conditions in urine are indicative of Diabetes Mellitus ?",
+            "options": {
+                "1": "Uremia and Ketonuria",
+                "2": "Ketonuria and Renal Calculi",
+                "3": "Ketonuria and Glycosuria",
+                "4": "Renal calculi and Hyperglycaemia"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 50,
+            "question": "Floridean starch has structure similar to :",
+            "options": {
+                "1": "Starch and cellulose",
+                "2": "Amylopectin and glycogen",
+                "3": "Mannitol and algin",
+                "4": "Laminarin and cellulose"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 51,
+            "question": "Select the option including all sexually transmitted diseases.",
+            "options": {
+                "1": "Gonorrhoea, Syphilis, Genital herpes",
+                "2": "Gonorrhoea, Malaria, Genital herpes",
+                "3": "AIDS, Malaria, Filaria",
+                "4": "Cancer, AIDS, Syphilis"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 52,
+            "question": "Match the following with respect to meiosis :",
+            "options": {
+                "1": "(a) (b) (c) (d) (i)",
+                "2": "(a) (ii) (b) (iii) (i) (iv)",
+                "3": "(a) (iii) (b) (iv) (ii) (i)",
+                "4": "(a) (iv) (b) (iii) (ii) (i)"
+            },
+            "im_desp": "Column - I: (a) Zygotene, (b) Pachytene, (c) Diplotene, (d) Diakinesis; Column - II: (i) Terminalization, (ii) Chiasmata, (iii) Crossing over, (iv) Synapsis"
+        },
+        {
+            "question_number": 53,
+            "question": "Which of the following pairs is of unicellular algae ?",
+            "options": {
+                "1": "Laminaria and Sargassum",
+                "2": "Gelidium and Gracilaria",
+                "3": "Anabaena and Volvox",
+                "4": "Chlorella and Spirulina"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 54,
+            "question": "Which of the following hormone levels will cause release of ovum (ovulation) from the graffian follicle ?",
+            "options": {
+                "1": "High concentration of Estrogen",
+                "2": "High concentration of Progesterone",
+                "3": "Low concentration of LH",
+                "4": "Low concentration of FSH"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 55,
+            "question": "Match the following columns and select the correct option.",
+            "options": {
+                "1": "(a) (b) (c) (d) (i)",
+                "2": "(a) (ii) (b) (i) (iii) (iv)",
+                "3": "(a) (iii) (b) (iv) (ii) (i)",
+                "4": "(a) (ii) (b) (iii) (iv) (i)"
+            },
+            "im_desp": "Column - I: (a) Bt cotton, (b) Adenosine deaminase deficiency, (c) RNAi, (d) PCR; Column - II: (i) Gene therapy, (ii) Cellular defence, (iii) Detection of HIV infection, (iv) Bacillus thuringiensis"
+        },
+        {
+            "question_number": 56,
+            "question": "Montreal protocol was signed in 1987 for control of :",
+            "options": {
+                "1": "Transport of Genetically modified organisms from one country to another",
+                "2": "Emission of ozone depleting substances",
+                "3": "Release of Green House gases",
+                "4": "Disposal of e-wastes"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 57,
+            "question": "Which of the following is correct about viroids ?",
+            "options": {
+                "1": "They have RNA with protein coat.",
+                "2": "They have free RNA without protein coat.",
+                "3": "They have DNA with protein coat.",
+                "4": "They have free DNA without protein coat."
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 58,
+            "question": "The ovary is half inferior in :",
+            "options": {
+                "1": "Brinjal",
+                "2": "Mustard",
+                "3": "Sunflower",
+                "4": "Plum"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 59,
+            "question": "The enzyme enterokinase helps in conversion of :",
+            "options": {
+                "1": "protein into polypeptides",
+                "2": "trypsinogen into trypsin",
+                "3": "caseinogen into casein",
+                "4": "pepsinogen into pepsin"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 60,
+            "question": "Match the trophic levels with their correct species examples in grassland ecosystem.",
+            "options": {
+                "1": "(a) (b) (c) (d) (i)",
+                "2": "(a) (iv) (b) (iii) (ii) (i)",
+                "3": "(a) (ii) (b) (iv) (i) (iii)",
+                "4": "(a) (iii) (b) (i) (iv) (ii)"
+            },
+            "im_desp": "Column - I: (a) Fourth trophic level, (b) Second trophic level, (c) First trophic level, (d) Third trophic level; Column - II: (i) Crow, (ii) Vulture, (iii) Rabbit, (iv) Grass"
+        },
+        {
+            "question_number": 61,
+            "question": "How many true breeding pea plant varieties did Mendel select as pairs, which were similar except in one character with contrasting traits ?",
+            "options": {
+                "1": "4",
+                "2": "2",
+                "3": "14",
+                "4": "8"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 62,
+            "question": "Match the following columns and select the correct option.",
+            "options": {
+                "1": "(a) (b) (c) (d) (i)",
+                "2": "(a) (ii) (b) (iii) (iv) (i)",
+                "3": "(a) (iii) (b) (ii) (i) (iv)",
+                "4": "(a) (iv) (b) (i) (ii) (iii)"
+            },
+            "im_desp": "Column - I: (a) Organ of Corti, (b) Cochlea, (c) Eustachian tube, (d) Stapes; Column - II: (i) Connects middle ear and pharynx, (ii) Coiled part of the labyrinth, (iii) Attached to the oval window, (iv) Located on the basilar membrane"
+        },
+        {
+            "question_number": 63,
+            "question": "In water hyacinth and water lily, pollination takes place by :",
+            "options": {
+                "1": "insects or wind",
+                "2": "water currents only",
+                "3": "wind and water",
+                "4": "insects and water"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 64,
+            "question": "Name the plant growth regulator which upon spraying on sugarcane crop, increases the length of stem, thus increasing the yield of sugarcane crop.",
+            "options": {
+                "1": "Cytokinin",
+                "2": "Gibberellin",
+                "3": "Ethylene",
+                "4": "Abscisic acid"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 65,
+            "question": "In light reaction, plastoquinone facilitates the transfer of electrons from :",
+            "options": {
+                "1": "PS-II to Cytb\u2086f complex",
+                "2": "Cytb\u2086f complex to PS-I",
+                "3": "PS-I to NADP\u207a",
+                "4": "PS-I to ATP synthase"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 66,
+            "question": "Which of the following is not an inhibitory substance governing seed dormancy ?",
+            "options": {
+                "1": "Gibberellic acid",
+                "2": "Abscisic acid",
+                "3": "Phenolic acid",
+                "4": "Para-ascorbic acid"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 67,
+            "question": "Name the enzyme that facilitates opening of DNA helix during transcription.",
+            "options": {
+                "1": "DNA ligase",
+                "2": "DNA helicase",
+                "3": "DNA polymerase",
+                "4": "RNA polymerase"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 68,
+            "question": "Which of the following would help in prevention of diuresis ?",
+            "options": {
+                "1": "More water reabsorption due to undersecretion of ADH",
+                "2": "Reabsorption of Na\u207a and water from renal tubules due to aldosterone",
+                "3": "Atrial natriuretic factor causes vasoconstriction",
+                "4": "Decrease in secretion of renin by JG cells"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 69,
+            "question": "In relation to Gross primary productivity and Net primary productivity of an ecosystem, which one of the following statements is correct ?",
+            "options": {
+                "1": "Gross primary productivity is always less than net primary productivity.",
+                "2": "Gross primary productivity is always more than net primary productivity.",
+                "3": "Gross primary productivity and Net primary productivity are one and same.",
+                "4": "There is no relationship between Gross primary productivity and Net primary productivity."
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 70,
+            "question": "Match the following columns and select the correct option.",
+            "options": {
+                "1": "(a) (b) (c) (d) (i)",
+                "2": "(a) (ii) (b) (iii) (iv) (i)",
+                "3": "(a) (i) (b) (ii) (iii) (iv)",
+                "4": "(a) (iv) (b) (i) (ii) (iii)"
+            },
+            "im_desp": "Column - I: (a) Placenta, (b) Zona pellucida, (c) Bulbo-urethral glands, (d) Leydig cells; Column - II: (i) Androgens, (ii) Human Chorionic Gonadotropin (hCG), (iii) Layer of the ovum, (iv) Lubrication of the Penis"
+        },
+        {
+            "question_number": 71,
+            "question": "Strobili or cones are found in :",
+            "options": {
+                "1": "Salvinia",
+                "2": "Pteris",
+                "3": "Marchantia",
+                "4": "Equisetum"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 72,
+            "question": "Some dividing cells exit the cell cycle and enter vegetative inactive stage. This is called quiescent stage (G\u2080). This process occurs at the end of :",
+            "options": {
+                "1": "M phase",
+                "2": "G\u2081 phase",
+                "3": "S phase",
+                "4": "G\u2082 phase"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 73,
+            "question": "Flippers of Penguins and Dolphins are examples of :",
+            "options": {
+                "1": "Adaptive radiation",
+                "2": "Convergent evolution",
+                "3": "Industrial melanism",
+                "4": "Natural selection"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 74,
+            "question": "If the distance between two consecutive base pairs is 0.34 nm and the total number of base pairs of a DNA double helix in a typical mammalian cell is 6.6\u00d710\u2079 bp, then the length of the DNA is approximately :",
+            "options": {
+                "1": "1.5 meters",
+                "2": "2.5 meters",
+                "3": "2.2 meters",
+                "4": "2.7 meters"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 75,
+            "question": "The QRS complex in a standard ECG represents :",
+            "options": {
+                "1": "Repolarisation of auricles",
+                "2": "Depolarisation of auricles",
+                "3": "Depolarisation of ventricles",
+                "4": "Repolarisation of ventricles"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 76,
+            "question": "Match the following columns and select the correct option.",
+            "options": {
+                "1": "(a) (b) (c) (d) (i)",
+                "2": "(a) (i) (b) (ii) (iii) (iv)",
+                "3": "(a) (ii) (b) (iii) (i) (iv)",
+                "4": "(a) (iii) (b) (iv) (ii) (i)"
+            },
+            "im_desp": "Column - I: (a) Eosinophils, (b) Basophils, (c) Neutrophils, (d) Lymphocytes; Column - II: (i) Immune response, (ii) Phagocytosis, (iii) Release histamine, destructive enzymes, (iv) Release granules containing histamine"
+        },
+        {
+            "question_number": 77,
+            "question": "Which of the following statements is correct ?",
+            "options": {
+                "1": "Adenine pairs with thymine through two H-bonds.",
+                "2": "Adenine pairs with thymine through one H-bond.",
+                "3": "Adenine pairs with thymine through three H-bonds.",
+                "4": "Adenine does not pair with thymine."
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 78,
+            "question": "The sequence that controls the copy number of the linked DNA in the vector, is termed :",
+            "options": {
+                "1": "Selectable marker",
+                "2": "Ori site",
+                "3": "Palindromic sequence",
+                "4": "Recognition site"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 79,
+            "question": "Identify the basic amino acid from the following.",
+            "options": {
+                "1": "Tyrosine",
+                "2": "Glutamic acid",
+                "3": "Lysine",
+                "4": "Valine"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 80,
+            "question": "Match the following columns and select the correct option.",
+            "options": {
+                "1": "(a) (b) (c) (d) (i)",
+                "2": "(a) (ii) (b) (iii) (i) (iv)",
+                "3": "(a) (i) (b) (iv) (iii) (ii)",
+                "4": "(a) (ii) (b) (iv) (iii) (i)"
+            },
+            "im_desp": "Column - I: (a) Pituitary gland, (b) Thyroid gland, (c) Adrenal gland, (d) Pancreas; Column - II: (i) Grave's disease, (ii) Diabetes mellitus, (iii) Diabetes insipidus, (iv) Addison's disease"
+        },
+        {
+            "question_number": 81,
+            "question": "Select the correct statement.",
+            "options": {
+                "1": "Glucocorticoids stimulate gluconeogenesis.",
+                "2": "Glucagon is associated with hypoglycaemia.",
+                "3": "Insulin acts on pancreatic cells and adipocytes.",
+                "4": "Insulin is associated with hyperglycemia."
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 82,
+            "question": "Which one of the following is most abundant protein in the animals ?",
+            "options": {
+                "1": "Haemoglobin",
+                "2": "Collagen",
+                "3": "Lectin",
+                "4": "Insulin"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 83,
+            "question": "Experimental verification of the chromosomal theory of inheritance was done by :",
+            "options": {
+                "1": "Mendel",
+                "2": "Sutton",
+                "3": "Boveri",
+                "4": "Morgan"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 84,
+            "question": "Match the following columns and select the correct option.",
+            "options": {
+                "1": "(a) (b) (c) (d) (i)",
+                "2": "(a) (iv) (b) (iii) (ii) (i)",
+                "3": "(a) (ii) (b) (i) (iii) (iv)",
+                "4": "(a) (iii) (b) (i) (ii) (iv)"
+            },
+            "im_desp": "Column - I: (a) Floating Ribs, (b) Acromion, (c) Scapula, (d) Glenoid cavity; Column - II: (i) Located between second and seventh ribs, (ii) Head of the Humerus, (iii) Clavicle, (iv) Do not connect with the sternum"
+        },
+        {
+            "question_number": 85,
+            "question": "The number of substrate level phosphorylations in one turn of citric acid cycle is :",
+            "options": {
+                "1": "Zero",
+                "2": "One",
+                "3": "Two",
+                "4": "Three"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 86,
+            "question": "Dissolution of the synaptonemal complex occurs during :",
+            "options": {
+                "1": "Pachytene",
+                "2": "Zygotene",
+                "3": "Diplotene",
+                "4": "Leptotene"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 87,
+            "question": "Bilaterally symmetrical and acoelomate animals are exemplified by :",
+            "options": {
+                "1": "Ctenophora",
+                "2": "Platyhelminthes",
+                "3": "Aschelminthes",
+                "4": "Annelida"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 88,
+            "question": "The body of the ovule is fused within the funicle at :",
+            "options": {
+                "1": "Hilum",
+                "2": "Micropyle",
+                "3": "Nucellus",
+                "4": "Chalaza"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 89,
+            "question": "Goblet cells of alimentary canal are modified from :",
+            "options": {
+                "1": "Squamous epithelial cells",
+                "2": "Columnar epithelial cells",
+                "3": "Chondrocytes",
+                "4": "Compound epithelial cells"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 90,
+            "question": "Snow-blindness in Antarctic region is due to :",
+            "options": {
+                "1": "Freezing of fluids in the eye by low temperature",
+                "2": "Inflammation of cornea due to high dose of UV-B radiation",
+                "3": "High reflection of light from snow",
+                "4": "Damage to retina caused by infra-red rays"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 91,
+            "question": "Identify a molecule which does not exist.",
+            "options": {
+                "1": "He\u2082",
+                "2": "Li\u2082",
+                "3": "C\u2082",
+                "4": "O\u2082"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 92,
+            "question": "Find out the solubility of Ni(OH)\u2082 in 0.1 M NaOH. Given that the ionic product of Ni(OH)\u2082 is 2\u00d710\u207b\u00b9\u2075.",
+            "options": {
+                "1": "2\u00d710\u207b\u00b9\u00b3 M",
+                "2": "2\u00d710\u207b\u2078 M",
+                "3": "1\u00d710\u207b\u00b9\u00b3 M",
+                "4": "1\u00d710\u2078 M"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 93,
+            "question": "Identify the correct statements from the following.",
+            "options": {
+                "1": "(a), (b) and (c)",
+                "2": "(a) and (c) only",
+                "3": "(b) and (c) only",
+                "4": "(c) and (d) only"
+            },
+            "im_desp": "(a) CO\u2082(g) is used as refrigerant for ice-cream and frozen food., (b) The structure of C\u2086\u2080 contains twelve six carbon rings and twenty five carbon rings., (c) ZSM-5, a type of zeolite, is used to convert alcohols into gasoline., (d) CO is colorless and odourless gas."
+        },
+        {
+            "question_number": 94,
+            "question": "Hydrolysis of sucrose is given by the following reaction.",
+            "options": {
+                "1": "-8.314 J mol\u207b\u00b9 K\u207b\u00b9\u00d7300 K\u00d7ln(2\u00d710\u00b9\u00b3)",
+                "2": "8.314 J mol\u207b\u00b9 K\u207b\u00b9\u00d7300 K\u00d7ln(2\u00d710\u00b9\u00b3)",
+                "3": "8.314 J mol\u207b\u00b9 K\u207b\u00b9\u00d7300 K\u00d7ln(3\u00d710\u00b9\u00b3)",
+                "4": "-8.314 J mol\u207b\u00b9 K\u207b\u00b9\u00d7300 K\u00d7ln(4\u00d710\u00b9\u00b3)"
+            },
+            "im_desp": "Sucrose+H\u2082O \u21ccGlucose + Fructose If the equilibrium constant (K<0xE2><0x82><0x99>) is 2\u00d710\u00b9\u00b3 at 300 K, the value of \u0394<0xE2><0x82><0x99>G at the same temperature will be :"
+        },
+        {
+            "question_number": 95,
+            "question": "Identify compound X in the following sequence of reactions :",
+            "options": {
+                "1": "Image of chemical structure",
+                "2": "Image of chemical structure",
+                "3": "Image of chemical structure",
+                "4": "Image of chemical structure"
+            },
+            "im_desp": "Image of chemical reaction: Starting reactant is Toluene (C6H5-CH3). Reaction 1: Cl2/hv. Product is Benzyl chloride (C6H5-CH2Cl). Reaction 2: H2O, 373 K. Product is Benzyl alcohol (C6H5-CH2OH)."
+        },
+        {
+            "question_number": 96,
+            "question": "Identify the incorrect match.",
+            "options": {
+                "1": "(a), (i)",
+                "2": "(b), (ii)",
+                "3": "(c), (iii)",
+                "4": "(d), (iv)"
+            },
+            "im_desp": "Column - I: Name (a) Unnilunium, (b) Unniltrium, (c) Unnilhexium, (d) Ununium; Column - II: IUPAC Official Name (i) Mendelevium, (ii) Lawrencium, (iii) Seaborgium, (iv) Darmstadtium"
+        },
+        {
+            "question_number": 97,
+            "question": "An element has a body centered cubic (bcc) structure with a cell edge of 288 pm. The atomic radius is :",
+            "options": {
+                "1": "Image of formula",
+                "2": "Image of formula",
+                "3": "Image of formula",
+                "4": "Image of formula"
+            },
+            "im_desp": "Option 1: (\u221a3/4) \u00d7 288 pm, Option 2: (\u221a2/4) \u00d7 288 pm, Option 3: (4/\u221a3) \u00d7 288 pm, Option 4: (4/\u221a2) \u00d7 288 pm"
+        },
+        {
+            "question_number": 98,
+            "question": "Which of the following set of molecules will have zero dipole moment ?",
+            "options": {
+                "1": "Ammonia, beryllium difluoride, water, 1,4-dichlorobenzene",
+                "2": "Boron trifluoride, hydrogen fluoride, carbon dioxide, 1,3-dichlorobenzene",
+                "3": "Nitrogen trifluoride, beryllium difluoride, water, 1,3-dichlorobenzene",
+                "4": "Boron trifluoride, beryllium difluoride, carbon dioxide, 1,4-dichlorobenzene"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 99,
+            "question": "On electrolysis of dil.sulphuric acid using Platinum (Pt) electrode, the product obtained at anode will be :",
+            "options": {
+                "1": "Hydrogen gas",
+                "2": "Oxygen gas",
+                "3": "H\u2082S gas",
+                "4": "SO\u2082 gas"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 100,
+            "question": "Reaction between acetone and methylmagnesium chloride followed by hydrolysis will give :",
+            "options": {
+                "1": "Isopropyl alcohol",
+                "2": "Sec. butyl alcohol",
+                "3": "Tert. butyl alcohol",
+                "4": "Isobutyl alcohol"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 101,
+            "question": "Which of the following oxoacid of sulphur has \u2013O\u2013O\u2013 linkage ?",
+            "options": {
+                "1": "H\u2082SO\u2083, sulphurous acid",
+                "2": "H\u2082SO\u2084, sulphuric acid",
+                "3": "H\u2082S\u2082O\u2088, peroxodisulphuric acid",
+                "4": "H\u2082S\u2082O\u2087, pyrosulphuric acid"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 102,
+            "question": "Which of the following amine will give the carbylamine test ?",
+            "options": {
+                "1": "Image of chemical structure",
+                "2": "Image of chemical structure",
+                "3": "Image of chemical structure",
+                "4": "Image of chemical structure"
+            },
+            "im_desp": "Option 1: Aniline (C6H5-NH2), Option 2: N-methylaniline (C6H5-NH-CH3), Option 3: N,N-dimethylaniline (C6H5-N(CH3)2), Option 4: Benzylamine (C6H5-CH2-NH2)"
+        },
+        {
+            "question_number": 103,
+            "question": "The calculated spin only magnetic moment of Cr\u00b2\u207a ion is :",
+            "options": {
+                "1": "3.87 BM",
+                "2": "4.90 BM",
+                "3": "5.92 BM",
+                "4": "2.84 BM"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 104,
+            "question": "The correct option for free expansion of an ideal gas under adiabatic condition is :",
+            "options": {
+                "1": "q=0, \u0394T=0 and w>0",
+                "2": "q=0, \u0394T<0 and w=0",
+                "3": "q < 0, \u0394T=0 and w>0",
+                "4": "q > 0, \u0394T > 0 and w>0"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 105,
+            "question": "The freezing point depression constant (K<0xE2><0x82><0x99>) of benzene is 5.12 K kg mol\u207b\u00b9. The freezing point depression for the solution of molality 0.078 m containing a non-electrolyte solute in benzene is (rounded off upto two decimal places) :",
+            "options": {
+                "1": "0.20 K",
+                "2": "0.80 K",
+                "3": "0.40 K",
+                "4": "0.60 K"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 106,
+            "question": "The number of Faradays(F) required to produce 20 g of calcium from molten CaCl\u2082 (Atomic mass of Ca=40 g mol\u207b\u00b9) is :",
+            "options": {
+                "1": "1",
+                "2": "2",
+                "3": "3",
+                "4": "4"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 107,
+            "question": "Reaction between benzaldehyde and acetophenone in presence of dilute NaOH is known as :",
+            "options": {
+                "1": "Aldol condensation",
+                "2": "Cannizzaro's reaction",
+                "3": "Cross Cannizzaro's reaction",
+                "4": "Cross Aldol condensation"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 108,
+            "question": "Paper chromatography is an example of :",
+            "options": {
+                "1": "Adsorption chromatography",
+                "2": "Partition chromatography",
+                "3": "Thin layer chromatography",
+                "4": "Column chromatography"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 109,
+            "question": "An increase in the concentration of the reactants of a reaction leads to change in :",
+            "options": {
+                "1": "activation energy",
+                "2": "heat of reaction",
+                "3": "threshold energy",
+                "4": "collision frequency"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 110,
+            "question": "A mixture of N\u2082 and Ar gases in a cylinder contains 7 g of N\u2082 and 8 g of Ar. If the total pressure of the mixture of the gases in the cylinder is 27 bar, the partial pressure of N\u2082 is :",
+            "options": {
+                "1": "9 bar",
+                "2": "12 bar",
+                "3": "15 bar",
+                "4": "18 bar"
+            },
+            "im_desp": "[Use atomic masses (in g mol\u207b\u00b9) : N=14, Ar=40]"
+        },
+        {
+            "question_number": 111,
+            "question": "Identify the correct statement from the following :",
+            "options": {
+                "1": "Wrought iron is impure iron with 4% carbon.",
+                "2": "Blister copper has blistered appearance due to evolution of CO\u2082.",
+                "3": "Vapour phase refining is carried out for Nickel by Van Arkel method.",
+                "4": "Pig iron can be moulded into a variety of shapes."
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 112,
+            "question": "A tertiary butyl carbocation is more stable than a secondary butyl carbocation because of which of the following ?",
+            "options": {
+                "1": "\u2013I effect of \u2013CH\u2083 groups",
+                "2": "+R effect of \u2013CH\u2083 groups",
+                "3": "\u2013R effect of \u2013CH\u2083 groups",
+                "4": "Hyperconjugation"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 113,
+            "question": "Which of the following is a cationic detergent ?",
+            "options": {
+                "1": "Sodium lauryl sulphate",
+                "2": "Sodium stearate",
+                "3": "Cetyltrimethyl ammonium bromide",
+                "4": "Sodium dodecylbenzene sulphonate"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 114,
+            "question": "Elimination reaction of 2-Bromo-pentane to form pent-2-ene is :",
+            "options": {
+                "1": "\u03b2-Elimination reaction",
+                "2": "Follows Zaitsev rule",
+                "3": "Dehydrohalogenation reaction",
+                "4": "Dehydration reaction"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 115,
+            "question": "The mixture which shows positive deviation from Raoult's law is :",
+            "options": {
+                "1": "Ethanol + Acetone",
+                "2": "Benzene + Toluene",
+                "3": "Acetone + Chloroform",
+                "4": "Chloroethane + Bromoethane"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 116,
+            "question": "Which of the following is the correct order of increasing field strength of ligands to form coordination compounds ?",
+            "options": {
+                "1": "CN\u207b < F\u207b < C\u2082O\u2084\u00b2\u207b < CN\u207b",
+                "2": "SCN\u207b < F\u207b < CN\u207b < C\u2082O\u2084\u00b2\u207b",
+                "3": "F\u207b < SCN\u207b < C\u2082O\u2084\u00b2\u207b < CN\u207b",
+                "4": "CN\u207b < C\u2082O\u2084\u00b2\u207b < SCN\u207b < F\u207b"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 117,
+            "question": "Which of the following is a basic amino acid ?",
+            "options": {
+                "1": "Serine",
+                "2": "Alanine",
+                "3": "Tyrosine",
+                "4": "Lysine"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 118,
+            "question": "HCl was passed through a solution of CaCl\u2082, MgCl\u2082 and NaCl. Which of the following compound(s) crystallise ?",
+            "options": {
+                "1": "Both MgCl\u2082 and CaCl\u2082",
+                "2": "Only NaCl",
+                "3": "Only MgCl\u2082",
+                "4": "NaCl, MgCl\u2082 and CaCl\u2082"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 119,
+            "question": "Which of the following is a natural polymer ?",
+            "options": {
+                "1": "cis-1,4-polyisoprene",
+                "2": "poly (Butadiene-styrene)",
+                "3": "polybutadiene",
+                "4": "poly (Butadiene-acrylonitrile)"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 120,
+            "question": "Which of the following is not correct about carbon monoxide ?",
+            "options": {
+                "1": "It forms carboxyhaemoglobin.",
+                "2": "It reduces oxygen carrying ability of blood.",
+                "3": "The carboxyhaemoglobin (haemoglobin bound to CO) is less stable than oxyhaemoglobin.",
+                "4": "It is produced due to incomplete combustion."
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 121,
+            "question": "Sucrose on hydrolysis gives :",
+            "options": {
+                "1": "\u03b2-D-Glucose + \u03b1-D-Fructose",
+                "2": "\u03b1-D-Glucose + \u03b2-D-Fructose",
+                "3": "\u03b1-D-Glucose + \u03b1-D-Fructose",
+                "4": "\u03b1-D-Fructose + \u03b2-D-Glucose"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 122,
+            "question": "The following metal ion activates many enzymes, participates in the oxidation of glucose to produce ATP and with Na, is responsible for the transmission of nerve signals.",
+            "options": {
+                "1": "Iron",
+                "2": "Copper",
+                "3": "Calcium",
+                "4": "Potassium"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 123,
+            "question": "Which one of the followings has maximum number of atoms ?",
+            "options": {
+                "1": "1 g of Ag(s) [Atomic mass of Ag=108]",
+                "2": "1 g of Mg(s) [Atomic mass of Mg=24]",
+                "3": "1 g of O\u2082(g) [Atomic mass of O=16]",
+                "4": "1 g of Li(s) [Atomic mass of Li=7]"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 124,
+            "question": "The number of protons, neutrons and electrons in <0xE2><0x82><0xB9><0xE2><0x82><0xB8>\u2087\u2081Lu\u2081<0xE2><0x82><0xB5>\u2083, respectively, are :",
+            "options": {
+                "1": "71, 104 and 71",
+                "2": "104, 71 and 71",
+                "3": "71, 71 and 104",
+                "4": "175, 104 and 71"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 125,
+            "question": "What is the change in oxidation number of carbon in the following reaction ?",
+            "options": {
+                "1": "+4 to +4",
+                "2": "0 to +4",
+                "3": "-4 to +4",
+                "4": "0 to -4"
+            },
+            "im_desp": "CH\u2084(g) + 4Cl\u2082(g) \u2192 CCl\u2084(l) + 4HCl(g)"
+        },
+        {
+            "question_number": 126,
+            "question": "Identify the incorrect statement.",
+            "options": {
+                "1": "Cr\u00b2\u207a(d\u2074) is a stronger reducing agent than Fe\u00b2\u207a(d\u2076) in water.",
+                "2": "The transition metals and their compounds are known for their catalytic activity due to their ability to adopt multiple oxidation states and to form complexes.",
+                "3": "Interstitial compounds are those that are formed when small atoms like H, C or N are trapped inside the crystal lattices of metals.",
+                "4": "The oxidation states of chromium in CrO<0xE2><0x82><0x90>\u2084\u00b2\u207b and Cr\u2082O<0xE2><0x82><0x91>\u2087\u00b2\u207b are not the same."
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 127,
+            "question": "For the reaction, 2Cl(g) \u2192 Cl\u2082(g), the correct option is :",
+            "options": {
+                "1": "\u0394<0xE2><0x82><0x99>H > 0 and \u0394<0xE2><0x82><0x99>S > 0",
+                "2": "\u0394<0xE2><0x82><0x99>H > 0 and \u0394<0xE2><0x82><0x99>S < 0",
+                "3": "\u0394<0xE2><0x82><0x99>H < 0 and \u0394<0xE2><0x82><0x99>S > 0",
+                "4": "\u0394<0xE2><0x82><0x99>H < 0 and \u0394<0xE2><0x82><0x99>S < 0"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 128,
+            "question": "Measuring Zeta potential is useful in determining which property of colloidal solution ?",
+            "options": {
+                "1": "Viscosity",
+                "2": "Solubility",
+                "3": "Stability of the colloidal particles",
+                "4": "Size of the colloidal particles"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 129,
+            "question": "Urea reacts with water to form A which will decompose to form B. B when passed through Cu\u00b2\u207a(aq) deep blue colour solution C is formed. What is the formula of C from the following ?",
+            "options": {
+                "1": "CuSO\u2084",
+                "2": "[Cu(NH\u2083)\u2084]\u00b2\u207a",
+                "3": "Cu(OH)\u2082",
+                "4": "CuCO\u2083.Cu(OH)\u2082"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 130,
+            "question": "Match the following and identify the correct option.",
+            "options": {
+                "1": "(a) (b) (c) (d) (i)",
+                "2": "(a) (iii) (b) (i) (ii) (iv)",
+                "3": "(a) (ii) (b) (iii) (iv) (i)",
+                "4": "(a) (iv) (b) (iii) (ii) (i)"
+            },
+            "im_desp": "Column - I: (a) CO(g)+H\u2082(g), (b) Temporary hardness of water, (c) B\u2082H\u2086, (d) H\u2082O\u2082, Column - II: (i) Mg(HCO\u2083)\u2082, (ii) An electron deficient hydride, (iii) Synthesis gas, (iv) Non-planar structure"
+        },
+        {
+            "question_number": 131,
+            "question": "Match the following :",
+            "options": {
+                "1": "(a) (b) (c) (d) (i)",
+                "2": "(a) (ii) (b) (iii) (iv) (i)",
+                "3": "(a) (ii) (b) (i) (iii) (iv)",
+                "4": "(a) (iii) (b) (ii) (i) (iv)"
+            },
+            "im_desp": "Column - I: Oxide (a) CO, (b) BaO, (c) Al\u2082O\u2083, (d) Cl\u2082O<0xE2><0x82><0x9C>, Column - II: Nature (i) Basic, (ii) Neutral, (iii) Amphoteric, (iv) Acidic"
+        },
+        {
+            "question_number": 132,
+            "question": "The rate constant for a first order reaction is 4.606\u00d710\u207b\u00b3 s\u207b\u00b9. The time required to reduce 2.0 g of the reactant to 0.2 g is :",
+            "options": {
+                "1": "100 s",
+                "2": "200 s",
+                "3": "500 s",
+                "4": "1000 s"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 133,
+            "question": "An alkene on ozonolysis gives methanal as one of the product. Its structure is :",
+            "options": {
+                "1": "Image of chemical structure",
+                "2": "Image of chemical structure",
+                "3": "Image of chemical structure",
+                "4": "Image of chemical structure"
+            },
+            "im_desp": "Option 1: Propene (CH3-CH=CH2), Option 2: But-2-ene (CH3-CH=CH-CH3), Option 3: 2-Methylbut-2-ene ((CH3)2C=CH-CH3), Option 4: But-1-ene (CH2=CH-CH2-CH3)"
+        },
+        {
+            "question_number": 134,
+            "question": "Which of the following alkane cannot be made in good yield by Wurtz reaction ?",
+            "options": {
+                "1": "n-Hexane",
+                "2": "2,3-Dimethylbutane",
+                "3": "n-Heptane",
+                "4": "n-Butane"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 135,
+            "question": "Anisole on cleavage with HI gives :",
+            "options": {
+                "1": "Image of chemical structure",
+                "2": "Image of chemical structure",
+                "3": "Image of chemical structure",
+                "4": "Image of chemical structure"
+            },
+            "im_desp": "Option 1: Phenol and Methyl iodide, Option 2: Phenol and Chloromethane, Option 3: Phenol and Ethyl iodide, Option 4: Phenol and Chloromethane"
+        },
+        {
+            "question_number": 136,
+            "question": "For which one of the following, Bohr model is not valid ?",
+            "options": {
+                "1": "Hydrogen atom",
+                "2": "Singly ionised helium atom (He\u207a)",
+                "3": "Deuteron atom",
+                "4": "Singly ionised neon atom (Ne\u207a\u2079)"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 137,
+            "question": "The ratio of contributions made by the electric field and magnetic field components to the intensity of an electromagnetic wave is : (c=speed of electromagnetic waves)",
+            "options": {
+                "1": "c : 1",
+                "2": "1 : c",
+                "3": "1 : 1",
+                "4": "1 : c\u00b2"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 138,
+            "question": "The Brewster angle i<0xE2><0x82><0x99> for an interface should be :",
+            "options": {
+                "1": "0\u00b0 < i<0xE2><0x82><0x99> < 30\u00b0",
+                "2": "30\u00b0 < i<0xE2><0x82><0x99> < 45\u00b0",
+                "3": "45\u00b0 < i<0xE2><0x82><0x99> < 90\u00b0",
+                "4": "i<0xE2><0x82><0x99> = 90\u00b0"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 139,
+            "question": "A cylinder contains hydrogen gas at pressure of 249 kPa and temperature 27\u00b0C. Its density is : (R=8.3 J mol\u207b\u00b9 K\u207b\u00b9)",
+            "options": {
+                "1": "0.5 kg/m\u00b3",
+                "2": "0.2 kg/m\u00b3",
+                "3": "0.1 kg/m\u00b3",
+                "4": "0.02 kg/m\u00b3"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 140,
+            "question": "A ray is incident at an angle of incidence i on one surface of a small angle prism (with angle of prism A) and emerges normally from the opposite surface. If the refractive index of the material of the prism is \u03bc, then the angle of incidence is nearly equal to :",
+            "options": {
+                "1": "A/\u03bc",
+                "2": "2A",
+                "3": "\u03bcA",
+                "4": "\u03bcA/2"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 141,
+            "question": "Two cylinders A and B of equal capacity are connected to each other via a stop cock. A contains an ideal gas at standard temperature and pressure. B is completely evacuated. The entire system is thermally insulated. The stop cock is suddenly opened. The process is :",
+            "options": {
+                "1": "isothermal",
+                "2": "adiabatic",
+                "3": "isochoric",
+                "4": "isobaric"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 142,
+            "question": "The energy equivalent of 0.5 g of a substance is :",
+            "options": {
+                "1": "4.5\u00d710\u00b9\u00b3 J",
+                "2": "0.5\u00d710\u00b9\u00b3 J",
+                "3": "1.5\u00d710\u00b9\u00b3 J",
+                "4": "0.5\u00d710\u00b9\u00b2 J"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 143,
+            "question": "A body weighs 72 N on the surface of the earth. What is the gravitational force on it, at a height equal to half the radius of the earth ?",
+            "options": {
+                "1": "48 N",
+                "2": "32 N",
+                "3": "30 N",
+                "4": "24 N"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 144,
+            "question": "The solids which have the negative temperature coefficient of resistance are :",
+            "options": {
+                "1": "metals",
+                "2": "insulators only",
+                "3": "semiconductors only",
+                "4": "Insulators and semiconductors"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 145,
+            "question": "The phase difference between displacement and acceleration of a particle in a simple harmonic motion is :",
+            "options": {
+                "1": "\u03c0 rad",
+                "2": "3\u03c0/2 rad",
+                "3": "\u03c0/2 rad",
+                "4": "zero"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 146,
+            "question": "A screw gauge has least count of 0.01 mm and there are 50 divisions in its circular scale. The pitch of the screw gauge is :",
+            "options": {
+                "1": "0.01 mm",
+                "2": "0.25 mm",
+                "3": "0.5 mm",
+                "4": "1.0 mm"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 147,
+            "question": "In a guitar, two strings A and B made of same material are slightly out of tune and produce beats of frequency 6 Hz. When tension in B is slightly decreased, the beat frequency increases to 7 Hz. If the frequency of A is 530 Hz, the original frequency of B will be :",
+            "options": {
+                "1": "523 Hz",
+                "2": "524 Hz",
+                "3": "536 Hz",
+                "4": "537 Hz"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 148,
+            "question": "Two particles of mass 5 kg and 10 kg respectively are attached to the two ends of a rigid rod of length 1 m with negligible mass. The centre of mass of the system from the 5 kg particle is nearly at a distance of :",
+            "options": {
+                "1": "33 cm",
+                "2": "50 cm",
+                "3": "67 cm",
+                "4": "80 cm"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 149,
+            "question": "Find the torque about the origin when a force of 3\u0135 N acts on a particle whose position vector is 2<0xC2><0x9B> m .",
+            "options": {
+                "1": "6\u00ee N m",
+                "2": "\u22126\u00ee N m",
+                "3": "6<0xC2><0x9B>\u00ee N m",
+                "4": "6k\u0302 N m"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 150,
+            "question": "Light with an average flux of 20 W/cm\u00b2 falls on a non-reflecting surface at normal incidence having surface area 20 cm\u00b2. The energy received by the surface during time span of 1 minute is :",
+            "options": {
+                "1": "10\u00d710\u00b3 J",
+                "2": "12\u00d710\u00b3 J",
+                "3": "24\u00d710\u00b3 J",
+                "4": "48\u00d710\u00b3 J"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 151,
+            "question": "A spherical conductor of radius 10 cm has a charge of 3.2\u00d710\u207b\u2077 C distributed uniformly. What is the magnitude of electric field at a point 15 cm from the centre of the sphere ?",
+            "options": {
+                "1": "1.28\u00d710\u2075 N/C",
+                "2": "1.28\u00d710\u2076 N/C",
+                "3": "1.28\u00d710\u2077 N/C",
+                "4": "1.28\u00d710\u2074 N/C"
+            },
+            "im_desp": "Image of formula: E = (1/4\u03c0\u03b5\u2080) * (q/r\u00b2), where 1/4\u03c0\u03b5\u2080 = 9\u00d710\u2079 N m\u00b2/C\u00b2"
+        },
+        {
+            "question_number": 152,
+            "question": "In a certain region of space with volume 0.2 m\u00b3, the electric potential is found to be 5 V throughout. The magnitude of electric field in this region is :",
+            "options": {
+                "1": "zero",
+                "2": "0.5 N/C",
+                "3": "1 N/C",
+                "4": "5 N/C"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 153,
+            "question": "The increase in the width of the depletion region in a p-n junction diode is due to :",
+            "options": {
+                "1": "forward bias only",
+                "2": "reverse bias only",
+                "3": "both forward bias and reverse bias",
+                "4": "increase in forward current"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 154,
+            "question": "A 40 \u03bcF capacitor is connected to a 200 V, 50 Hz ac supply. The rms value of the current in the circuit is nearly :",
+            "options": {
+                "1": "1.7 A",
+                "2": "2.05 A",
+                "3": "2.5 A",
+                "4": "25.1 A"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 155,
+            "question": "The mean free path for a gas, with molecular diameter d and number density n can be expressed as :",
+            "options": {
+                "1": "Image of formula",
+                "2": "Image of formula",
+                "3": "Image of formula",
+                "4": "Image of formula"
+            },
+            "im_desp": "Option 1: 1/(\u221a2 nd), Option 2: 1/(\u221a2 nd\u00b2), Option 3: \u221a2 nd, Option 4: \u221a2 n\u00b2 d\u00b2"
+        },
+        {
+            "question_number": 156,
+            "question": "For transistor action, which of the following statements is correct ?",
+            "options": {
+                "1": "Base, emitter and collector regions should have same doping concentrations.",
+                "2": "Base, emitter and collector regions should have same size.",
+                "3": "Both emitter junction as well as the collector junction are forward biased.",
+                "4": "The base region must be very thin and lightly doped."
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 157,
+            "question": "Light of frequency 1.5 times the threshold frequency is incident on a photosensitive material. What will be the photoelectric current if the frequency is halved and intensity is doubled ?",
+            "options": {
+                "1": "doubled",
+                "2": "four times",
+                "3": "one-fourth",
+                "4": "zero"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 158,
+            "question": "When a uranium isotope <0xE2><0x82><0xB2><0xE2><0x82><0xB3>\u2082U is bombarded with a neutron, it generates <0xE2><0x82><0xA1><0xE2><0x82><0xBA>\u2079\u2079Kr, three neutrons and :",
+            "options": {
+                "1": "<0xE2><0x82><0xB1><0xE2><0x82><0xB4>\u2085\u2086Ba",
+                "2": "\u2075\u2076B",
+                "3": "<0xE2><0x82><0xA1><0xE2><0x82><0xBB>\u2070\u00b9Zr",
+                "4": "<0xE2><0x82><0xB1><0xE2><0x82><0xB3>\u2079\u2079Kr"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 159,
+            "question": "The energy required to break one bond in DNA is 10\u207b\u00b2\u2070 J. This value in eV is nearly :",
+            "options": {
+                "1": "6",
+                "2": "0.6",
+                "3": "0.06",
+                "4": "0.006"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 160,
+            "question": "Two bodies of mass 4 kg and 6 kg are tied to the ends of a massless string. The string passes over a pulley which is frictionless (see figure). The acceleration of the system in terms of acceleration due to gravity (g) is :",
+            "options": {
+                "1": "g",
+                "2": "g/2",
+                "3": "g/5",
+                "4": "g/10"
+            },
+            "im_desp": "Diagram of Atwood machine with masses 4kg and 6kg connected by string over a pulley."
+        },
+        {
+            "question_number": 161,
+            "question": "A wire of length L, area of cross section A is hanging from a fixed support. The length of the wire changes to L\u2081 when mass M is suspended from its free end. The expression for Young's modulus is :",
+            "options": {
+                "1": "Image of formula",
+                "2": "Image of formula",
+                "3": "Image of formula",
+                "4": "Image of formula"
+            },
+            "im_desp": "Option 1: MgL\u2081/AL, Option 2: MgL/(AL\u2081), Option 3: MgL/A(L\u2081-L), Option 4: MgL\u2081/A(L\u2081-L)"
+        },
+        {
+            "question_number": 162,
+            "question": "The average thermal energy for a mono-atomic gas is : (k<0xE2><0x82><0x99> is Boltzmann constant and T, absolute temperature)",
+            "options": {
+                "1": "Image of formula",
+                "2": "Image of formula",
+                "3": "Image of formula",
+                "4": "Image of formula"
+            },
+            "im_desp": "Option 1: (1/2) k<0xE2><0x82><0x99>T, Option 2: (3/2) k<0xE2><0x82><0x99>T, Option 3: 2 k<0xE2><0x82><0x99>T, Option 4: (7/2) k<0xE2><0x82><0x99>T"
+        },
+        {
+            "question_number": 163,
+            "question": "Which of the following graph represents the variation of resistivity (\u03c1) with temperature (T) for copper ?",
+            "options": {
+                "1": "Image of graph",
+                "2": "Image of graph",
+                "3": "Image of graph",
+                "4": "Image of graph"
+            },
+            "im_desp": "Option 1: Graph showing resistivity increasing linearly with temperature, Option 2: Graph showing resistivity decreasing exponentially with temperature, Option 3: Graph showing resistivity increasing exponentially with temperature, Option 4: Graph showing resistivity decreasing linearly with temperature"
+        },
+        {
+            "question_number": 164,
+            "question": "The color code of a resistance is given below :",
+            "options": {
+                "1": "470 k\u03a9, 5%",
+                "2": "47 k\u03a9, 10%",
+                "3": "4.7 k\u03a9, 5%",
+                "4": "470 \u03a9, 5%"
+            },
+            "im_desp": "Image of resistor with color bands: Yellow, Violet, Brown, Gold. The values of resistance and tolerance, respectively, are :"
+        },
+        {
+            "question_number": 165,
+            "question": "In Young's double slit experiment, if the separation between coherent sources is halved and the distance of the screen from the coherent sources is doubled, then the fringe width becomes :",
+            "options": {
+                "1": "double",
+                "2": "half",
+                "3": "four times",
+                "4": "one-fourth"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 166,
+            "question": "The capacitance of a parallel plate capacitor with air as medium is 6 pF. With the introduction of a dielectric medium, the capacitance becomes 30 pF. The permittivity of the medium is : (\u03b5\u2080=8.85\u00d710\u207b\u00b9\u00b2 C\u00b2 N\u207b\u00b9 m\u207b\u00b2)",
+            "options": {
+                "1": "0.44\u00d710\u207b\u00b9\u00b3 C\u00b2 N\u207b\u00b9 m\u207b\u00b2",
+                "2": "1.77\u00d710\u207b\u00b9\u00b2 C\u00b2 N\u207b\u00b9 m\u207b\u00b2",
+                "3": "0.44\u00d710\u207b\u00b9\u2070 C\u00b2 N\u207b\u00b9 m\u207b\u00b2",
+                "4": "5.00 C\u00b2 N\u207b\u00b9 m\u207b\u00b2"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 167,
+            "question": "Dimensions of stress are :",
+            "options": {
+                "1": "[MLT\u207b\u00b2]",
+                "2": "[ML\u00b2T\u207b\u00b2]",
+                "3": "[ML\u207b\u00b9T\u207b\u00b2]",
+                "4": "[ML\u207b\u00b9T\u207b\u00b2]"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 168,
+            "question": "Assume that light of wavelength 600 nm is coming from a star. The limit of resolution of telescope whose objective has a diameter of 2 m is :",
+            "options": {
+                "1": "3.66\u00d710\u207b\u2077 rad",
+                "2": "1.83\u00d710\u207b\u2077 rad",
+                "3": "7.32\u00d710\u207b\u2077 rad",
+                "4": "6.00\u00d710\u207b\u2077 rad"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 169,
+            "question": "A series LCR circuit is connected to an ac voltage source. When L is removed from the circuit, the phase difference between current and voltage is \u03c0/3. If instead C is removed from the circuit, the phase difference is again \u03c0/3 between current and voltage. The power factor of the circuit is :",
+            "options": {
+                "1": "zero",
+                "2": "0.5",
+                "3": "1.0",
+                "4": "-1.0"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 170,
+            "question": "A short electric dipole has a dipole moment of 16\u00d710\u207b\u2079 C m. The electric potential due to the dipole at a point at a distance of 0.6 m from the centre of the dipole, situated on a line making an angle of 60\u00b0 with the dipole axis is :",
+            "options": {
+                "1": "50 V",
+                "2": "200 V",
+                "3": "400 V",
+                "4": "zero"
+            },
+            "im_desp": "Image of formula: V = (1/(4\u03c0\u03b5\u2080)) * (p cos\u03b8 / r\u00b2), where (1/(4\u03c0\u03b5\u2080)) = 9\u00d710\u2079 N m\u00b2/C\u00b2"
+        },
+        {
+            "question_number": 171,
+            "question": "An iron rod of susceptibility 599 is subjected to a magnetising field of 1200 A m\u207b\u00b9. The permeability of the material of the rod is : (\u03bc\u2080=4\u03c0\u00d710\u207b\u2077 T m A\u207b\u00b9)",
+            "options": {
+                "1": "2.4\u03c0\u00d710\u207b\u2074 T m A\u207b\u00b9",
+                "2": "8.0\u00d710\u207b\u2075 T m A\u207b\u00b9",
+                "3": "2.4\u03c0\u00d710\u207b\u2077 T m A\u207b\u00b9",
+                "4": "2.4\u03c0\u00d710\u207b\u2075 T m A\u207b\u00b9"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 172,
+            "question": "A long solenoid of 50 cm length having 100 turns carries a current of 2.5 A. The magnetic field at the centre of the solenoid is : (\u03bc\u2080=4\u03c0\u00d710\u207b\u2077 T m A\u207b\u00b9)",
+            "options": {
+                "1": "6.28\u00d710\u207b\u2074 T",
+                "2": "3.14\u00d710\u207b\u00b3 T",
+                "3": "6.28\u00d710\u207b\u00b3 T",
+                "4": "3.14\u00d710\u207b\u2074 T"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 173,
+            "question": "A charged particle having drift velocity of 7.5\u00d710\u207b\u2074 m s\u207b\u00b9 in an electric field of 3\u00d710\u207b\u00b9\u2070 Vm\u207b\u00b9, has a mobility in m\u00b2 V\u207b\u00b9 s\u207b\u00b9 of :",
+            "options": {
+                "1": "2.25\u00d710\u00b9\u2075",
+                "2": "2.5\u00d710\u2076",
+                "3": "2.5\u00d710\u207b\u2076",
+                "4": "2.25\u00d710\u207b\u00b9\u2075"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 174,
+            "question": "The quantities of heat required to raise the temperature of two solid copper spheres of radii r\u2081 and r\u2082 (r\u2081=1.5 r\u2082) through 1 K are in the ratio :",
+            "options": {
+                "1": "27/8",
+                "2": "9/4",
+                "3": "3/2",
+                "4": "3"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 175,
+            "question": "An electron is accelerated from rest through a potential difference of V volt. If the de Broglie wavelength of the electron is 1.227\u00d710\u207b\u00b2 nm, the potential difference is :",
+            "options": {
+                "1": "10 V",
+                "2": "10\u00b2 V",
+                "3": "10\u00b3 V",
+                "4": "10\u2074 V"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 176,
+            "question": "Taking into account of the significant figures, what is the value of 9.99 m \u2013 0.0099 m ?",
+            "options": {
+                "1": "9.9801 m",
+                "2": "9.98 m",
+                "3": "9.980 m",
+                "4": "9.9 m"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 177,
+            "question": "A ball is thrown vertically downward with a velocity of 20 m/s from the top of a tower. It hits the ground after some time with a velocity of 80 m/s. The height of the tower is : (g=10 m/s\u00b2)",
+            "options": {
+                "1": "300 m",
+                "2": "340 m",
+                "3": "320 m",
+                "4": "360 m"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 178,
+            "question": "A capillary tube of radius r is immersed in water and water rises in it to a height h. The mass of the water in the capillary is 5 g. Another capillary tube of radius 2r is immersed in water. The mass of water that will rise in this tube is :",
+            "options": {
+                "1": "2.5 g",
+                "2": "5.0 g",
+                "3": "10.0 g",
+                "4": "20.0 g"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 179,
+            "question": "A resistance wire connected in the left gap of a metre bridge balances a 10 \u03a9 resistance in the right gap at a point which divides the bridge wire in the ratio 3 : 2. If the length of the resistance wire is 1.5 m, then the length of 1 \u03a9 of the resistance wire is :",
+            "options": {
+                "1": "1.0\u00d710\u207b\u00b2 m",
+                "2": "1.5\u00d710\u207b\u00b9 m",
+                "3": "1.5\u00d710\u207b\u00b2 m",
+                "4": "1.0\u00d710\u207b\u00b9 m"
+            },
+            "im_desp": null
+        },
+        {
+            "question_number": 180,
+            "question": "For the logic circuit shown, the truth table is :",
+            "options": {
+                "1": "Image of truth table",
+                "2": "Image of truth table",
+                "3": "Image of truth table",
+                "4": "Image of truth table"
+            },
+            "im_desp": "Logic circuit diagram showing a NAND gate with inputs A and B, and output Y. Option 1 Truth table: A 0 0 1 1, B 0 1 0 1, Y 1 1 1 0. Option 2 Truth table: A 0 0 1 1, B 0 1 0 1, Y 0 0 0 1. Option 3 Truth table: A 0 0 1 1, B 0 1 0 1, Y 0 1 1 0. Option 4 Truth table: A 0 0 1 1, B 0 1 0 1, Y 1 0 0 1."
+        }
+    ]
+}
