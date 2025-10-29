@@ -1,0 +1,66 @@
+import React from 'react';
+import { CaretDown, CaretUp } from '@phosphor-icons/react';
+
+/**
+ * Generic reusable Table component
+ * @param {Array} columns - [{ field, label, sortable }]
+ * @param {Array} data - Array of row objects
+ * @param {string} sortField - Current sort field
+ * @param {string} sortDirection - 'asc' | 'desc'
+ * @param {function} onSort - (field) => void
+ * @param {function} renderRow - (row, index) => ReactNode
+ * @param {ReactNode} emptyState - What to render if data is empty
+ */
+const Table = ({
+  columns = [],
+  data = [],
+  sortField,
+  sortDirection,
+  onSort,
+  renderRow,
+  emptyState = null,
+}) => {
+  const SortIcon = ({ field }) => {
+    if (sortField !== field) return <CaretDown size={14} className="text-gray-400" />;
+    return sortDirection === 'asc'
+      ? <CaretUp size={14} className="text-primary" />
+      : <CaretDown size={14} className="text-primary" />;
+  };
+
+  if (!data.length && emptyState) {
+    return emptyState;
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              {columns.map((column) => (
+                <th
+                  key={column.field}
+                  scope="col"
+                  className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
+                    column.sortable !== false ? 'cursor-pointer hover:bg-gray-100 transition-colors' : ''
+                  }`}
+                  onClick={column.sortable !== false && onSort ? () => onSort(column.field) : undefined}
+                >
+                  <div className="flex items-center gap-1">
+                    {column.label}
+                    {column.sortable !== false && onSort && <SortIcon field={column.field} />}
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {data.map((row, idx) => renderRow(row, idx))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+export default Table;
