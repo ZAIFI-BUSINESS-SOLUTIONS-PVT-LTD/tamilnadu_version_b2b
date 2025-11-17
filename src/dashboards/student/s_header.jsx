@@ -7,19 +7,18 @@ import {
   ChartBar,
   SignOut,
   Files,
-  Bell,
   TextAlignLeft,
   CaretDown, // Not explicitly used for collapsible items in StudentHeader, but imported.
   CaretRight // Not explicitly used for collapsible items in StudentHeader, but imported.
 } from "@phosphor-icons/react";
-import { motion, AnimatePresence } from 'framer-motion';
 import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
 import { fetchstudentdetail } from '../../utils/api.js';
 import HeaderBase from '../shared/header/HeaderBase.jsx';
 import UserDropdown from '../shared/header/UserDropDown.jsx';
 import DesktopSidebar from '../shared/header/DesktopSidebar.jsx';
-import MobileSidebar from '../shared/header/MobileSideBar.jsx';
+import MobileSidebar from '../shared/header/MobileDock.jsx';
 import DownloadReportModal from './components/s_studentreport.jsx';
+import Logo from '../../assets/images/logo.svg';
 
 /**
  * StudentHeader Component
@@ -43,32 +42,9 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
   // State for controlling the visibility of the student report download modal
   const [showDownloadModal, setShowDownloadModal] = useState(false);
 
-  // States for managing notifications
-  const [notifications, setNotifications] = useState([]);
-  const [showNotifications, setShowNotifications] = useState(false);
-
   // React Router hooks for navigation and current location
   const navigate = useNavigate();
   const location = useLocation(); // This hook is likely used by child components like DesktopSidebar and MobileSidebar to determine active links.
-
-  /**
-   * Mocks notification data on component mount.
-   * In a real application, this useEffect would be used to fetch
-   * notifications from an API endpoint specific to the student.
-   */
-  useEffect(() => {
-    setNotifications([
-      { id: 1, text: 'New assessment results available', time: '15m ago', read: false },
-      { id: 2, text: 'Teacher feedback on your last submission', time: '2h ago', read: false },
-      { id: 3, text: 'Upcoming deadline for assignment', time: '1d ago', read: true }
-    ]);
-  }, []); // Empty dependency array ensures this runs only once on mount
-
-  /**
-   * Calculates the number of unread notifications.
-   * @type {number}
-   */
-  const unreadCount = notifications.filter(n => !n.read).length;
 
   /**
    * Defines the main navigation items for the sidebar specific to a student.
@@ -80,13 +56,13 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
     {
       to: '/student/dashboard',
       icon: <House weight="regular" size={20} />,
-      text: 'Dashboard',
+      text: 'Home',
       activePattern: /^\/student\/dashboard/
     },
     {
       to: '/student/swot',
       icon: <Target weight="regular" size={20} />,
-      text: 'SWOT Analysis',
+      text: 'Analysis',
       activePattern: /^\/student\/swot/
     },
     {
@@ -122,14 +98,6 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
   };
 
   /**
-   * Marks all current notifications as read.
-   * In a real app, this would typically send an API request to update notification status on the server.
-   */
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
-  };
-
-  /**
    * Returns a time-based greeting (Good morning, Good afternoon, Good evening).
    * The greeting adjusts based on the current hour.
    * @returns {string} The appropriate greeting.
@@ -150,98 +118,18 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
 
       {/* Mobile Header (visible on small screens) */}
       <HeaderBase isMobile>
-        <div className="flex items-center justify-between w-full px-4 py-3">
-          {/* Mobile Sidebar Toggle Button */}
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="btn btn-ghost flex items-center justify-center rounded-xl p-2 hover:bg-gray-100 transition-colors"
-            aria-label="Open sidebar"
-          >
-            <List size={24} className="text-gray-700" />
-          </button>
-
-          {/* App Logo for Mobile */}
-          <div className="flex-1 text-center">
-            <span className="font-semibold text-gray-800 text-lg">
-              Inzight<span className="bg-gradient-to-br from-blue-600 to-blue-400 text-transparent bg-clip-text">Ed</span>
-            </span>
+        <div className="flex items-center justify-between w-full py-3">
+          {/* App Logo for Mobile (moved to the leftmost side) */}
+          <div className="flex items-center">
+            <img
+              src={Logo}
+              alt="InzightEd Logo"
+              className="h-7 pt-1"
+            />
           </div>
 
-          {/* Mobile Notification and User Dropdown */}
-          <div className="flex items-center gap-3">
-            {/* Notifications Bell Icon and Dropdown */}
-            <div className="relative">
-              <button
-                className="btn btn-ghost rounded-xl relative hover:bg-gray-100 transition-colors"
-                onClick={() => setShowNotifications(!showNotifications)}
-                // Provide an accessible label for screen readers, dynamically updated
-                aria-label={unreadCount > 0 ? `Notifications - ${unreadCount} unread` : "No new notifications"}
-              >
-                <Bell size={22} className="text-gray-700" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-
-              {/* Notification Dropdown Content (animated using Framer Motion) */}
-              <AnimatePresence>
-                {showNotifications && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
-                    role="menu" // ARIA role for dropdown menu
-                    aria-orientation="vertical"
-                  >
-                    <div className="flex justify-between items-center p-3 border-b">
-                      <h3 className="font-medium">Notifications</h3>
-                      {unreadCount > 0 && (
-                        <button
-                          onClick={markAllAsRead}
-                          className="text-sm text-blue-600 hover:text-blue-800"
-                        >
-                          Mark all as read
-                        </button>
-                      )}
-                    </div>
-                    <div className="max-h-96 overflow-y-auto">
-                      {notifications.length > 0 ? (
-                        notifications.map(notification => (
-                          <div
-                            key={notification.id}
-                            className={`p-3 border-b hover:bg-gray-50 transition-colors ${!notification.read ? 'bg-blue-50' : ''}`}
-                            role="menuitem" // ARIA role for each notification item
-                          >
-                            <p className="text-sm">{notification.text}</p>
-                            <p className="text-sm text-gray-500 mt-1">{notification.time}</p>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-4 text-center text-gray-500">
-                          No notifications
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-2 text-center border-t">
-                      <button
-                        className="text-sm text-blue-600 hover:text-blue-800"
-                        onClick={() => {
-                          setShowNotifications(false); // Close dropdown before navigating
-                          navigate('/student/notifications');
-                        }}
-                        role="menuitem" // ARIA role for the "View all" button
-                      >
-                        View all notifications
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
+          {/* Mobile User Dropdown */}
+          <div className="flex">
             {/* User Dropdown for Mobile */}
             <UserDropdown
               userInfo={studentInfo}
@@ -292,7 +180,7 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
 
             {/* Greeting and Current Date */}
             <div className="flex flex-col">
-              <h1 className="text-xl font-semibold text-gray-800 font-poppins"> {/* Changed text-2xl to text-xl for slightly smaller heading */}
+              <h1 className="text-2xl font-semibold text-gray-800 font-poppins">
                 {getGreeting()}, <span className="text-blue-600">{isLoading ? "Student" : studentInfo.name.split(' ')[0]}</span>
               </h1>
               <p className="text-sm text-gray-500">
@@ -302,82 +190,6 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Notifications Bell Icon and Dropdown (Desktop) */}
-            <div className="relative">
-              <button
-                className="btn btn-ghost btn-circle relative hover:bg-gray-100 transition-colors"
-                onClick={() => setShowNotifications(!showNotifications)}
-                // Provide an accessible label for screen readers, dynamically updated
-                aria-label={unreadCount > 0 ? `Notifications - ${unreadCount} unread` : "No new notifications"}
-              >
-                <Bell size={22} className="text-gray-700" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-
-              {/* Notification Dropdown Content (animated using Framer Motion) */}
-              <AnimatePresence>
-                {showNotifications && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
-                    role="menu"
-                    aria-orientation="vertical"
-                  >
-                    <div className="flex justify-between items-center p-3 border-b">
-                      <h3 className="font-medium">Notifications</h3>
-                      {unreadCount > 0 && (
-                        <button
-                          onClick={markAllAsRead}
-                          className="text-sm text-blue-600 hover:text-blue-800"
-                        >
-                          Mark all as read
-                        </button>
-                      )}
-                    </div>
-                    <div className="max-h-96 overflow-y-auto">
-                      {notifications.length > 0 ? (
-                        notifications.map(notification => (
-                          <div
-                            key={notification.id}
-                            className={`p-3 border-b hover:bg-gray-50 transition-colors ${!notification.read ? 'bg-blue-50' : ''}`}
-                            role="menuitem"
-                          >
-                            <p className="text-sm">{notification.text}</p>
-                            <p className="text-sm text-gray-500 mt-1">{notification.time}</p>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-4 text-center text-gray-500">
-                          No notifications
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-2 text-center border-t">
-                      <button
-                        className="text-sm text-blue-600 hover:text-blue-800"
-                        onClick={() => {
-                          setShowNotifications(false); // Close dropdown before navigating
-                          navigate('/student/notifications');
-                        }}
-                        role="menuitem"
-                      >
-                        View all notifications
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Separator */}
-            <div className="h-8 w-px bg-gray-200 mx-1"></div>
-
             {/* User Dropdown for Desktop */}
             <div className="relative">
               <UserDropdown

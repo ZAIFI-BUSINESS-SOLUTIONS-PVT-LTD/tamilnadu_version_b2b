@@ -32,21 +32,19 @@ const Table = ({
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <div className="bg-white overflow-hidden">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          <thead className="bg-white">
             <tr>
               {columns.map((column) => (
                 <th
                   key={column.field}
                   scope="col"
-                  className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
-                    column.sortable !== false ? 'cursor-pointer hover:bg-gray-100 transition-colors' : ''
-                  }`}
+                  className={`px-6 py-3 text-xs font-semibold text-gray-500 tracking-wider ${column.sortable !== false ? 'cursor-pointer hover:bg-gray-100 transition-colors' : ''}`}
                   onClick={column.sortable !== false && onSort ? () => onSort(column.field) : undefined}
                 >
-                  <div className="flex items-center gap-1">
+                  <div className={`flex items-center gap-1 ${column.headerClass ? column.headerClass : 'text-left'}`}>
                     {column.label}
                     {column.sortable !== false && onSort && <SortIcon field={column.field} />}
                   </div>

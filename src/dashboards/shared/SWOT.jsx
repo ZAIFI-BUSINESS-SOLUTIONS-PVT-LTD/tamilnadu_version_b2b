@@ -1,5 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types'; // Import PropTypes
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card.jsx';
 
 /**
  * SwotSection Component
@@ -21,38 +22,38 @@ const SwotSection = ({ label, icon, color, border, data, selectedSubject }) => {
   const itemsToRender = data?.[selectedSubject]?.[label] || [];
 
   return (
-    <div className="card bg-base-100 shadow-xl p-4">
-      {/* Section Title with Icon */}
-      <h3 className={`${color} font-semibold flex items-center mb-4 text-xl`}>
-        {icon}
-        <span className="ml-2">{label}</span> {/* Added margin for spacing between icon and text */}
-      </h3>
+    <Card className="bg-base-100 shadow-xl">
+      <CardHeader className="p-0 sm:p-4">
+        <CardTitle className={`${color} font-semibold hidden lg:flex items-center mb-0 text-lg`}>
+          {icon}
+          <span className="ml-2">{label}</span>
+        </CardTitle>
+      </CardHeader>
 
-      {/* List of SWOT Items for the selected subject/label */}
-      <div className="space-y-4">
-        {itemsToRender.length > 0 ? (
-          itemsToRender.map((item, idx) => (
-            // Using a more robust key: combine label, subject, and item title (if unique), fallback to index if necessary.
-            // Ideally, each 'item' should have a unique ID from the data source.
-            <div key={item.id || `${label}-${selectedSubject}-${item.title || ''}-${idx}`} className={`p-3 border ${border} rounded-lg`}>
-              <h4 className="font-bold text-lg mb-1">{item.title}</h4> {/* Added margin-bottom */}
-              <p className="text-base text-gray-600 mb-2">{item.description}</p> {/* Added margin-bottom */}
-              
-              {item.topics && item.topics.length > 0 && (
-                <ul className="list-disc list-inside mt-2 text-base text-gray-700">
-                  {item.topics.map((topic, i) => (
-                    // Using a composite key for topics for better stability
-                    <li key={`${item.id || item.title || ''}-topic-${topic}-${i}`}>{topic}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ))
-        ) : (
-          <p className="text-gray-500 italic">No data available for this category.</p>
-        )}
-      </div>
-    </div>
+      <CardContent className="px-4 sm:pb-4 pt-4 sm:pt-0">
+        {/* List of SWOT Items for the selected subject/label */}
+        <div className="space-y-4">
+          {itemsToRender.length > 0 ? (
+            itemsToRender.map((item, idx) => (
+              <div key={item.id || `${label}-${selectedSubject}-${item.title || ''}-${idx}`} className={`p-3 border ${border} rounded-lg`}>
+                <h4 className="font-bold text-base mb-1">{item.title}</h4>
+                <p className="text-sm text-gray-600 mb-2">{item.description}</p>
+
+                {item.topics && item.topics.length > 0 && (
+                  <ul className="list-disc list-inside mt-2 text-sm text-gray-700">
+                    {item.topics.map((topic, i) => (
+                      <li key={`${item.id || item.title || ''}-topic-${topic}-${i}`}>{topic}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-gray-500 italic">No data available for this category.</p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

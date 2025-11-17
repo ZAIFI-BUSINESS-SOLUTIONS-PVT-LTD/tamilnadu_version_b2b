@@ -1,27 +1,49 @@
+// Hero section (accessible & SEO-friendly)
 import React, { useRef, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { motion, useAnimation, AnimatePresence } from "framer-motion";
-import BG_FOREGROUND from "../../assets/landingpage images/bg_001.webp";
-import DEMO_SCREEN from "../../assets/landingpage images/demo-screenshot.webp";
-import { Play, X, Loader2 } from "lucide-react";
+import BG_FOREGROUND from "../../assets/landingpage-images/bg_001.webp";
+import DEMO_SCREEN from "../../assets/landingpage-images/demo-screenshot.webp";
+import { Play, X, Loader2, BadgeCheck } from "lucide-react";
+import RotatingText from './animations/RotatingText.jsx';
+import ShinyButton from './animations/ShinyButton.jsx';
 
-// Intersection observer hook
+// Hook to detect if an element is visible on screen
 const useOnScreen = (ref, threshold = 0.1) => {
   const [isIntersecting, setIntersecting] = useState(false);
   useEffect(() => {
+    // Guard for SSR and missing IntersectionObserver implementations
+    if (typeof window === "undefined" || typeof window.IntersectionObserver === "undefined") {
+      // If we can't observe, assume not intersecting on server; client will re-run effect
+      setIntersecting(false);
+      return;
+    }
+
     const observer = new window.IntersectionObserver(
       ([entry]) => setIntersecting(entry.isIntersecting),
       { threshold }
     );
-    if (ref.current) observer.observe(ref.current);
-    return () => ref.current && observer.unobserve(ref.current);
+
+    // Ensure we only call observe with a Node/Element
+    const node = ref && ref.current;
+    if (node instanceof Node) {
+      observer.observe(node);
+    }
+
+    return () => {
+      try {
+        if (node instanceof Node && observer) observer.unobserve(node);
+      } catch (e) {
+        // swallow exceptions from unobserve in odd environments
+      }
+    };
   }, [ref, threshold]);
   return isIntersecting;
 };
 
-// Background layers: foreground only (grid removed)
+// Component to render background layers
 const BackgroundLayers = () => {
   useEffect(() => {
-    // Only preload the foreground image now
     const img = new window.Image();
     img.src = BG_FOREGROUND;
   }, []);
@@ -30,13 +52,17 @@ const BackgroundLayers = () => {
     <div className="absolute inset-0 pointer-events-none z-0">
       <motion.div
         className="absolute inset-0 flex items-center justify-center z-10"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.1 }}
-        transition={{ duration: 1.2, delay: 0.3 }}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 0.1, scale: 1 }}
+        transition={{ duration: 1.5, ease: "easeOut" }}
       >
         <img
           src={BG_FOREGROUND}
-          alt="Foreground element"
+          alt=""
+          role="presentation"
+          aria-hidden="true"
+          width="1920"
+          height="1080"
           className="w-full h-full object-cover"
           loading="lazy"
           style={{ mixBlendMode: "normal" }}
@@ -46,103 +72,156 @@ const BackgroundLayers = () => {
   );
 };
 
-// DemoButton: request-a-demo CTA
-const DemoButton = () => {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <motion.a
-      href="/auth"
-      aria-label="Go To Dashboard"
-      className={`relative inline-flex items-center gap-x-3 px-7 py-3 font-semibold text-white rounded-lg shadow-xl mt-6 bg-gradient-to-br from-blue-600 to-blue-400 transition-transform duration-200 ${hovered ? "scale-105" : "scale-100"
-        }`}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{ letterSpacing: "0.02em" }}
-      initial={{ y: 10, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ delay: 0.6, duration: 0.5, ease: "easeOut" }}
-    >
-      Go To Dashboard
-    </motion.a>
-  );
-};
-
-// HeroContent: headings, text, and CTA
+// Component for the hero section content
 const HeroContent = () => {
   const containerVariants = {
-    hidden: { opacity: 0 },
+    hidden: { opacity: 0, y: 50 },
     visible: {
       opacity: 1,
+      y: 0,
       transition: {
-        staggerChildren: 0.08,
-        delayChildren: 0.2,
+        duration: 1,
+        ease: "easeOut",
+        staggerChildren: 0.2,
       },
     },
   };
 
   const childVariants = {
-    hidden: { y: 10, opacity: 0 },
+    hidden: { opacity: 0, y: 20 },
     visible: {
-      y: 0,
       opacity: 1,
-      transition: { duration: 0.5, ease: "easeOut" },
+      y: 0,
+      transition: { duration: 0.8, ease: "easeOut" },
     },
   };
 
+
   return (
     <motion.div
-      className="flex flex-col items-start justify-center text-left w-full text-gray-700"
+      className="flex flex-col items-center md:items-start justify-center text-center md:text-left w-full text-gray-700"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
+
+      {/* Main heading (H1) - includes broad keyword phrase for SEO */}
       <motion.h1
-        className="font-semibold leading-tight text-gray-700 text-4xl md:text-5xl"
+        className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-gray-900 leading-tight mb-4"
         variants={childVariants}
       >
-        <motion.span
-          className="text-transparent bg-clip-text bg-gradient-to-br from-blue-600 to-blue-400 animate-gradient-x"
-          variants={childVariants}
-        >
-          AI‑Powered
-        </motion.span>
         <br />
-        Evaluation for
-        <br />
-        <motion.span
-          className="relative inline-block pb-4"
-          variants={childVariants}
-        >
-          Smarter Learning
-        </motion.span>
+        <span className="inline-block mt-3">
+          Prepare{" "}
+          <span className="inline">
+            <RotatingText
+              texts={["Smarter", "Clearer", "Quicker"]}
+              mainClassName="inline-flex px-2 sm:px-2 md:px-3 bg-gradient-to-r from-blue-400 to-blue-600 text-white overflow-hidden rounded-lg pt-1"
+              staggerFrom={"last"}
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "-120%" }}
+              staggerDuration={0.025}
+              splitLevelClassName="overflow-hidden"
+              transition={{ type: "spring", damping: 30, stiffness: 400 }}
+              rotationInterval={4000}
+            />
+          </span>
+          <br /><span className="text-blue-500">Free</span> mock tests,
+        </span>
+        <br /><span className="text-blue-500">AI</span> powered evaluation for all your exam prep.
       </motion.h1>
 
+      {/* Subheading */}
       <motion.p
-        className="max-w-3xl text-gray-700 leading-normal text-sm sm:text-sm md:text-md lg:text-lg xl:text-xl"
+        className="text-lg md:text-xl text-gray-700 max-w-3xl mb-6"
         variants={childVariants}
       >
-        Automate assessments, deliver real‑time feedback, and gain AI‑driven insights to enhance education. Empower educators, streamline grading, and make data‑driven decisions effortlessly.
+        <span className="text-gray-600">Elevate your exam preparations with AI that helps you learn, not just score.</span>
       </motion.p>
 
-      <DemoButton />
+      {/* Call-to-action buttons */}
+      <motion.div
+        className="flex flex-col sm:flex-row gap-4 mb-6"
+        variants={childVariants}
+      >
+        <a href="https://app.inzighted.com/" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+          <ShinyButton
+            className="px-7 py-3 font-semibold rounded-lg shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-transform duration-200 bg-gradient-to-r from-blue-400 to-blue-600 text-white"
+          >
+            InzightEd
+          </ShinyButton>
+        </a>
+        <a href="https://neet.inzighted.com/" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+          <ShinyButton
+            className="px-7 py-3 font-semibold rounded-lg shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-transform duration-200 bg-gradient-to-r from-blue-400 to-blue-600 text-white"
+          >
+            InzightEd - NEET
+          </ShinyButton>
+        </a>
+        <Link to="/contact" style={{ textDecoration: 'none' }}>
+          <span
+            className="inline-flex items-center justify-center px-7 py-3 font-semibold text-gray-700 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2"
+          >
+            For Institutes: Book a Demo
+          </span>
+        </Link>
+      </motion.div>
+
+      {/* Badges */}
+      <motion.div
+        className="flex flex-wrap items-center justify-center md:justify-start gap-6 text-sm text-gray-500 mt-2"
+        variants={childVariants}
+      >
+        <div className="flex items-center gap-2">
+          <BadgeCheck className="w-5 h-5 text-white fill-blue-500" />
+          Tested with Top Institutes
+        </div>
+        <div className="flex items-center gap-2">
+          <BadgeCheck className="w-5 h-5 text-white fill-blue-500" />
+          85% improved scores
+        </div>
+      </motion.div>
     </motion.div>
   );
 };
 
-// DemoGraphic: screenshot + play pill (show YouTube video in modal on click)
+// Component for the demo graphic and video modal
 const DemoGraphic = () => {
   const [showVideo, setShowVideo] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const modalRef = useRef(null);
   const playButtonRef = useRef(null);
 
-  // Close modal on ESC key
+  // Inject VideoObject JSON-LD for SEO (ensures crawlers pick up the demo video)
+  useEffect(() => {
+    const videoSchema = {
+      "@context": "https://schema.org",
+      "@type": "VideoObject",
+      name: "InzightEd Product Demo",
+      description:
+        "Short demo of InzightEd showing AI evaluation, mock-test flow, and personalized recommendations for NEET preparation.",
+      thumbnailUrl: window.location.origin + "/assets/landingpage-images/demo-screenshot.webp",
+      uploadDate: "2025-01-01",
+      duration: "PT0M57S",
+      contentUrl: "https://youtu.be/ipF351hwBgs",
+      embedUrl: "https://www.youtube.com/embed/ipF351hwBgs"
+    };
+
+    const script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.text = JSON.stringify(videoSchema);
+    document.head.appendChild(script);
+
+    return () => {
+      script.remove();
+    };
+  }, []);
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
         setShowVideo(false);
       }
-      // Return focus to play button when modal closes
       if (e.key === "Tab" && !showVideo && playButtonRef.current) {
         playButtonRef.current.focus();
       }
@@ -152,7 +231,6 @@ const DemoGraphic = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [showVideo]);
 
-  // Trap focus inside modal when open
   useEffect(() => {
     if (showVideo && modalRef.current) {
       const focusableElements = modalRef.current.querySelectorAll(
@@ -197,48 +275,42 @@ const DemoGraphic = () => {
           tabIndex={0}
           onKeyDown={(e) => e.key === "Enter" && setShowVideo(true)}
         >
-          {/* Image with modern frame */}
           <div className="relative w-[92%] h-[92%] rounded-xl overflow-hidden border border-gray-100/80 bg-gray-50">
             <img
               src={DEMO_SCREEN}
-              alt="Product demo screenshot"
+              alt="InzightEd product demo screenshot showing test results, AI recommendations, and report overview"
+              width="1200"
+              height="1200"
               className="absolute inset-0 w-full h-full object-cover transition-all duration-500 group-hover:scale-105 group-hover:opacity-90"
+              loading="lazy"
             />
             <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </div>
 
-          {/* Floating play button - minimalist style */}
           <button
             ref={playButtonRef}
-            className="absolute flex items-center gap-2 px-3.5 py-1.5 bg-gray-900/95 hover:bg-gray-900 text-white text-sm font-medium rounded-full backdrop-blur transition-all duration-200 transform hover:scale-[1.02] focus:outline-none focus:ring-1 focus:ring-white/30 z-10"
-            style={{
-              top: '1.25rem',
-              left: '1.25rem',
-            }}
+            className="absolute flex items-center gap-2 px-3.5 py-1.5 bg-gray-900/95 hover:bg-gray-900 text-white text-sm font-medium rounded-full backdrop-blur transition-all duration-200 transform hover:scale-[1.02] focus:outline-none focus:ring-1 focus:ring-white/30 z-10 m-4"
+            style={{ bottom: "1.25rem", right: "1.25rem" }}
             onClick={(e) => {
               e.stopPropagation();
               setShowVideo(true);
             }}
             aria-label="Play demo video"
           >
-            <Play className="w-3.5 h-3.5" />
             <span>Demo</span>
             <span className="text-xs opacity-75 ml-0.5">0:57s</span>
           </button>
 
-          {/* Animated center play button - premium style */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <div className="p-3 bg-white/95 rounded-full backdrop-blur shadow-[0_4px_20px_rgba(0,0,0,0.15)] transform transition-all duration-300 scale-90 group-hover:scale-100">
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="p-3 bg-gray-900/30 rounded-full backdrop-blur-lg shadow-lg">
               <div className="relative flex items-center justify-center w-12 h-12">
-                <div className="absolute inset-0 rounded-full bg-gray-900/5 animate-ping opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <Play className="w-5 h-5 text-gray-900 relative" strokeWidth={2.5} />
+                <Play className="w-7 h-7 text-white relative" strokeWidth={3} />
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Video Modal */}
       <AnimatePresence>
         {showVideo && (
           <motion.div
@@ -260,7 +332,6 @@ const DemoGraphic = () => {
               className="relative w-full max-w-4xl mx-4 aspect-video bg-black rounded-xl shadow-2xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Close button */}
               <button
                 className="absolute top-4 right-4 z-20 bg-white/90 hover:bg-white text-black rounded-full p-2 shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
                 onClick={() => setShowVideo(false)}
@@ -269,18 +340,16 @@ const DemoGraphic = () => {
                 <X className="w-5 h-5" />
               </button>
 
-              {/* Loading indicator */}
               {isLoading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
                   <Loader2 className="w-8 h-8 text-white animate-spin" />
                 </div>
               )}
 
-              {/* YouTube iframe */}
               <iframe
                 width="100%"
                 height="100%"
-                src={`https://www.youtube.com/embed/ipF351hwBgs?si=cds3Abh3oIN6xbAs`}
+                src="https://www.youtube.com/embed/ipF351hwBgs?si=cds3Abh3oIN6xbAs"
                 title="Product demo video"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -293,10 +362,13 @@ const DemoGraphic = () => {
                 aria-labelledby="video-modal-title"
               />
 
-              {/* Video title for screen readers */}
               <h2 id="video-modal-title" className="sr-only">
                 Product Demonstration Video
               </h2>
+              {/* Crawlable transcript/short description for SEO & accessibility */}
+              <div className="sr-only" id="demo-video-description">
+                InzightEd product demo (0:57) — shows the student workflow: taking a mock test, AI evaluation of answers, section-wise insights, personalized study plan suggestions, and reporting for educators. The demo highlights speed, clarity and actionable feedback to help NEET aspirants improve their scores.
+              </div>
             </motion.div>
           </motion.div>
         )}
@@ -305,7 +377,7 @@ const DemoGraphic = () => {
   );
 };
 
-// HeroSection: composes everything
+// Main Hero section component
 export default function HeroSection() {
   const sectionRef = useRef(null);
   const isHeroVisible = useOnScreen(sectionRef, 0.1);
@@ -317,17 +389,24 @@ export default function HeroSection() {
     }
   }, [isHeroVisible, controls]);
 
+  const introAnimation = {
+    initial: { opacity: 0, y: 50 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 1, ease: "easeOut" },
+  };
+
   return (
     <motion.section
       id="home"
       ref={sectionRef}
-      className="relative flex flex-col items-center justify-center w-full overflow-hidden py-20 pt-32 text-center min-h-[80vh] bg-white"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.4 }}
+      className="relative flex flex-col items-center justify-center w-full overflow-hidden pt-36 pb-2 sm:pb-6 text-center bg-white"
+      initial={{ opacity: 0, y: 50 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 1, ease: "easeOut" }}
+      {...introAnimation}
     >
       <BackgroundLayers />
-      <div className="relative z-10 w-full max-w-screen-xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 px-4 sm:px-8 md:px-16 min-h-[60vh]">
+      <div className="relative w-full max-w-screen-2xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 px-3 sm:px-4 md:px-8">
         <div className="w-full md:w-1/2">
           <HeroContent />
         </div>

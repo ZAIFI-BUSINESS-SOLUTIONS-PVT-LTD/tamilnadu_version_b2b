@@ -1,6 +1,6 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { Routes, Route } from "react-router-dom";
-import { Index, Contact, PricingPage, FAQPage } from "./landing page/pages/index";
+import { Index, Contact, PricingPage, BlogPage, BlogPostPage } from "./landing page/pages/index";
 import LoginOptions from './auth/loginoptions';
 import StudentLogin from './auth/student/studentlogin';
 import EducatorLogin from './auth/educator/educatorlogin';
@@ -11,6 +11,7 @@ import ErrorPage from "./auth/ErrorPage";
 import WaitingPage from "./auth/WaitingPage";
 import './App.css';
 import ScrollToTop from './dashboards/components/ScrollToTop';
+import PageLoader from './components/ui/PageLoader';
 import Report from './dashboards/educator/Report.jsx';
 import TeacherReport from './dashboards/educator/TeacherReport.jsx';
 import StudentReport from './dashboards/student/StudentReport.jsx';
@@ -21,7 +22,8 @@ import {
   EDashboard,
   ESWOT,
   EUpload,
-  EResults
+  EResults,
+  EChatbot
 } from './dashboards/educator';
 
 // Import student layout and nested pages
@@ -38,10 +40,18 @@ function App() {
     <>
       <ScrollToTop />
       <Routes>
-        <Route path="/" element={<Index />} />
+        <Route
+          path="/"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <Index />
+            </Suspense>
+          }
+        />
         <Route path="/contact" element={<Contact />} />
         <Route path="/pricing" element={<PricingPage />} />
-        <Route path="/faq" element={<FAQPage />} />
+        <Route path="/blog" element={<BlogPage />} />
+        <Route path="/blog/:slug" element={<BlogPostPage />} />
 
         <Route path="/report" element={<Report />} />
         <Route path="/teacher-report" element={<TeacherReport />} />
@@ -62,6 +72,7 @@ function App() {
           <Route path="upload" element={<EUpload />} />
           <Route path="swot" element={<ESWOT />} />
           <Route path="students" element={<EResults />} />
+          <Route path="chatbot" element={<EChatbot />} />
         </Route>
         {/* Student protected pages via layout */}
         <Route path="/student/*" element={<SLayout />}>

@@ -1,0 +1,4 @@
+# Copilot: Allow all crawlers and link sitemap.
+User-agent: *
+Allow: /
+Sitemap: https://inzighted.com/sitemap.xml

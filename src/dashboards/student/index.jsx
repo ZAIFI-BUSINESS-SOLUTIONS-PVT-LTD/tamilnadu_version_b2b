@@ -7,6 +7,7 @@ export const SLayout = () => {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const toggleSidebarCollapse = () => setIsSidebarCollapsed(prev => !prev);
     const sidebarMarginClass = isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64';
+
     return (
         <div className="flex h-screen bg-gray-100 text-text">
             <SHeader
@@ -14,9 +15,11 @@ export const SLayout = () => {
                 toggleSidebarCollapse={toggleSidebarCollapse}
             />
             <main
-                className={`flex-1 flex flex-col overflow-auto pt-12 px-4 transition-all duration-300 ${sidebarMarginClass}`}
+                className={`flex-1 flex flex-col pt-14 pb-24 md:pb-6 transition-all duration-300 overflow-auto px-4 md:px-6 ${sidebarMarginClass}`}
             >
-                <Outlet />
+                <div style={{ maxWidth: '1500px', marginLeft: 'auto', marginRight: 'auto', width: '100%' }}>
+                    <Outlet />
+                </div>
             </main>
         </div>
     );
