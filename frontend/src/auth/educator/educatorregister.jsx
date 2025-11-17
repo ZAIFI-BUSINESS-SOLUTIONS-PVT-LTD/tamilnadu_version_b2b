@@ -5,7 +5,7 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { ChalkboardTeacher, ArrowLeft } from '@phosphor-icons/react';
 
-import bgImage from '../../assets/landingpage images/bg_001.webp';
+import bgImage from '../../assets/landingpage-images/bg_001.webp';
 import educatorSignupImg from '../../assets/auth images/educatorlogin.svg';
 import { API_BASE_URL } from '../../utils/api';
 
