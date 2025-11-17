@@ -226,3 +226,66 @@ def get_subject_from_q_paper(pdf_path: str) -> Optional[str]:
     except Exception as e:
         logger.error(f"Error getting subject from question paper: {e}")
         return None
+
+
+def questions_extract_with_metadata(pdf_path: str, test_path: str, subject_ranges: list, total_questions: int) -> Optional[List[Dict[str, Any]]]:
+    """
+    Extract questions using admin-provided subject ranges.
+    
+    Args:
+        pdf_path: Path to the question paper PDF
+        test_path: Directory path for test files
+        subject_ranges: List of dicts with 'subject', 'start', 'end' keys
+        total_questions: Total expected questions
+    
+    Returns:
+        List of question dictionaries with assigned subjects
+    """
+    try:
+        all_questions = []
+        images = pdf_to_images(pdf_path)
+        ocr_text = call_mistrall_ocr_api_with_rotation(pdf_path)
+        
+        # Save OCR
+        markdown_content = f"# OCR Result\n\n```json\n{ocr_text}\n```"
+        markdown_path = os.path.join(test_path, "ocr_output.md")
+        default_storage.save(markdown_path, ContentFile(markdown_content))
+        logger.info(f"[METADATA EXTRACTION] ✅ OCR data saved at: {markdown_path}")
+        
+        # Extract questions for each subject range
+        for range_info in subject_ranges:
+            subject = range_info['subject']
+            start = range_info['start']
+            end = range_info['end']
+            
+            logger.info(f"[METADATA EXTRACTION] 📄 Extracting {subject}: Q{start}-Q{end}")
+            
+            questions = extract_chunk_subtask(ocr_text, start, end, images)
+            
+            if questions and 'questions' in questions:
+                for q in questions['questions']:
+                    q['subject'] = subject
+                all_questions.extend(questions['questions'])
+                logger.info(f"[METADATA EXTRACTION] ✅ Extracted {len(questions['questions'])} questions for {subject}")
+            else:
+                logger.error(f"[METADATA EXTRACTION] ❌ Failed to extract {subject} questions")
+        
+        if len(all_questions) > 0:
+            # Save extracted questions
+            question_paper_json_path = os.path.join(test_path, "qp.json")
+            json_data = json.dumps(all_questions, indent=4)
+            default_storage.save(question_paper_json_path, ContentFile(json_data))
+            logger.info(f"[METADATA EXTRACTION] ✅ Saved {len(all_questions)}/{total_questions} questions to {question_paper_json_path}")
+            
+            # Validate count
+            if abs(len(all_questions) - total_questions) > 2:
+                logger.warning(f"[METADATA EXTRACTION] ⚠️ Question count mismatch: extracted {len(all_questions)}, expected {total_questions}")
+            
+            return all_questions
+        else:
+            logger.error(f"[METADATA EXTRACTION] ❌ No questions extracted")
+            return None
+            
+    except Exception as e:
+        logger.error(f"[METADATA EXTRACTION] ❌ Error in metadata extraction: {e}")
+        return None

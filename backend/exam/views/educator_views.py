@@ -378,7 +378,8 @@ def get_educator_students_result(request):
                 'phy_correct', 'phy_score', 'chem_total', 'chem_attended', 
                 'chem_correct', 'chem_score', 'bot_total', 'bot_attended', 
                 'bot_correct', 'bot_score', 'zoo_total', 'zoo_attended', 
-                'zoo_correct', 'zoo_score', 'total_attended', 
+                'zoo_correct', 'zoo_score', 'bio_total', 'bio_attended', 
+                'bio_correct', 'bio_score', 'total_attended', 
                 'total_correct', 'total_score'
             ))
         }, status=200)

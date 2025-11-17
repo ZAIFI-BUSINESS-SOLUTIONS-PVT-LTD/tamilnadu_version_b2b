@@ -26,7 +26,7 @@ const SubjectWiseAnalysisChart = ({
   selectedTest,
   setSelectedTest,
   testData = {},
-  subjectLabels = [],
+  subjectLabels = ['Botany', 'Chemistry', 'Physics', 'Zoology'],
   title = 'Subject-wise Analysis',
 }) => {
   // Prepare chart data

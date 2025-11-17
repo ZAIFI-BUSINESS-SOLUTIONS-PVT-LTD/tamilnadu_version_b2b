@@ -14,4 +14,10 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
   },
+  build: {
+    // Increase warning threshold to a slightly larger chunk size
+    chunkSizeWarningLimit: 700,
+  // Use default Rollup/Vite chunking. Removed manualChunks to avoid
+  // custom chunking issues during ESM initialization in production bundles.
+  }
 })

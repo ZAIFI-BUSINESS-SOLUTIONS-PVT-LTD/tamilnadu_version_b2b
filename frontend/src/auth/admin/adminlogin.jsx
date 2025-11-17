@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import bgImage from '../../assets/landingpage images/bg_001.webp';  // Background image';
+import bgImage from '../../assets/landingpage-images/bg_001.webp';  // Background image';
 import { adminLogin } from '../../utils/api';  // Import the login function
 
 const AdminLogin = () => {

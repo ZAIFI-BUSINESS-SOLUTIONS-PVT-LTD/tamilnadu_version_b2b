@@ -1,63 +1,34 @@
-import React, { useState, useMemo } from 'react';
-import { CaretDown } from '@phosphor-icons/react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '../../components/ui/accordion.jsx';
+import { faqs } from './faq-data.js';
 
-const faqs = [
-	{
-		question: 'What makes InzightEd different from traditional evaluation systems?',
-		answer:
-			'Unlike traditional systems that just focus on scores, InzightEd provides actionable insights. We go beyond numbers to offer a deep, meaningful understanding of student performance. Our platform uses advanced analytics to pinpoint exactly where students need help, turning assessment into a powerful learning tool.',
-	},
-	{
-		question: 'How does InzightEd help students improve?',
-		answer:
-			'We\'re your personal academic success partner! Our platform creates personalized study plans tailored to your unique learning needs. By identifying knowledge gaps early, we help you develop targeted revision strategies. It\'s like having a 24/7 tutor that understands exactly how you learn best.',
-	},
-	{
-		question: 'What results can educational institutions expect?',
-		answer:
-			'Impressive ones! Institutions using InzightEd typically see a 20% boost in student performance. We help improve student engagement, increase success rates, and enhance the overall academic reputation—all while seamlessly integrating with existing systems.',
-	},
-	{
-		question: 'How accurate is InzightEd\'s grading?',
-		answer:
-			'Completely unbiased and precise. Our AI-driven grading system eliminates human error and subjective scoring. You get 100% fair, consistent evaluations that focus on your actual understanding, not random variations in grading.',
-	},
-	{
-		question: 'Can InzightEd work with our current systems?',
-		answer:
-			'Absolutely! We designed InzightEd to play nicely with all major Learning Management Systems. Smooth integration means no disruption to your existing workflows—just enhanced learning insights.',
-	},
-	{
-		question: 'How does the AI Chatbot actually help students?',
-		answer:
-			'Think of our AI Chatbot as your personal academic coach. Available 24/7, it provides instant, personalized guidance. Need help preparing for an exam? Struggling with a concept? The chatbot offers tailored advice, study strategies, and performance predictions.',
-	},
-	{
-		question: 'Is my data safe with InzightEd?',
-		answer:
-			'Data security is our top priority. We use enterprise-grade encryption and strict access controls to protect all information. Your academic data is locked down with the same level of security used by major financial institutions.',
-	},
-	{
-		question: 'What types of assessments can InzightEd handle?',
-		answer:
-			'We specialize in multiple-choice questions and structured assessments. Our AI provides instant, detailed evaluations that go far beyond simple right or wrong scoring. You\'ll get comprehensive insights into your learning progress.',
-	},
-	{
-		question: 'How can I get started with InzightEd?',
-		answer:
-			'It\'s super easy! Just reach out to our team for a personalized demo. We\'ll walk you through the platform, show you its capabilities, and help you understand how InzightEd can transform your learning experience.',
-	},
-	{
-		question: 'Do you offer support for new users?',
-		answer:
-			'100% yes! We provide comprehensive onboarding, hands-on training, and dedicated local support. We\'re committed to making your transition to InzightEd smooth and stress-free.',
-	},
-	{
-		question: 'How does InzightEd help with learning across different subjects?',
-		answer:
-			'Our cross-subject analysis is like having an academic detective. Struggling with Physics? We\'ll dig deeper to see if the root cause might be gaps in Math skills. This means more targeted support and a holistic approach to your learning.',
-	},
-];
+// helper to create safe ids for deep-linking
+const slugify = (s) =>
+	String(s)
+		.toLowerCase()
+		.trim()
+		.replace(/\s+/g, "-")
+		.replace(/[^a-z0-9\-]/g, "");
+
+// Produce a one-sentence canonical answer suitable for JSON-LD / AI retrieval.
+// Rules: return the first complete sentence from the answer text. If the
+// answer is already one sentence, return it. If there are no sentence
+// delimiters, return the first 140 characters trimmed and appended with ellipses.
+const canonicalOneSentence = (text) => {
+	if (!text || typeof text !== 'string') return '';
+	// Normalize whitespace
+	const normalized = text.replace(/\s+/g, ' ').trim();
+	// Attempt to split on sentence terminators followed by space and capital letter
+	const sentenceMatch = normalized.match(/.*?[\.\?!](?:\s|$)/);
+	if (sentenceMatch && sentenceMatch[0].trim().length <= 280) {
+		return sentenceMatch[0].trim();
+	}
+	// Fallback: take up to first period-less chunk or truncate
+	const firstPeriodIndex = normalized.indexOf('.');
+	if (firstPeriodIndex > -1) return normalized.slice(0, firstPeriodIndex + 1).trim();
+	if (normalized.length <= 140) return normalized;
+	return normalized.slice(0, 137).trim() + '...';
+};
 
 const FAQ = () => {
 	const [openIndex, setOpenIndex] = useState(null);
@@ -70,71 +41,92 @@ const FAQ = () => {
 		[currentPage]
 	);
 
-	const toggleIndex = (index) => {
-		setOpenIndex((prev) => (prev === index ? null : index));
-	};
+	// Build minimal FAQPage schema and inject defensively
+	useEffect(() => {
+		if (!displayedFaqs || displayedFaqs.length === 0) return;
+		const buildFAQSchema = (items) => ({
+			"@context": "https://schema.org",
+			"@type": "FAQPage",
+			mainEntity: items.map((f) => ({
+				"@type": "Question",
+				name: f.question,
+				acceptedAnswer: { "@type": "Answer", text: canonicalOneSentence(f.answer) }
+			}))
+		});
+
+		const script = document.createElement('script');
+		script.type = 'application/ld+json';
+		script.text = JSON.stringify(buildFAQSchema(displayedFaqs));
+		document.head.appendChild(script);
+
+		return () => script.remove();
+	}, [displayedFaqs]);
 
 	return (
 		<section
 			id="faq"
-			aria-label="Frequently Asked Questions"
-			className="bg-blue-50 pt-28 pb-20 px-4 sm:px-6 lg:px-8 text-gray-700 relative overflow-hidden min-h-[70vh]"
+			aria-labelledby="faq-heading"
+			className="bg-blue-50 pt-28 pb-20 text-gray-700 relative overflow-hidden"
 		>
-			<div className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+			<div className="relative z-10 w-full max-w-screen-2xl mx-auto px-3 sm:px-4 md:px-8">
 				<div className="text-center mb-16">
-					<h2 className="text-4xl md:text-5xl font-bold mb-4 leading-tight tracking-tight">
-						Frequently Asked{" "}
-						<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-400">
-							Questions
-						</span>
+					<h2 id="faq-heading" className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-gray-900 mb-4 leading-tight">
+						Frequently Asked <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">Questions</span>
 					</h2>
+					<p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">
+						Answers to common questions about how InzightEd works, integrations, and support.
+					</p>
 				</div>
 
-				<div className="space-y-4">
-					{displayedFaqs.map((faq, idx) => (
-						<div
-							key={faq.question}
-							className="bg-white border border-gray-200 rounded-xl shadow-sm transition-all duration-200"
-						>
-							<button
-								aria-expanded={openIndex === idx}
-								onClick={() => toggleIndex(idx)}
-								className="w-full text-left px-6 py-4 flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-blue-200 rounded-xl transition-colors duration-150 hover:bg-gray-50"
+				<Accordion
+					type="single"
+					collapsible
+					value={openIndex !== null ? String(openIndex) : ''}
+					onValueChange={(val) => setOpenIndex(val === '' ? null : Number(val))}
+					className="space-y-2"
+				>
+					{displayedFaqs.map((faq, idx) => {
+						const absoluteIndex = (currentPage - 1) * itemsPerPage + idx;
+						const qSlug = slugify(faq.question || String(absoluteIndex));
+						const questionId = `faq-q-${qSlug}`;
+						const panelId = `faq-panel-${qSlug}`;
+						return (
+							<AccordionItem
+								key={`${absoluteIndex}-${qSlug}`}
+								value={String(absoluteIndex)}
+								className="bg-white border border-gray-200 rounded-xl shadow-sm transition-all duration-200"
 							>
-								<span className="flex-1 text-base md:text-lg font-medium text-gray-700">
-									{faq.question}
-								</span>
-								<CaretDown
-									weight="bold"
-									className={`w-6 h-6 ml-2 shrink-0 transition-transform duration-200 ${openIndex === idx ? 'rotate-180 text-blue-500' : 'text-gray-400'}`}
-								/>
-							</button>
-
-							<div
-								className={`overflow-hidden transition-all duration-300 ${openIndex === idx ? 'max-h-40 opacity-100 py-3 px-6' : 'max-h-0 opacity-0 py-0 px-6'}`}
-							>
-								<p className="text-gray-700 text-base leading-relaxed">
-									{faq.answer}
-								</p>
-							</div>
-						</div>
-					))}
-				</div>
+								<AccordionTrigger aria-controls={panelId} aria-labelledby={questionId} className="w-full text-left px-6 py-4 flex justify-between items-center rounded-xl transition-colors duration-150 hover:bg-gray-50">
+									<span id={questionId} className="flex-1 text-base md:text-xl font-semibold text-gray-900">
+										{faq.question}
+									</span>
+								</AccordionTrigger>
+								<AccordionContent id={panelId} role="region" aria-labelledby={questionId} className="px-6 pb-4 pt-0">
+									<p className="text-base md:text-lg text-gray-700 leading-relaxed mb-0">
+										{faq.answer}
+									</p>
+								</AccordionContent>
+							</AccordionItem>
+						);
+					})}
+				</Accordion>
 
 				{totalPages > 1 && (
-					<div className="flex justify-center mt-8">
-						<div className="inline-flex gap-1 rounded-lg bg-white shadow p-1">
+					<nav aria-label="FAQ pages" className="flex justify-center mt-8">
+						<div className="join">
 							{Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
 								<button
 									key={page}
 									onClick={() => setCurrentPage(page)}
-									className={`w-8 h-8 rounded-md font-medium text-sm transition-all duration-150 ${page === currentPage ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-blue-100'}`}
+									aria-current={page === currentPage ? 'true' : undefined}
+									aria-label={`Go to page ${page} of ${totalPages}`}
+									className={`join-item btn btn-sm ${page === currentPage ? 'btn-secondary' : 'btn-ghost'}`}
 								>
 									{page}
 								</button>
 							))}
 						</div>
-					</div>
+					</nav>
 				)}
 			</div>
 		</section>

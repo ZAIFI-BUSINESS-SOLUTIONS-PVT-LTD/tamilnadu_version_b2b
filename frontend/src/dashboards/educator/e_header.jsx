@@ -1,28 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   TextAlignLeft,
   House,
   UploadSimple,
   Student,
-  SignOut,
   Files,
   CaretDown,
   CaretRight,
   ChalkboardTeacher,
   Target,
-  Bell,
   List
 } from "@phosphor-icons/react";
-import { motion, AnimatePresence } from 'framer-motion';
 import { useUserData } from '../components/hooks/z_header/z_useUserData';
 import { fetcheducatordetail, fetchAvailableSwotTests_Educator, fetcheducatorstudent } from '../../utils/api';
 import HeaderBase from '../shared/header/HeaderBase.jsx';
 import UserDropdown from '../shared/header/UserDropDown.jsx';
 import DesktopSidebar from '../shared/header/DesktopSidebar.jsx';
-import MobileSidebar from '../shared/header/MobileSideBar.jsx';
+import MobileSidebar from '../shared/header/MobileDock.jsx';
 import TeacherReportModal from './components/e_teacherreport.jsx';
 import StudentReportModal from './components/e_studentreport.jsx';
+import Logo from '../../assets/images/logo.svg';
 
 /**
  * EducatorHeader Component
@@ -51,35 +49,15 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
   const [isReportsCollapsed, setIsReportsCollapsed] = useState(true);
 
   // States for managing notifications
-  const [notifications, setNotifications] = useState([]);
-  const [showNotifications, setShowNotifications] = useState(false);
+  // notifications removed from header UI
 
   // State for student list and test list for the report modal
   const [students, setStudents] = useState([]);
   const [availableTests, setAvailableTests] = useState(['Overall']);
 
-  // React Router hooks for navigation and current location
+  // React Router hooks for navigation
   const navigate = useNavigate();
-  const location = useLocation(); // Used by child components, but not directly in EducatorHeader's JSX logic
 
-  /**
-   * Mocks notification data on component mount.
-   * In a real application, this useEffect would be used to fetch
-   * notifications from an API endpoint.
-   */
-  useEffect(() => {
-    setNotifications([
-      { id: 1, text: 'New student assessment uploaded', time: '10m ago', read: false },
-      { id: 2, text: 'Monthly reports are ready for review', time: '1h ago', read: false },
-      { id: 3, text: 'Staff meeting scheduled for tomorrow', time: '2h ago', read: true }
-    ]);
-  }, []); // Empty dependency array ensures this runs only once on mount
-
-  /**
-   * Calculates the number of unread notifications.
-   * @type {number}
-   */
-  const unreadCount = notifications.filter(n => !n.read).length;
 
   /**
    * Defines the main navigation items for the sidebar.
@@ -91,7 +69,7 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
     {
       to: '/educator/dashboard',
       icon: <House weight="regular" size={20} />,
-      text: 'Dashboard',
+      text: 'Home',
       activePattern: /^\/educator\/dashboard/
     },
     {
@@ -103,7 +81,7 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
     {
       to: '/educator/swot',
       icon: <Target weight="regular" size={20} />,
-      text: 'SWOT Analysis',
+      text: 'SWOT',
       activePattern: /^\/educator\/swot/
     },
     {
@@ -112,6 +90,12 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
       text: 'Students',
       activePattern: /^\/educator\/students/
     },
+    // {
+    //   to: '/educator/chatbot',
+    //   icon: <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="4" stroke="currentColor" strokeWidth="2"/><circle cx="8.5" cy="12" r="1.5" fill="currentColor"/><circle cx="15.5" cy="12" r="1.5" fill="currentColor"/></svg>,
+    //   text: 'Chatbot',
+    //   activePattern: /^\/educator\/chatbot/
+    // },
   ];
 
   /**
@@ -151,7 +135,8 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
         }
       },
       caretIcon: isReportsCollapsed ? <CaretRight size={16} /> : <CaretDown size={16} />,
-      children: isReportsCollapsed ? [] : reportItems
+  // Always provide the children for mobile dock popups. Desktop will respect `isCollapsed`.
+  children: reportItems
     }
   ];
 
@@ -163,14 +148,6 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
     localStorage.removeItem("token");
     localStorage.removeItem("first_time_login");
     navigate("/auth");
-  };
-
-  /**
-   * Marks all current notifications as read.
-   * In a real app, this would typically send an API request to update notification status on the server.
-   */
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
   };
 
   /**
@@ -226,98 +203,18 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
 
       {/* Mobile Header (visible on small screens) */}
       <HeaderBase isMobile>
-        <div className="flex items-center justify-between w-full px-4 py-3">
-          {/* Mobile Sidebar Toggle Button */}
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="btn btn-ghost flex items-center justify-center rounded-xl p-2 hover:bg-gray-100 transition-colors"
-            aria-label="Open sidebar"
-          >
-            <List size={24} className="text-gray-700" />
-          </button>
-
-          {/* App Logo for Mobile */}
-          <div className="flex-1 text-center">
-            <span className="font-semibold text-gray-800 text-lg">
-              Inzight<span className="bg-gradient-to-br from-blue-600 to-blue-400 text-transparent bg-clip-text">Ed</span>
-            </span>
+        <div className="flex items-center justify-between w-full py-3">
+          {/* App Logo for Mobile (left aligned) */}
+          <div className="flex items-center">
+            <img
+              src={Logo}
+              alt="InzightEd Logo"
+              className="h-7 pt-1"
+            />
           </div>
 
           {/* Mobile Notification and User Dropdown */}
           <div className="flex items-center gap-3">
-            {/* Notifications Bell Icon and Dropdown */}
-            <div className="relative">
-              <button
-                className="btn btn-ghost rounded-xl relative hover:bg-gray-100 transition-colors"
-                onClick={() => setShowNotifications(!showNotifications)}
-                // Provide an accessible label for screen readers
-                aria-label={unreadCount > 0 ? `Notifications - ${unreadCount} unread` : "No new notifications"}
-              >
-                <Bell size={22} className="text-gray-700" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-
-              {/* Notification Dropdown Content (animated) */}
-              <AnimatePresence>
-                {showNotifications && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
-                    role="menu" // ARIA role for dropdown menu
-                    aria-orientation="vertical"
-                  >
-                    <div className="flex justify-between items-center p-3 border-b">
-                      <h3 className="font-medium">Notifications</h3>
-                      {unreadCount > 0 && (
-                        <button
-                          onClick={markAllAsRead}
-                          className="text-sm text-blue-600 hover:text-blue-800"
-                        >
-                          Mark all as read
-                        </button>
-                      )}
-                    </div>
-                    <div className="max-h-96 overflow-y-auto">
-                      {notifications.length > 0 ? (
-                        notifications.map(notification => (
-                          <div
-                            key={notification.id}
-                            className={`p-3 border-b hover:bg-gray-50 transition-colors ${!notification.read ? 'bg-blue-50' : ''}`}
-                            role="menuitem" // ARIA role for menu item
-                          >
-                            <p className="text-sm">{notification.text}</p>
-                            <p className="text-sm text-gray-500 mt-1">{notification.time}</p>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-4 text-center text-gray-500">
-                          No notifications
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-2 text-center border-t">
-                      <button
-                        className="text-sm text-blue-600 hover:text-blue-800"
-                        onClick={() => {
-                          setShowNotifications(false); // Close dropdown before navigating
-                          navigate('/educator/notifications');
-                        }}
-                        role="menuitem" // ARIA role for menu item
-                      >
-                        View all notifications
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
             {/* User Dropdown for Mobile */}
             <UserDropdown
               userInfo={educatorInfo}
@@ -335,7 +232,6 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
         items={sidebarItems}
         additionalItems={additionalItems}
         onLogout={handleLogout}
-        userInfo={educatorInfo}
       />
 
       {/* Desktop Layout (visible on medium and larger screens) */}
@@ -379,77 +275,7 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
 
           <div className="flex items-center gap-4">
             {/* Notifications Bell Icon and Dropdown (Desktop) */}
-            <div className="relative">
-              <button
-                className="btn btn-ghost btn-circle relative hover:bg-gray-100 transition-colors"
-                onClick={() => setShowNotifications(!showNotifications)}
-                // Provide an accessible label for screen readers
-                aria-label={unreadCount > 0 ? `Notifications - ${unreadCount} unread` : "No new notifications"}
-              >
-                <Bell size={22} className="text-gray-700" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-
-              {/* Notification Dropdown Content (animated) */}
-              <AnimatePresence>
-                {showNotifications && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
-                    role="menu"
-                    aria-orientation="vertical"
-                  >
-                    <div className="flex justify-between items-center p-3 border-b">
-                      <h3 className="font-medium">Notifications</h3>
-                      {unreadCount > 0 && (
-                        <button
-                          onClick={markAllAsRead}
-                          className="text-sm text-blue-600 hover:text-blue-800"
-                        >
-                          Mark all as read
-                        </button>
-                      )}
-                    </div>
-                    <div className="max-h-96 overflow-y-auto">
-                      {notifications.length > 0 ? (
-                        notifications.map(notification => (
-                          <div
-                            key={notification.id}
-                            className={`p-3 border-b hover:bg-gray-50 transition-colors ${!notification.read ? 'bg-blue-50' : ''}`}
-                            role="menuitem"
-                          >
-                            <p className="text-sm">{notification.text}</p>
-                            <p className="text-sm text-gray-500 mt-1">{notification.time}</p>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-4 text-center text-gray-500">
-                          No notifications
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-2 text-center border-t">
-                      <button
-                        className="text-sm text-blue-600 hover:text-blue-800"
-                        onClick={() => {
-                          setShowNotifications(false); // Close dropdown before navigating
-                          navigate('/educator/notifications');
-                        }}
-                        role="menuitem"
-                      >
-                        View all notifications
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+            {/* notifications removed from desktop header */}
 
             {/* Separator */}
             <div className="h-8 w-px bg-gray-200 mx-1"></div>

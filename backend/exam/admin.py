@@ -1,5 +1,5 @@
 from django.contrib import admin
-from exam.models import Educator, Manager, TestProcessingStatus, Test, Student, Result, StudentResponse,Gemini_ApiCallLog, Gemini_ApiKeyModelMinuteStats, Gemini_ApiKeyModelDayStats, SWOT
+from exam.models import Educator, Manager, TestProcessingStatus, Test, Student, Result, StudentResponse,Gemini_ApiCallLog, Gemini_ApiKeyModelMinuteStats, Gemini_ApiKeyModelDayStats, SWOT, TestMetadata
 from django.contrib import admin
 
 
@@ -8,12 +8,20 @@ admin.site.register(TestProcessingStatus)
 admin.site.register(Test)
 admin.site.register(StudentResponse)
 
+@admin.register(TestMetadata)
+class TestMetadataAdmin(admin.ModelAdmin):
+    list_display = ('class_id', 'test_num', 'pattern', 'total_questions', 'created_at')
+    search_fields = ('class_id', 'test_num')
+    list_filter = ('pattern', 'created_at')
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('-created_at',)
+
 
 @admin.register(Educator)
 class EducatorAdmin(admin.ModelAdmin):
-    list_display = ('id','name', 'email', 'class_id', 'institution', 'csv_status', 'separate_biology_subjects')
+    list_display = ('id','name', 'email', 'class_id', 'institution', 'csv_status')
     search_fields = ('email', 'name', 'class_id')
-    list_filter = ('institution', 'csv_status', 'separate_biology_subjects')
+    list_filter = ('institution', 'csv_status')
 
     def save_model(self, request, obj, form, change):
         if 'password' in form.changed_data:  # ✅ If password is changed, hash it
@@ -57,7 +65,8 @@ class ResultAdmin(admin.ModelAdmin):
                     'phy_correct', 'phy_score', 'chem_total', 'chem_attended', 
                     'chem_correct', 'chem_score', 'bot_total', 'bot_attended', 
                     'bot_correct', 'bot_score', 'zoo_total', 'zoo_attended', 
-                    'zoo_correct', 'zoo_score', 'total_attended', 'total_correct', 
+                    'zoo_correct', 'zoo_score', 'bio_total', 'bio_attended', 
+                    'bio_correct', 'bio_score', 'total_attended', 'total_correct', 
                     'total_score')
     search_fields = ('student_id', 'class_id', 'test_num')
     ordering = ('student_id','class_id','test_num','total_score')

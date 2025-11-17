@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getStudentDashboardData, fetchStudentSWOT } from "../../utils/api";
 import {
-  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList, ComposedChart
 } from "recharts";
 
 // --- SWOT helpers (reuse from s_swot.jsx/Report.jsx) ---
@@ -142,22 +142,99 @@ export default function StudentReport() {
   }
   if (!dashboard) return <div className="p-8 text-center text-gray-600">Generating student report...</div>;
 
-  // Summary cards
-  const summaryCards = dashboard?.summaryCardsData || [];
+  // Prepare subject list and attempt to pick the selected test row using the same testId logic
+  const SUBJECTS = ["Physics", "Chemistry", "Botany", "Zoology"];
+  let mapping = null;
+  let foundIndex = -1;
+  let selectedRow = null;
 
-  // Subject-wise Performance: use latest test's subject scores
-  let subjectTotals = [];
   if (dashboard?.subjectWiseDataMapping && dashboard.subjectWiseDataMapping.length > 0) {
-    const latestTest = dashboard.subjectWiseDataMapping[dashboard.subjectWiseDataMapping.length - 1];
-    subjectTotals = [
-      { subject: "Physics", total: latestTest.Physics ?? 0 },
-      { subject: "Chemistry", total: latestTest.Chemistry ?? 0 },
-      { subject: "Botany", total: latestTest.Botany ?? 0 },
-      { subject: "Zoology", total: latestTest.Zoology ?? 0 },
-    ];
+    mapping = dashboard.subjectWiseDataMapping;
+    // try to find the test matching testId; fallback to latest
+    if (testId) {
+      foundIndex = mapping.findIndex(r => {
+        if (!r.Test) return false;
+        if (String(r.Test) === String(testId)) return true;
+        if (String(r.Test).toLowerCase() === (`test ${String(testId)}`).toLowerCase()) return true;
+        if (String(r.Test).toLowerCase().includes(String(testId).toLowerCase())) return true;
+        return false;
+      });
+      if (foundIndex === -1) {
+        const num = Number(testId);
+        if (!isNaN(num)) {
+          foundIndex = mapping.findIndex(r => {
+            const m = String(r.Test || '').match(/\d+/);
+            const n = m ? Number(m[0]) : NaN;
+            return !isNaN(n) && n === num;
+          });
+        }
+      }
+    }
+    if (foundIndex === -1) foundIndex = mapping.length - 1;
+    selectedRow = mapping[foundIndex];
+  }
+
+  // Summary cards -> compute subject-wise correct/incorrect/skipped from the selected row (or fallbacks)
+  let summaryData = [];
+  if (selectedRow) {
+    // If API provides subjectDetails array, prefer that
+    if (Array.isArray(selectedRow.subjectDetails) && selectedRow.subjectDetails.length > 0) {
+      summaryData = selectedRow.subjectDetails.map(s => ({
+        subject: s.name || s.subject || "Subject",
+        correct: s.correct ?? 0,
+        incorrect: s.incorrect ?? 0,
+        skipped: s.unattended ?? 0,
+      }));
+    } else {
+      // flattened keys like Physics__correct / Physics__incorrect / Physics__unattempted
+      const hasFlattenedKeys = SUBJECTS.some(sub => `${sub}__correct` in selectedRow || `${sub}__incorrect` in selectedRow || `${sub}__unattempted` in selectedRow || `${sub}__unattended` in selectedRow);
+      if (hasFlattenedKeys) {
+        summaryData = SUBJECTS.map(sub => ({
+          subject: sub,
+          correct: Number(selectedRow[`${sub}__correct`] ?? selectedRow[`${sub}__correctAnswers`] ?? 0) || 0,
+          incorrect: Number(selectedRow[`${sub}__incorrect`] ?? 0) || 0,
+          skipped: Number(selectedRow[`${sub}__unattempted`] ?? selectedRow[`${sub}__unattended`] ?? 0) || 0,
+        }));
+      }
+    }
+  }
+
+  // Fallback to zeros if we couldn't extract subject details
+  if (!Array.isArray(summaryData) || summaryData.length === 0) {
+    summaryData = SUBJECTS.map(sub => ({ subject: sub, correct: 0, incorrect: 0, skipped: 0 }));
+  }
+
+  // Subject-wise Performance: derive from the selected row or fall back to dummy data
+  let subjectTotals = [];
+  if (selectedRow) {
+    // prefer numeric top-level fields like Physics, Chemistry etc.
+    const hasTotals = SUBJECTS.some(s => typeof selectedRow[s] === 'number');
+    if (hasTotals) {
+      subjectTotals = SUBJECTS.map(s => ({ subject: s, total: Number(selectedRow[s] ?? 0) || 0 }));
+    } else {
+      // compute from flattened counts if totals not present
+      const hasFlattened = SUBJECTS.some(sub => `${sub}__correct` in selectedRow || `${sub}__incorrect` in selectedRow || `${sub}__unattempted` in selectedRow || `${sub}__unattended` in selectedRow);
+      if (hasFlattened) {
+        subjectTotals = SUBJECTS.map(sub => {
+          const correct = Number(selectedRow[`${sub}__correct`] ?? 0) || 0;
+          const incorrect = Number(selectedRow[`${sub}__incorrect`] ?? 0) || 0;
+          const unattempted = Number(selectedRow[`${sub}__unattempted`] ?? selectedRow[`${sub}__unattended`] ?? 0) || 0;
+          return { subject: sub, total: correct + incorrect + unattempted };
+        });
+      } else {
+        subjectTotals = DUMMY_SUBJECT_TOTALS;
+      }
+    }
   } else {
     subjectTotals = DUMMY_SUBJECT_TOTALS;
   }
+
+  // Dynamic ticks for Subject-wise Performance (unit: 40)
+  const safeSubjectTotals = Array.isArray(subjectTotals) ? subjectTotals : [];
+  const rawSubjectMax = Math.max(180, ...safeSubjectTotals.map(s => s.total ?? 0));
+  // round up to next multiple of 40 for nicer tick alignment
+  const subjectMax = Math.ceil(rawSubjectMax / 40) * 40;
+  const subjectTicks = Array.from({ length: Math.ceil(subjectMax / 40) + 1 }, (_, i) => i * 40);
 
   // Test-wise Subject Performance & Total Trend: use all tests
   let trendData = [];
@@ -170,21 +247,100 @@ export default function StudentReport() {
       Zoology: row.Zoology ?? 0,
       total: (row.Physics ?? 0) + (row.Chemistry ?? 0) + (row.Botany ?? 0) + (row.Zoology ?? 0)
     }));
+    // keep only last 5 tests
+    if (trendData.length > 5) trendData = trendData.slice(-5);
   } else {
     trendData = DUMMY_TREND_DATA.map(row => ({ ...row, total: (row.Physics ?? 0) + (row.Chemistry ?? 0) + (row.Botany ?? 0) + (row.Zoology ?? 0) }));
+    if (trendData.length > 5) trendData = trendData.slice(-5);
   }
 
-  // Key Takeaways & Recommendations: use areasForImprovement
-  const recommendations = dashboard?.keyInsightsData?.areasForImprovement || [
+  // Dynamic ticks for Test-wise Subject Performance & Total Trend (50-unit increments)
+  const safeTrendData = Array.isArray(trendData) ? trendData : [];
+  // Use per-subject maxima (exclude total) and subjectTotals as baseline
+  const subjectMaxFromTotals = Math.max(0, ...safeSubjectTotals.map(s => s.total ?? 0));
+  const dataTrendMax = Math.max(0, ...safeTrendData.map(d => Math.max(d.Physics ?? 0, d.Chemistry ?? 0, d.Botany ?? 0, d.Zoology ?? 0)));
+  const baseTrendMax = Math.max(subjectMaxFromTotals, dataTrendMax);
+  // add padding of 100 as requested, then round up to nearest 50
+  const paddedTrendMax = baseTrendMax + 100;
+  const trendMax = Math.ceil(paddedTrendMax / 50) * 50;
+  // ticks: 50,100,150,...,trendMax
+  const trendTicks = Array.from({ length: Math.ceil(trendMax / 50) }, (_, i) => (i + 1) * 50);
+
+  // PerformanceTrend: student total vs class average (derive from trendData if available)
+  let performanceTrend = [];
+  if (safeTrendData.length > 0) {
+    // studentTotal from trendData.total
+    performanceTrend = safeTrendData.map(d => ({ name: d.name, studentTotal: d.total ?? 0 }));
+  }
+  const safePerfData = Array.isArray(performanceTrend) ? performanceTrend : [];
+  const perfRawMax = Math.max(0, ...safePerfData.map(d => (d.studentTotal ?? 0)));
+  // Round up to next 100 and ensure at least 100
+  let perfMax = Math.ceil(perfRawMax / 100) * 100;
+  if (perfMax < 100) perfMax = 100;
+  const perfTicks = Array.from({ length: perfMax / 100 }, (_, i) => (i + 1) * 100);
+
+  // Key Takeaways & Recommendations: use first 2 areasForImprovement + first 2 quickRecommendations
+  const keyInsights = dashboard?.keyInsightsData || {};
+  const improvements = Array.isArray(keyInsights.areasForImprovement) ? keyInsights.areasForImprovement.slice(0, 2) : [];
+  const quickRecs = Array.isArray(keyInsights.quickRecommendations) ? keyInsights.quickRecommendations.slice(0, 2) : [];
+  const defaultFallbacks = [
     "Excellent overall performance with strong consistency. Keep up the good work!",
     "Continue to focus on conceptual clarity, especially in areas where 'Conceptual Errors' are noted.",
-    "Consistent practice of numerical problems can help reduce 'Calculation Errors'.",
-    "Review 'Careless Errors' carefully to identify patterns and avoid similar mistakes in future tests."
   ];
+  const recommendations = [...improvements, ...quickRecs];
+  // if we don't have 4 items, fill from defaults
+  while (recommendations.length < 4) {
+    const next = defaultFallbacks[recommendations.length - (improvements.length + quickRecs.length)] || defaultFallbacks[0];
+    if (!next) break;
+    recommendations.push(next);
+  }
+
+  // Selected Test Info and improvement rate (derive from subjectWiseDataMapping)
+  let selectedTestInfo = null;
+  let improvementRate = null;
+  if (dashboard?.subjectWiseDataMapping && dashboard.subjectWiseDataMapping.length > 0) {
+    const mapping = dashboard.subjectWiseDataMapping;
+    // try to find the test matching testId; fallback to latest
+    let foundIndex = -1;
+    if (testId) {
+      foundIndex = mapping.findIndex(r => {
+        if (!r.Test) return false;
+        if (String(r.Test) === String(testId)) return true;
+        if (String(r.Test).toLowerCase() === (`test ${String(testId)}`).toLowerCase()) return true;
+        if (String(r.Test).toLowerCase().includes(String(testId).toLowerCase())) return true;
+        return false;
+      });
+      if (foundIndex === -1) {
+        const num = Number(testId);
+        if (!isNaN(num)) {
+          foundIndex = mapping.findIndex(r => {
+            const m = String(r.Test || '').match(/\d+/);
+            const n = m ? Number(m[0]) : NaN;
+            return !isNaN(n) && n === num;
+          });
+        }
+      }
+    }
+    if (foundIndex === -1) foundIndex = mapping.length - 1;
+    const sel = mapping[foundIndex];
+    const totalMarks = (sel.Physics ?? 0) + (sel.Chemistry ?? 0) + (sel.Botany ?? 0) + (sel.Zoology ?? 0);
+    const testNum = (() => {
+      const m = String(sel.Test || '').match(/\d+/);
+      return m ? Number(m[0]) : (foundIndex + 1);
+    })();
+    selectedTestInfo = { totalMarks, testNum };
+    if (foundIndex > 0) {
+      const prev = mapping[foundIndex - 1];
+      const prevTotal = (prev.Physics ?? 0) + (prev.Chemistry ?? 0) + (prev.Botany ?? 0) + (prev.Zoology ?? 0);
+      if (prevTotal > 0) {
+        improvementRate = (((totalMarks - prevTotal) / prevTotal) * 100).toFixed(2);
+      }
+    }
+  }
 
   return (
     <div className="min-h-screen bg-blue-50">
-      <div className="max-w-4xl mx-auto font-sans text-blue-900 bg-white p-8 space-y-8">
+      <div className="max-w-4xl mx-auto font-sans text-blue-900 bg-white p-8 space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-6 border border-blue-200 rounded-xl shadow-md">
           <div>
@@ -192,61 +348,61 @@ export default function StudentReport() {
             <p className="text-sm text-gray-400">powered by <span className="text-xl font-bold text-gray-800">Inzight</span><span className="text-xl font-bold text-blue-500">Ed</span></p>
           </div>
         </div>
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {summaryCards.map((card, idx) => (
-            <div key={idx} className="flex flex-col items-center border border-blue-200 bg-blue-100 p-3 rounded-lg">
-              <span className="text-sm text-blue-700">{card.title}</span>
-              <span className="text-2xl font-bold text-blue-900">{card.value}</span>
+        {/* Selected Test Mark Section */}
+        {selectedTestInfo && (
+          <div className="w-fit mx-auto text-center text-base text-gray-800 font-regular border border-gray-200 px-6 py-2 rounded-full shadow-sm">
+            You have obtained <span className="font-bold text-blue-500">{selectedTestInfo.totalMarks}</span> marks in test {selectedTestInfo.testNum}
+            {improvementRate !== null && (
+              (() => {
+                const num = Number(improvementRate);
+                const formatted = isNaN(num) ? improvementRate : `${Number(num).toFixed(2)}`;
+                const colorClass = (!isNaN(num) && num < 0) ? 'text-red-600' : 'text-green-600';
+                return (
+                  <> with an improvement rate of <span className={`font-bold ${colorClass}`}>{formatted}%</span> compared to the last test</>
+                );
+              })()
+            )}
+          </div>
+        )}
+        {/* Subject Summary Cards (Correct / Incorrect / Skipped) */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          {summaryData.map((card, idx) => (
+            <div key={idx} className="border border-blue-200 bg-white p-4 rounded-lg">
+              <span className="text-lg font-bold text-blue-900 block mb-2">{card.subject}</span>
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-sm text-green-700">Correct:</span>
+                  <span className="text-sm font-semibold text-green-700">{card.correct}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-red-700">Incorrect:</span>
+                  <span className="text-sm font-semibold text-red-700">{card.incorrect}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-700">Skipped:</span>
+                  <span className="text-sm font-semibold text-gray-700">{card.skipped}</span>
+                </div>
+              </div>
             </div>
           ))}
         </div>
 
-        {/* Subject Totals + Error Chart (Single Row, Two Columns) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:grid-cols-2 print:gap-6">
+        {/* Student vs Class Performance Trend (replaces subject totals + error chart) */}
+        <div className="grid grid-cols-1 gap-6 print:grid-cols-1 print:gap-6">
           <div className="border border-blue-200 bg-white p-4 rounded-lg shadow-sm">
-            <h2 className="text-lg font-bold mb-4 text-blue-800">Subject-wise Performance</h2>
+            <h2 className="text-lg font-bold mb-4 text-blue-800">Student vs Class Performance Trend</h2>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={subjectTotals} isAnimationActive={false}>
+                <ComposedChart data={performanceTrend} isAnimationActive={false} margin={{ top: 40, right: 20, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="subject" stroke="#1e3a8a" isAnimationActive={false} />
-                  <YAxis stroke="#1e3a8a" domain={[0, 180]} isAnimationActive={false} />
+                  <XAxis dataKey="name" stroke="#1e3a8a" isAnimationActive={false} />
+                  <YAxis stroke="#1e3a8a" domain={[0, perfMax]} ticks={perfTicks} isAnimationActive={false} />
                   <Tooltip isAnimationActive={false} />
                   <Legend isAnimationActive={false} />
-                  <Bar dataKey="total" fill="#2563eb" maxBarSize={40} radius={[10, 10, 0, 0]} isAnimationActive={false}>
-                    {subjectTotals.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill="#2563eb" isAnimationActive={false} />
-                    ))}
-                    <LabelList dataKey="total" position="top" fill="#2563eb" fontSize={16} fontWeight={700} isAnimationActive={false} />
+                  <Bar dataKey="studentTotal" fill="#2563eb" radius={[5, 5, 0, 0]} barSize={20} isAnimationActive={false}>
+                    <LabelList dataKey="studentTotal" position="top" fill="#2563eb" fontSize={14} fontWeight={700} isAnimationActive={false} />
                   </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="border border-blue-200 bg-white p-4 rounded-lg shadow-sm">
-            <h2 className="text-lg font-bold mb-4 text-blue-800">Error Distribution</h2>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart isAnimationActive={false}>
-                  <Pie
-                    data={errorData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={70}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    isAnimationActive={false}
-                  >
-                    {errorData.map((entry, idx) => (
-                      <Cell key={`cell-${idx}`} fill={['#2563eb', '#60a5fa', '#9ca3af'][idx % 3]} isAnimationActive={false} />
-                    ))}
-                  </Pie>
-                  <Tooltip isAnimationActive={false} />
-                </PieChart>
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </div>
@@ -257,25 +413,25 @@ export default function StudentReport() {
           <h2 className="text-lg font-bold mb-4">Test-wise Subject Performance & Total Trend</h2>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={trendData} barCategoryGap={20} barSize={45} isAnimationActive={false}>
+              <BarChart data={trendData} barCategoryGap={20} barSize={20} isAnimationActive={false} margin={{ top: 40, right: 20, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" isAnimationActive={false} />
-                <YAxis domain={[0, 720]} tickCount={19} ticks={[0, 40, 80, 120, 160, 200, 240, 280, 320, 360, 400, 440, 480, 520, 560, 600, 640, 680, 720]} isAnimationActive={false} />
+                <YAxis domain={[0, trendMax]} ticks={trendTicks} isAnimationActive={false} />
                 <Tooltip isAnimationActive={false} />
                 <Legend isAnimationActive={false} />
-                <Bar dataKey="Physics" stackId="a" fill={SUBJECT_COLORS.Physics} radius={[0, 0, 0, 0]} isAnimationActive={false}>
-                  <LabelList dataKey="Physics" position="right" fill={SUBJECT_COLORS.Physics} fontSize={14} fontWeight={600} isAnimationActive={false} />
+                <Bar dataKey="Physics" fill={SUBJECT_COLORS.Physics} radius={[5, 5, 0, 0]} isAnimationActive={false}>
+                  <LabelList dataKey="Physics" position="top" fill={SUBJECT_COLORS.Physics} fontSize={10} fontWeight={600} isAnimationActive={false} />
                 </Bar>
-                <Bar dataKey="Chemistry" stackId="a" fill={SUBJECT_COLORS.Chemistry} radius={[0, 0, 0, 0]} isAnimationActive={false}>
-                  <LabelList dataKey="Chemistry" position="right" fill={SUBJECT_COLORS.Chemistry} fontSize={14} fontWeight={600} isAnimationActive={false} />
+                <Bar dataKey="Chemistry" fill={SUBJECT_COLORS.Chemistry} radius={[5, 5, 0, 0]} isAnimationActive={false}>
+                  <LabelList dataKey="Chemistry" position="top" fill={SUBJECT_COLORS.Chemistry} fontSize={10} fontWeight={600} isAnimationActive={false} />
                 </Bar>
-                <Bar dataKey="Botany" stackId="a" fill={SUBJECT_COLORS.Botany} radius={[0, 0, 0, 0]} isAnimationActive={false}>
-                  <LabelList dataKey="Botany" position="right" fill={SUBJECT_COLORS.Botany} fontSize={14} fontWeight={600} isAnimationActive={false} />
+                <Bar dataKey="Botany" fill={SUBJECT_COLORS.Botany} radius={[5, 5, 0, 0]} isAnimationActive={false}>
+                  <LabelList dataKey="Botany" position="top" fill={SUBJECT_COLORS.Botany} fontSize={10} fontWeight={600} isAnimationActive={false} />
                 </Bar>
-                <Bar dataKey="Zoology" stackId="a" fill={SUBJECT_COLORS.Zoology} radius={[10, 10, 0, 0]} isAnimationActive={false}>
-                  <LabelList dataKey="Zoology" position="right" fill={SUBJECT_COLORS.Zoology} fontSize={14} fontWeight={600} isAnimationActive={false} />
-                  <LabelList dataKey="total" position="top" fill="#2563eb" fontSize={16} fontWeight={700} isAnimationActive={false} />
+                <Bar dataKey="Zoology" fill={SUBJECT_COLORS.Zoology} radius={[5, 5, 0, 0]} isAnimationActive={false}>
+                  <LabelList dataKey="Zoology" position="top" fill={SUBJECT_COLORS.Zoology} fontSize={10} fontWeight={600} isAnimationActive={false} />
                 </Bar>
+                {/* Removed total label as requested */}
               </BarChart>
             </ResponsiveContainer>
           </div>

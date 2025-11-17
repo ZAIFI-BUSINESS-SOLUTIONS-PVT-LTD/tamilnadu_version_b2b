@@ -1,10 +1,179 @@
 import React from 'react';
-import { Funnel } from '@phosphor-icons/react';
-import SelectDropdown from '../../components/ui/dropdown.jsx';
+import { Funnel, Spinner, WarningCircle } from '@phosphor-icons/react';
+import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  LineElement,
+  PointElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../../components/ui/select.jsx';
 import usePerformanceData from '../../components/hooks/s_performance/s_usePerformanceData';
-import PerformanceChart from '../../components/charts/s_performancechaptertopic.jsx';
-import InsightCard from './s_insightcard.jsx';
-import { Spinner, WarningCircle } from '@phosphor-icons/react'; // Import icons for loading and error
+
+// Define InsightCard component
+const InsightCard = ({ title, item, insights, className = '' }) => (
+  <div
+    className={`card bg-white rounded-2xl p-5 transition-all duration-300 
+      border border-gray-200 h-full ${className}`}
+  >
+    <div className="flex flex-col h-full">
+      {/* Card Header Section */}
+      <div>
+        <h3 className="text-primary text-lg font-semibold mb-4 border-b pb-2">
+          {title}
+        </h3>
+        <p className="text-sm text-gray-600 mb-3">
+          Detailed analysis for{' '}
+          <span className="font-semibold text-gray-800">{item}</span>:
+        </p>
+      </div>
+
+      {/* Insights List Section (occupies remaining vertical space) */}
+      <div className="flex-grow">
+        <ul className="list-disc list-inside text-gray-700 space-y-2 text-sm leading-relaxed">
+          {insights.length > 0 ? (
+            // Render each insight if the array is not empty  
+            insights.map((insight, idx) => (
+              <li key={idx} className="hover:text-primary transition-colors duration-200">
+                {insight}
+              </li>
+            ))
+          ) : (
+            // Display a fallback message if no insights are available
+            <li className="text-gray-500">No insights available</li>
+          )}
+        </ul>
+      </div>
+    </div>
+  </div>
+);
+
+// Define PerformanceChart component
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  LineElement,
+  PointElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
+const PerformanceChart = ({
+  title,
+  data,
+  labels,
+}) => {
+  // Chart data configuration
+  const chartData = {
+    labels,
+    datasets: [
+      {
+        label: 'Accuracy',
+        data,
+        fill: true,
+        backgroundColor: (context) => {
+          const chart = context.chart;
+          const { ctx, chartArea } = chart;
+          if (!chartArea) return 'rgba(37,99,235,0.15)';
+          const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+          gradient.addColorStop(0, 'rgba(37,99,235,0.35)');
+          gradient.addColorStop(1, 'rgba(37,99,235,0.05)');
+          return gradient;
+        },
+        borderColor: '#2563eb',
+        borderWidth: 2,
+        pointBackgroundColor: '#2563eb',
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        pointBorderWidth: 2,
+        pointBorderColor: '#fff',
+        tension: 0.45
+      },
+    ],
+  };
+
+  // Chart options configuration
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        enabled: true,
+        backgroundColor: '#ffffffff',
+        titleColor: '#374151',
+        bodyColor: '#374151',
+        borderColor: '#d1d5db',
+        borderWidth: 1,
+        padding: 12,
+        cornerRadius: 8,
+        displayColors: false,
+        titleFont: { family: 'Tenorite, sans-serif', size: 14 },
+        bodyFont: { family: 'Tenorite, sans-serif', size: 13 },
+        mode: 'index',
+        intersect: false
+      },
+      animation: { duration: 1200, easing: 'easeOutQuart' }
+    },
+    hover: { mode: 'index', intersect: false },
+    onHover: function (event, chartElement) {
+      const target = event?.native?.target || event?.target;
+      if (target) {
+        target.style.cursor = chartElement && chartElement.length ? 'crosshair' : 'default';
+      }
+    },
+    scales: {
+      x: {
+        title: { display: false },
+        ticks: { color: '#6b7280', font: { family: 'Tenorite, sans-serif', size: 13 } },
+        border: { width: 0 },
+        grid: { display: false }
+      },
+      y: {
+        title: { display: false },
+        beginAtZero: true,
+        max: (() => {
+          const dataMax = Math.max(...(data.length ? data : [100])) || 100;
+          const tolerance = Math.max(10, dataMax * 0.15); // Add 15% tolerance, minimum 10 points
+          return Math.ceil((dataMax + tolerance) / 10) * 10; // Round up to nearest 10
+        })(),
+        border: { width: 0 },
+        ticks: { color: '#6b7280', font: { family: 'Tenorite, sans-serif', size: 13 }, stepSize: 10 },
+        grid: { color: '#f3f4f6' }
+      }
+    },
+    layout: { padding: { top: 16, bottom: 8, left: 24, right: 16 } },
+    elements: { line: { borderJoinStyle: 'round' }, point: { pointStyle: 'circle' } }
+  };
+
+  return (
+    <div className="rounded-2xl border border-gray-250 bg-gray-100 flex flex-col items-start justify-start sm:p-0 p-2">
+      {/* Title & Chart Container */}
+      <div className="w-full flex flex-col bg-white p-3 sm:p-6 rounded-2xl">
+        {/* Title Container */}
+        <div className="w-full flex flex-col items-start justify-start gap-0 mb-0.5 sm:mb-1">
+          <span className="text-lg sm:text-lg font-bold text-primary">{title}</span>
+          <p className="text-gray-500 text-xs sm:text-sm mb-3 sm:mb-6">Performance analysis across tests</p>
+        </div>
+
+        {/* Area Chart Container */}
+        <div className="flex flex-col items-center justify-center w-full mb-3 sm:mb-6 bg-white h-56 sm:h-80 border border-gray-200 rounded-lg">
+          {data.length ? (
+            <Line data={chartData} options={options} width={260} height={140} />
+          ) : (
+            <p className="text-gray-500">No data available</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 /**
  * SPerformance component displays student performance data across subjects, chapters, and topics.
@@ -80,18 +249,57 @@ const SPerformance = () => {
 
   // --- Main Component Render ---
   return (
-    <div className="space-y-4 pt-12 px-4 pb-4">
-      {/* Subject Switcher Section */}
-      <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 mb-4 border-b border-base-200 pb-4">
-        <Funnel className="text-gray-400 w-5 h-5" />
-        <span className="text-sm text-gray-400 min-w-max">Subject</span>
-        <SelectDropdown
-          options={subjectOptions}
-          selectedValue={selectedSubject}
-          onSelect={handleSubjectChange}
-          buttonClassName="btn btn-sm justify-start truncate m-1 flex-grow"
-          placeholder="Select Subject" // Added placeholder for clarity
-        />
+    <div className="space-y-4 pt-6 sm:pt-12 sm:px-4 pb-4">
+      {/* Filter Section */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 mb-4 bg-white shadow-lg p-4 rounded-xl">
+        <Funnel className="hidden sm:block text-gray-400 w-5 h-5 mt-1 sm:mt-0" />
+        <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 w-full overflow-x-hidden">
+          <div className="flex flex-col space-y-1 sm:flex-row sm:items-center sm:space-x-2">
+            <span className="text-sm text-gray-400 min-w-max">Subject</span>
+            <Select value={selectedSubject} onValueChange={handleSubjectChange}>
+              <SelectTrigger className="btn btn-sm justify-start truncate overflow-hidden text-ellipsis w-70 sm:w-fit text-start">
+                <SelectValue placeholder="Select Subject" />
+              </SelectTrigger>
+              <SelectContent>
+                {subjectOptions.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col space-y-1 sm:flex-row sm:items-center sm:space-x-2">
+            <span className="text-sm text-gray-400 min-w-max">Chapter</span>
+            <Select value={selectedChapter} onValueChange={handleChapterChange}>
+              <SelectTrigger className="btn btn-sm justify-start truncate overflow-hidden text-ellipsis w-70 sm:w-fit text-start">
+                <SelectValue placeholder="Select Chapter" />
+              </SelectTrigger>
+              <SelectContent>
+                {formattedChapterOptions.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col space-y-1 sm:flex-row sm:items-center sm:space-x-2">
+            <span className="text-sm text-gray-400 min-w-max">Topic</span>
+            <Select value={selectedTopic} onValueChange={handleTopicChange}>
+              <SelectTrigger className="btn btn-sm justify-start truncate overflow-hidden text-ellipsis w-70 sm:w-fit text-start">
+                <SelectValue placeholder="Select Topic" />
+              </SelectTrigger>
+              <SelectContent>
+                {formattedTopicOptions.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
 
       {/* Performance Panels Section: Chapter and Topic */}
@@ -103,10 +311,6 @@ const SPerformance = () => {
             title="Chapter Performance"
             data={chapterData} // Data points for the chart line
             labels={Object.keys(chapterAccuracy[chapterIndex] || {})} // Labels for the X-axis (e.g., "Test 1", "Test 2")
-            dropdownOptions={formattedChapterOptions} // Options for the chapter selection dropdown
-            selectedDropdownValue={selectedChapter} // Currently selected chapter
-            onDropdownSelect={handleChapterChange} // Handler for chapter selection
-            dropdownLabel="Chapter" // Label for the dropdown
           />
 
           {/* Chapter Insights Card */}
@@ -125,10 +329,6 @@ const SPerformance = () => {
             title="Topic Performance"
             data={topicData} // Data points for the chart line
             labels={testLabels} // Labels for the X-axis (e.g., "Test 1", "Test 2")
-            dropdownOptions={formattedTopicOptions} // Options for the topic selection dropdown
-            selectedDropdownValue={selectedTopic} // Currently selected topic
-            onDropdownSelect={handleTopicChange} // Handler for topic selection
-            dropdownLabel="Topic" // Label for the dropdown
           />
 
           {/* Topic Insights Card */}

@@ -1,6 +1,9 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Phone, Mail, MapPin, Send } from "lucide-react";
 import { LinkedinLogo } from "@phosphor-icons/react";
+
+// Copilot: Ensure tel: and mailto: links exist with readable text.
+// We will send a contactPoint object to SEO.jsx, but still keep semantic markup here.
 
 const contactInfo = [
 	{
@@ -32,19 +35,62 @@ const socials = [
 ];
 
 const ContactUs = () => {
+
+	// Inject Organization / ContactPoint / EducationalOrganization JSON-LD for SEO
+	useEffect(() => {
+		const org = {
+			"@context": "https://schema.org",
+			"@type": "EducationalOrganization",
+			"name": "InzightEd",
+			"url": "https://inzighted.com",
+			"logo": "https://inzighted.com/src/assets/landingpage-images/logo.svg",
+			"sameAs": [
+				"https://www.linkedin.com/company/zai-fi/"
+			],
+			contactPoint: [
+				{
+					"@type": "ContactPoint",
+					telephone: "+91 63859-21669",
+					contactType: "customer support",
+					areaServed: "IN",
+					availableLanguage: ["English"]
+				},
+				{
+					"@type": "ContactPoint",
+					email: "contact@zai-fi.com",
+					contactType: "customer support"
+				}
+			],
+			address: {
+				"@type": "PostalAddress",
+				streetAddress: "Nehru Group of Institutions Technology Business Incubator (NGI TBI), Nehru Gardens, Thirumalayampalayam",
+				addressLocality: "Coimbatore",
+				addressRegion: "Tamil Nadu",
+				postalCode: "641105",
+				addressCountry: "IN"
+			}
+		};
+
+		const script = document.createElement('script');
+		script.type = 'application/ld+json';
+		script.text = JSON.stringify(org);
+		document.head.appendChild(script);
+
+		return () => script.remove();
+	}, []);
 	return (
 		<div className="bg-blue-50 pt-28 pb-20 px-4 sm:px-6 lg:px-8 text-gray-700">
 			{/* Main container with max-width matching header */}
 			<div className="max-w-7xl mx-auto">
 				{/* Page header */}
 				<div className="text-center mb-16">
-					<h2 className="text-4xl md:text-5xl font-bold mb-4 leading-tight tracking-tight">
+					<h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-gray-900 leading-tight mb-4 tracking-tight">
 						Contact{" "}
 						<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-400">
 							Us
 						</span>
 					</h2>
-					<p className="text-xl text-gray-600 max-w-2xl mx-auto">
+					<p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">
 						Having questions or want to learn more? Reach out to our team.
 					</p>
 				</div>
@@ -53,7 +99,7 @@ const ContactUs = () => {
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 					{/* Contact information card */}
 					<div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 lg:p-10">
-						<h2 className="text-2xl font-bold text-gray-700 mb-6">
+						<h2 className="text-xl md:text-2xl font-semibold text-gray-900 mb-6">
 							Get in touch
 						</h2>
 
@@ -64,12 +110,12 @@ const ContactUs = () => {
 										{item.icon}
 									</span>
 									<div>
-										<span className="block text-sm font-medium text-gray-500 mb-1">
+										<span id={`contact-${i}-label`} className="block text-sm text-gray-500 mb-1">
 											{item.label}
 										</span>
 										<a
 											href={item.href}
-											className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+											className="text-base md:text-lg text-gray-700 leading-relaxed font-medium hover:text-blue-600 transition-colors"
 										>
 											{item.value}
 										</a>
@@ -77,6 +123,11 @@ const ContactUs = () => {
 								</li>
 							))}
 						</ul>
+
+						{/* Crawlable contact summary for search engines */}
+						<div className="sr-only" aria-hidden="true">
+							<p>Contact InzightEd: Phone +91 63859-21669, Email contact@zai-fi.com. Location: NGI TBI, Nehru Gardens, Thirumalayampalayam, Coimbatore, Tamil Nadu - 641 105.</p>
+						</div>
 
 						<div>
 							<h3 className="text-sm font-medium text-gray-500 mb-4">
@@ -99,7 +150,7 @@ const ContactUs = () => {
 
 					{/* Contact form card */}
 					<div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 lg:p-10">
-						<h2 className="text-2xl font-bold text-gray-700 mb-6">
+						<h2 className="text-xl md:text-2xl font-semibold text-gray-900 mb-6">
 							Send us a message
 						</h2>
 
@@ -111,7 +162,7 @@ const ContactUs = () => {
 							<div>
 								<label
 									htmlFor="name"
-									className="block text-sm font-medium text-gray-700 mb-2"
+									className="block text-sm text-gray-500 mb-2"
 								>
 									Your name
 								</label>
@@ -120,7 +171,7 @@ const ContactUs = () => {
 									name="name"
 									type="text"
 									required
-									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base md:text-lg text-gray-700"
 									placeholder="John Doe"
 								/>
 							</div>
@@ -128,7 +179,7 @@ const ContactUs = () => {
 							<div>
 								<label
 									htmlFor="email"
-									className="block text-sm font-medium text-gray-700 mb-2"
+									className="block text-sm text-gray-500 mb-2"
 								>
 									Email address
 								</label>
@@ -137,7 +188,7 @@ const ContactUs = () => {
 									name="email"
 									type="email"
 									required
-									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base md:text-lg text-gray-700"
 									placeholder="you@example.com"
 								/>
 							</div>
@@ -145,7 +196,7 @@ const ContactUs = () => {
 							<div>
 								<label
 									htmlFor="message"
-									className="block text-sm font-medium text-gray-700 mb-2"
+									className="block text-sm text-gray-500 mb-2"
 								>
 									Message
 								</label>
@@ -154,7 +205,7 @@ const ContactUs = () => {
 									name="message"
 									rows="4"
 									required
-									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base md:text-lg text-gray-700"
 									placeholder="How can we help you?"
 								></textarea>
 							</div>

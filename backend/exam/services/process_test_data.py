@@ -1,5 +1,5 @@
 from exam.utils.csv_processing import get_answer_dict, get_student_response, get_subject_from_answer_key
-from exam.utils.pdf_processing import questions_extract, get_subject_from_q_paper
+from exam.utils.pdf_processing import questions_extract, get_subject_from_q_paper, questions_extract_with_metadata
 from exam.ingestions.populate_question import save_questions_bulk 
 from exam.ingestions.populate_response import save_student_response
 from exam.utils.question_analysis import analyse_questions 
@@ -8,9 +8,9 @@ from exam.services.update_dashboard import update_student_dashboard, update_educ
 from celery import shared_task
 from django.utils.timezone import now
 from exam.models.test_status import TestProcessingStatus
+from exam.models.test_metadata import TestMetadata
 import logging
 from exam.models.educator import Educator
-from exam.utils.subject_classification import classify_biology_questions
 
 logger = logging.getLogger(__name__)
 
@@ -51,26 +51,52 @@ def process_test_data(class_id, test_num):
         
         logger.info(f"🚀 Processing test {test_num} for class {class_id}...")
 
-        try:
-            educator = Educator.objects.get(class_id=class_id)
-            should_split_biology = educator.separate_biology_subjects
-        except Educator.DoesNotExist:
-            should_split_biology = False
-
-        subject = get_subject(class_id, answer_key_path, question_paper_path)
+        # Check if test metadata exists (admin-provided subject mapping)
+        metadata = TestMetadata.objects.filter(class_id=class_id, test_num=test_num).first()
+        
         answer_dict = get_answer_dict(answer_key_path)
         response_dict = get_student_response(answer_sheet_path, class_id)
         save_student_response(class_id, test_num, response_dict)
 
-        if subject == "Biology" and should_split_biology:
-            questions_list = questions_extract(question_paper_path, test_path)
-            classified_questions = classify_biology_questions(questions_list)
-            save_questions_bulk(class_id, test_num, classified_questions, answer_dict)
-
-            for sub in ["Botany", "Zoology"]:
-                analyse_questions(class_id, test_num, sub)
-                analyse_students(class_id, test_num, sub)
+        if metadata:
+            # Use admin-provided metadata for subject mapping
+            logger.info(f"✅ Using admin-provided metadata for test {test_num}")
+            status_obj.logs += f"\n✅ Using metadata: {metadata.pattern} with {metadata.total_questions} questions"
+            status_obj.save()
+            
+            subject_ranges = metadata.get_subject_ranges()
+            logger.info(f"📊 Subject ranges: {subject_ranges}")
+            
+            # Extract questions using metadata
+            questions_list = questions_extract_with_metadata(
+                question_paper_path, 
+                test_path, 
+                subject_ranges,
+                metadata.total_questions
+            )
+            
+            if questions_list:
+                save_questions_bulk(class_id, test_num, questions_list, answer_dict)
+                
+                # Analyze each subject separately
+                for subject_info in subject_ranges:
+                    subject = subject_info['subject']
+                    logger.info(f"🔍 Analyzing {subject}...")
+                    analyse_questions(class_id, test_num, subject)
+                    analyse_students(class_id, test_num, subject)
+            else:
+                logger.warning("⚠️ Metadata extraction failed, falling back to automatic detection")
+                status_obj.logs += "\n⚠️ Metadata extraction failed, using fallback"
+                status_obj.save()
+                raise Exception("Metadata extraction returned empty questions list")
+                
         else:
+            # Fallback: automatic subject detection (original behavior)
+            logger.info(f"ℹ️ No metadata found, using automatic subject detection")
+            status_obj.logs += "\nℹ️ Using automatic subject detection (fallback)"
+            status_obj.save()
+            
+            subject = get_subject(class_id, answer_key_path, question_paper_path)
             questions_list = questions_extract(question_paper_path, test_path)
             for q in questions_list:
                 q['subject'] = subject

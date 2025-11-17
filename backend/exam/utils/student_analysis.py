@@ -8,7 +8,7 @@ from celery import group, shared_task
 logger = logging.getLogger(__name__)
 
 class StudentAnalyzer:
-    subject_map = {'Physics': 'phy', 'Chemistry': 'chem', 'Botany': 'bot', 'Zoology': 'zoo'}
+    subject_map = {'Physics': 'phy', 'Chemistry': 'chem', 'Botany': 'bot', 'Zoology': 'zoo', 'Biology': 'bio'}
 
     def __init__(self, student_id, class_id, test_num, student_db, test_date, questions, response_map):
         self.student_id = student_id
@@ -98,6 +98,7 @@ class StudentAnalyzer:
             'chem_total': 0, 'chem_attended': 0, 'chem_correct': 0,
             'bot_total': 0, 'bot_attended': 0, 'bot_correct': 0,
             'zoo_total': 0, 'zoo_attended': 0, 'zoo_correct': 0,
+            'bio_total': 0, 'bio_attended': 0, 'bio_correct': 0,
             'total_attended': 0, 'total_correct': 0
         }
 
@@ -116,13 +117,13 @@ class StudentAnalyzer:
         for metric in ['attended', 'correct']:
             total = sum(
                 result_data[f'{sub}_{metric}']
-                for sub in ['phy', 'chem', 'bot', 'zoo']
+                for sub in ['phy', 'chem', 'bot', 'zoo', 'bio']
             )
             result_data[f'total_{metric}'] = total
 
         # Calculate scores for all subjects using the standard formula
         total_score = 0
-        for subject_prefix in ['phy', 'chem', 'bot', 'zoo']:
+        for subject_prefix in ['phy', 'chem', 'bot', 'zoo', 'bio']:
             # Score formula: (correct answers × 5) - total attended
             score = (result_data[f'{subject_prefix}_correct'] * 5) - result_data[f'{subject_prefix}_attended']
             result_data[f'{subject_prefix}_score'] = score
@@ -144,6 +145,7 @@ class StudentAnalyzer:
                       f"Chemistry: {result_data['chem_score']}, "
                       f"Botany: {result_data['bot_score']}, "
                       f"Zoology: {result_data['zoo_score']}, "
+                      f"Biology: {result_data['bio_score']}, "
                       f"Total: {total_score}")
         except Exception as e:
             logger.error(f"Error saving results for student {self.student_id}: {str(e)}")

@@ -16,19 +16,30 @@ logger = logging.getLogger(__name__)
 
 # --------------------- API Call Helper ---------------------
 def extract_insights(data, prompt, max_retries=5):
-    full_prompt = prompt + """
+    """
+    Extract insights from metric data using LLM.
+    Dynamically determines the number of subjects from the data.
+    """
+    # Determine subjects from the data
+    subjects = []
+    if isinstance(data, dict):
+        subjects = list(data.keys())
+    
+    # Build dynamic output format based on actual subjects
+    subject_format = "\n    ".join([f'"{subject}": [<insight 1>, <insight 2>],' for subject in subjects])
+    if subject_format:
+        subject_format = subject_format.rstrip(',')  # Remove trailing comma
+    
+    full_prompt = prompt + f"""
     
 output format (JSON):
-{
-    "subject1": [<insight 1>, <insight 2>],
-    "subject2": [<insight 1>, <insight 2>],
-    "subject3": [<insight 1>, <insight 2>],
-    "subject4": [<insight 1>, <insight 2>]
-}
+{{
+    {subject_format}
+}}
 
 - Stick to the output format.
 - Never return NULL.
-- Ensure that all four subjects are included.
+- Ensure that all subjects present in the data are included ({', '.join(subjects)}).
 - Don't mention Insight1 and Insight2, just give it as strings
 - Each Insights word count should be strictly between 8 to 12.
 """ + str(data)

@@ -52,5 +52,7 @@ urlpatterns = [
     # Upload APIs
     
     path('api/upload_test/', upload_views.upload_test, name='upload_test'),
+    path('api/test-metadata/', upload_views.save_test_metadata, name='save_test_metadata'),
+    path('api/test-metadata/<str:class_id>/<int:test_num>/', upload_views.get_test_metadata, name='get_test_metadata'),
 
 ]

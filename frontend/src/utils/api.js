@@ -26,25 +26,9 @@ export const adminLogin = async (email, password) => {
   }
 };
 
-/**
- * Educator Login
- */
-export const educatorLogin = async (email, password) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/educator/login/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password }),
-    });
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    return { error: 'Network error, please try again' };
-  }
-};
+// =============================================================================
+// 1. STUDENT DATA AVAILABLE IN STUDENT LOGIN
+// =============================================================================
 
 /**
  * Student Login
@@ -68,62 +52,8 @@ export const studentLogin = async (studentId, password) => {
 };
 
 /**
- * Register Educator (Handles CSV Upload)
+ * Fetch Student Performance Data
  */
-export const registerEducator = async (formData) => {
-  try {
-    const response = await axios.post(`${API_BASE_URL}/educator/register/`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error registering educator:', error);
-    return { error: error.response?.data?.error || 'Failed to register educator' };
-  }
-};
-
-/**
- * Upload Test Files (Question Paper, Answer Key, Answer Sheet)
- */
-export const uploadTest = async (questionPaper, answerKey, answerSheet) => {
-  try {
-    const token = localStorage.getItem('token'); // ✅ Get Token from Storage
-    if (!token) return { error: 'Unauthorized: No Token Found' };
-
-    const formData = new FormData();
-    formData.append('question_paper', questionPaper);
-    formData.append('answer_key', answerKey);
-    formData.append('answer_sheet', answerSheet);
-
-    const response = await axios.post(`${API_BASE_URL}/upload_test/`, formData, {
-      headers: {
-        'Authorization': `Bearer ${token}`, // ✅ Send Token
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-
-    return response.data;
-  } catch (error) {
-    return { error: error.response?.data?.error || 'Upload failed' };
-  }
-};
-
-/**
- * Fetch Tests for an Educator
- */
-export const fetchTests = async () => {
-  try {
-    const token = localStorage.getItem('token');
-    const response = await axios.get(`${API_BASE_URL}/educator/tests/`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return { tests: response.data.tests }; // 👈 return wrapped object
-  } catch (error) {
-    return { error: error.response?.data?.error || 'Failed to fetch tests' };
-  }
-};
-
-
 export const getStudentPerformanceData = async () => {
   try {
     const token = localStorage.getItem('token');
@@ -139,6 +69,9 @@ export const getStudentPerformanceData = async () => {
   }
 };
 
+/**
+ * Fetch Student Dashboard Data
+ */
 export const getStudentDashboardData = async () => {
   try {
     const token = localStorage.getItem('token');
@@ -147,6 +80,7 @@ export const getStudentDashboardData = async () => {
     });
 
     const data = await response.data;
+    console.log('All data from getStudentDashboardData:', data);
     return data;
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
@@ -154,23 +88,9 @@ export const getStudentDashboardData = async () => {
   }
 };
 
-
-export const getEducatorDashboardData = async () => {
-  try {
-    const token = localStorage.getItem('token');
-    const response = await axios.get(`${API_BASE_URL}/educator/dashboard/`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    const data = await response.data;
-    return data;
-  } catch (error) {
-    console.error('Error fetching dashboard data:', error);
-    return { error: 'Failed to fetch dashboard data' };
-  }
-};
-
-
+/**
+ * Fetch Student SWOT Analysis
+ */
 export const fetchStudentSWOT = async (testNum) => {
   try {
     const token = localStorage.getItem('token');
@@ -193,7 +113,9 @@ export const fetchStudentSWOT = async (testNum) => {
   }
 };
 
-
+/**
+ * Fetch Available SWOT Tests for Student
+ */
 export const fetchAvailableSwotTests = async () => {
   try {
     const token = localStorage.getItem('token');
@@ -211,46 +133,9 @@ export const fetchAvailableSwotTests = async () => {
   }
 };
 
-export const fetchEducatorSWOT = async (testNum) => {
-  try {
-    const token = localStorage.getItem('token');
-    const response = await axios.post(
-      `${API_BASE_URL}/educator/swot/`,
-      { test_num: testNum },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-
-    const data = await response.data;
-    return data;
-  } catch (error) {
-    console.error('Error fetching SWOT data:', error);
-    return { error: 'Failed to fetch SWOT data' };
-  }
-};
-
-
-export const fetchAvailableSwotTests_Educator = async () => {
-  try {
-    const token = localStorage.getItem('token');
-    const response = await axios.get(`${API_BASE_URL}/educator/swot/tests/`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    return response.data?.available_tests || [];
-  } catch (error) {
-    console.error('Error fetching available SWOT tests:', error);
-    return [];
-  }
-};
-
+/**
+ * Fetch Student Details
+ */
 export const fetchstudentdetail = async () => {
   try {
     const token = localStorage.getItem('token');
@@ -268,40 +153,42 @@ export const fetchstudentdetail = async () => {
   }
 };
 
-export const fetcheducatordetail = async () => {
+/**
+ * Generate PDF Report for Student Self-Download
+ */
+export const generateStudentSelfPdfReport = async (testId) => {
   try {
     const token = localStorage.getItem('token');
-    const response = await axios.get(`${API_BASE_URL}/educator/details/`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
+    if (!token) {
+      throw new Error('Authentication token not found');
+    }
+    const response = await fetch(
+      `${PDF_SERVICE_URL}/generate-student-pdf?testId=${encodeURIComponent(testId)}`,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       }
-    });
-
-    return response.data
+    );
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+    }
+    const blob = await response.blob();
+    return blob;
   } catch (error) {
-    console.error('Error fetching student name:', error);
-    return [];
+    throw error;
   }
 };
 
-export const fetcheducatorstudent = async () => {
-  try {
-    const token = localStorage.getItem('token');
-    const response = await axios.get(`${API_BASE_URL}/educator/students/`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
+// =============================================================================
+// 2. STUDENT DATA AVAILABLE IN TEACHER LOGIN
+// =============================================================================
 
-    return response.data
-  } catch (error) {
-    console.error('Error fetching student name:', error);
-    return [];
-  }
-};
-
+/**
+ * Fetch Tests for a Specific Student (Teacher View)
+ */
 export const fetchEducatorStudentTests = async (studentId) => {
   try {
     const token = localStorage.getItem('token');
@@ -327,6 +214,9 @@ export const fetchEducatorStudentTests = async (studentId) => {
   }
 };
 
+/**
+ * Fetch Student Insights for Educator
+ */
 export const fetchEducatorStudentInsights = async (student_id, test_num) => {
   const token = localStorage.getItem('token');
   console.log('[API] fetchEducatorStudentInsights →', { student_id, test_num, token });
@@ -348,6 +238,9 @@ export const fetchEducatorStudentInsights = async (student_id, test_num) => {
   return response.data;
 };
 
+/**
+ * Fetch All Student Results for Educator
+ */
 export const fetchEducatorAllStudentResults = async () => {
   try {
     const token = localStorage.getItem('token');
@@ -374,8 +267,7 @@ export const fetchEducatorAllStudentResults = async () => {
 };
 
 /**
- * Generate PDF report using backend APIs (new approach)
- * Updated: Now uses the new /generate-pdf endpoint (frontend-driven)
+ * Generate PDF Report for Student (Teacher View)
  */
 export const generatePdfReport = async (studentId, testId) => {
   try {
@@ -404,10 +296,7 @@ export const generatePdfReport = async (studentId, testId) => {
 };
 
 /**
- * Generate bulk PDF reports as a zip file for multiple students
- * @param {Array<string>} studentIds
- * @param {string} testId
- * @returns {Promise<Blob>}
+ * Generate Bulk PDF Reports as a Zip File for Multiple Students
  */
 export const generateBulkPdfReportsZip = async (studentIds, testId) => {
   try {
@@ -437,37 +326,211 @@ export const generateBulkPdfReportsZip = async (studentIds, testId) => {
   }
 };
 
+// =============================================================================
+// 3. TEACHER DATA AVAILABLE IN TEACHER LOGIN
+// =============================================================================
+
 /**
- * Generate PDF report for student self-download (student login)
+ * Educator Login
  */
-export const generateStudentSelfPdfReport = async (testId) => {
+export const educatorLogin = async (email, password) => {
   try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      throw new Error('Authentication token not found');
-    }
-    const response = await fetch(
-      `${PDF_SERVICE_URL}/generate-student-pdf?testId=${encodeURIComponent(testId)}`,
-      {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      }
-    );
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
-    }
-    const blob = await response.blob();
-    return blob;
+    const response = await fetch(`${API_BASE_URL}/educator/login/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await response.json();
+    return data;
   } catch (error) {
-    throw error;
+    return { error: 'Network error, please try again' };
   }
 };
 
 /**
- * Generate PDF report for teacher self-download (teacher login)
+ * Register Educator (Handles CSV Upload)
+ */
+export const registerEducator = async (formData) => {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/educator/register/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error registering educator:', error);
+    return { error: error.response?.data?.error || 'Failed to register educator' };
+  }
+};
+
+/**
+ * Upload Test Files (Question Paper, Answer Key, Answer Sheet)
+ * @param {File} questionPaper - Question paper PDF file
+ * @param {File} answerKey - Answer key CSV file
+ * @param {File} answerSheet - Answer sheet CSV file
+ * @param {Object} metadata - Optional metadata object with pattern, subject_order, total_questions, section_counts
+ */
+export const uploadTest = async (questionPaper, answerKey, answerSheet, metadata = null) => {
+  try {
+    const token = localStorage.getItem('token'); // ✅ Get Token from Storage
+    if (!token) return { error: 'Unauthorized: No Token Found' };
+
+    const formData = new FormData();
+    formData.append('question_paper', questionPaper);
+    formData.append('answer_key', answerKey);
+    formData.append('answer_sheet', answerSheet);
+
+    // Add metadata fields if provided
+    if (metadata) {
+      if (metadata.pattern) {
+        formData.append('pattern', metadata.pattern);
+      }
+      if (metadata.subject_order) {
+        formData.append('subject_order', JSON.stringify(metadata.subject_order));
+      }
+      if (metadata.total_questions) {
+        formData.append('total_questions', metadata.total_questions.toString());
+      }
+      if (metadata.section_counts) {
+        formData.append('section_counts', JSON.stringify(metadata.section_counts));
+      }
+    }
+
+    const response = await axios.post(`${API_BASE_URL}/upload_test/`, formData, {
+      headers: {
+        'Authorization': `Bearer ${token}`, // ✅ Send Token
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    return { error: error.response?.data?.error || 'Upload failed' };
+  }
+};
+
+/**
+ * Fetch Tests for an Educator
+ */
+export const fetchTests = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_BASE_URL}/educator/tests/`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return { tests: response.data.tests }; // 👈 return wrapped object
+  } catch (error) {
+    return { error: error.response?.data?.error || 'Failed to fetch tests' };
+  }
+};
+
+/**
+ * Fetch Educator Dashboard Data
+ */
+export const getEducatorDashboardData = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_BASE_URL}/educator/dashboard/`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const data = await response.data;
+    return data;
+  } catch (error) {
+    console.error('Error fetching dashboard data:', error);
+    return { error: 'Failed to fetch dashboard data' };
+  }
+};
+
+/**
+ * Fetch Educator SWOT Analysis
+ */
+export const fetchEducatorSWOT = async (testNum) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.post(
+      `${API_BASE_URL}/educator/swot/`,
+      { test_num: testNum },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    const data = await response.data;
+    return data;
+  } catch (error) {
+    console.error('Error fetching SWOT data:', error);
+    return { error: 'Failed to fetch SWOT data' };
+  }
+};
+
+/**
+ * Fetch Available SWOT Tests for Educator
+ */
+export const fetchAvailableSwotTests_Educator = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_BASE_URL}/educator/swot/tests/`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    return response.data?.available_tests || [];
+  } catch (error) {
+    console.error('Error fetching available SWOT tests:', error);
+    return [];
+  }
+};
+
+/**
+ * Fetch Educator Details
+ */
+export const fetcheducatordetail = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_BASE_URL}/educator/details/`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    return response.data
+  } catch (error) {
+    console.error('Error fetching student name:', error);
+    return [];
+  }
+};
+
+/**
+ * Fetch Educator's Students
+ */
+export const fetcheducatorstudent = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_BASE_URL}/educator/students/`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    return response.data
+  } catch (error) {
+    console.error('Error fetching student name:', error);
+    return [];
+  }
+};
+
+/**
+ * Generate PDF Report for Teacher Self-Download
  */
 export const generateTeacherSelfPdfReport = async (testId) => {
   try {

@@ -19,7 +19,6 @@ const EducatorSignup = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [studentCSV, setStudentCSV] = useState(null);
-  const [separateBiology, setSeparateBiology] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -94,7 +93,6 @@ const EducatorSignup = () => {
     formData.append('institution', institutionName);
     formData.append('email', educatorEmail);
     formData.append('password', password);
-    formData.append('separate_biology_subjects', separateBiology);
 
     if (studentCSV) {
       formData.append('file', studentCSV);
@@ -234,10 +232,7 @@ const EducatorSignup = () => {
                 )}
               </div>
               <div className="form-control">
-                <label className="label cursor-pointer">
-                  <span className="label-text">Split Biology into Botany and Zoology?</span> 
-                  <input type="checkbox" checked={separateBiology} onChange={(e) => setSeparateBiology(e.target.checked)} className="checkbox checkbox-primary" />
-                </label>
+                {/* Biology split removed — educators no longer choose splitting here */}
               </div>
               <motion.div
                 variants={buttonVariants}

@@ -372,27 +372,36 @@ function EResults() {
                   <tr>
                     <th>Test #</th>
                     <th>Total Score</th>
-                    <th>Biology</th>
-                    <th>Chemistry</th>
                     <th>Physics</th>
-                    <th>Zoology</th>
+                    <th>Chemistry</th>
+                    {/* Dynamically show subject columns based on data */}
+                    {modalStudent.test_results.some(t => (t.bio_score > 0 || t.bio_total > 0)) && <th>Biology</th>}
+                    {modalStudent.test_results.some(t => (t.bot_score > 0 || t.bot_total > 0)) && <th>Botany</th>}
+                    {modalStudent.test_results.some(t => (t.zoo_score > 0 || t.zoo_total > 0)) && <th>Zoology</th>}
                     <th>Accuracy</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {modalStudent.test_results.map((test, index) => (
-                    <tr key={index}>
-                      <td>{test.test_num}</td>
-                      <td className="font-medium">{test.total_score}</td>
-                      <td>{test.bot_score}</td>
-                      <td>{test.chem_score}</td>
-                      <td>{test.phy_score}</td>
-                      <td>{test.zoo_score}</td>
-                      <td>
-                        {Math.round((test.total_correct / test.total_attended) * 100)}%
-                      </td>
-                    </tr>
-                  ))}
+                  {modalStudent.test_results.map((test, index) => {
+                    const showBio = modalStudent.test_results.some(t => (t.bio_score > 0 || t.bio_total > 0));
+                    const showBot = modalStudent.test_results.some(t => (t.bot_score > 0 || t.bot_total > 0));
+                    const showZoo = modalStudent.test_results.some(t => (t.zoo_score > 0 || t.zoo_total > 0));
+                    
+                    return (
+                      <tr key={index}>
+                        <td>{test.test_num}</td>
+                        <td className="font-medium">{test.total_score}</td>
+                        <td>{test.phy_score ?? 0}</td>
+                        <td>{test.chem_score ?? 0}</td>
+                        {showBio && <td>{test.bio_score ?? 0}</td>}
+                        {showBot && <td>{test.bot_score ?? 0}</td>}
+                        {showZoo && <td>{test.zoo_score ?? 0}</td>}
+                        <td>
+                          {test.total_attended > 0 ? Math.round((test.total_correct / test.total_attended) * 100) : 0}%
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

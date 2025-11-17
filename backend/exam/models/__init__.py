@@ -1,5 +1,6 @@
 from .test import Test
 from .test_status import TestProcessingStatus
+from .test_metadata import TestMetadata
 
 from .student import Student  
 from .educator import Educator  

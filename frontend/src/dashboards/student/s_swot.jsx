@@ -1,15 +1,222 @@
-import React from 'react';
-import {
-    CheckCircle,
-    XCircle,
-    ArrowCircleUp,
-    WarningCircle,
-    Funnel
-} from '@phosphor-icons/react';
+import React, { useState, useEffect } from 'react';
+import { CheckCircle, XCircle, ArrowCircleUp, WarningCircle, Funnel, CaretDown, Target, Lightning } from '@phosphor-icons/react';
 import { fetchStudentSWOT, fetchAvailableSwotTests } from '../../utils/api';
-import SelectDropdown from '../components/ui/dropdown.jsx';
-import useSwotData from '../components/hooks/z_swot/z_useSwotData';
-import SwotSection from '../shared/SWOT.jsx';
+import FilterDrawer from '../../components/ui/filter-drawer.jsx';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, } from '../../components/ui/select.jsx';
+import PropTypes from 'prop-types';
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card.jsx';
+import { Button } from '../../components/ui/button.jsx';
+// Custom hook to fetch and manage SWOT analysis data
+const useSwotData = (fetchSwotData, fetchAvailableTestsData) => {
+    // State for the currently selected subject
+    const [selectedSubject, setSelectedSubject] = useState('Physics');
+    // State for the currently selected test
+    const [selectedTest, setSelectedTest] = useState('Overall');
+    // State to hold the list of available tests
+    const [availableTests, setAvailableTests] = useState(['Overall']);
+    // State to store the organized SWOT data
+    const [swotData, setSwotData] = useState({});
+    // State to track the loading status of the data fetch
+    const [loading, setLoading] = useState(true);
+    // State for error handling
+    const [error, setError] = useState(null);
+
+    // useEffect hook to load the list of available tests on component mount
+    useEffect(() => {
+        const loadAvailableTests = async () => {
+            try {
+                // Fetch the available test numbers
+                const tests = await fetchAvailableTestsData();
+                // Filter out duplicate test numbers, remove any '0' values and sort descending
+                const uniqueTests = [...new Set(tests)].filter((num) => num !== 0).sort((a, b) => Number(b) - Number(a));
+                // Format the test numbers into displayable strings with 'Overall' at the top
+                const formatted = ['Overall', ...uniqueTests.map((num) => `Test ${num}`)];
+                // Update the availableTests state
+                setAvailableTests(formatted);
+                setError(null); // Clear any previous errors
+            } catch (error) {
+                console.error('Error loading available tests:', error);
+                setError(error);
+            }
+        };
+
+        loadAvailableTests();
+    }, [fetchAvailableTestsData]); // Fetch available tests only once on mount
+
+    // useEffect hook to fetch SWOT data whenever the selected test changes
+    useEffect(() => {
+        const fetchSwot = async () => {
+            setLoading(true);
+            setError(null); // Clear previous errors
+            try {
+                // Determine the test number to fetch (0 for 'Overall')
+                const testNum = selectedTest === 'Overall' ? 0 : parseInt(selectedTest.split(' ')[1]);
+                // Fetch the SWOT data for the selected test
+                const response = await fetchSwotData(testNum);
+                // If the response is successful and contains SWOT data
+                if (!response?.error && response?.swot) {
+                    // Organize the raw SWOT data into a more structured format
+                    const formatted = organizeSwotData(response.swot);
+                    // Update the swotData state
+                    setSwotData(formatted);
+                } else if (response?.error) {
+                    console.error('Error fetching SWOT data:', response.error);
+                    setSwotData({}); // Clear previous data on error
+                    setError(response.error);
+                } else {
+                    setSwotData({}); // Clear data if no SWOT data is present
+                }
+            } catch (error) {
+                console.error('Error fetching SWOT data:', error);
+                setSwotData({}); // Clear previous data on error
+                setError(error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchSwot();
+    }, [selectedTest, fetchSwotData]); // Fetch SWOT data when selectedTest changes
+
+    // Function to organize the raw SWOT data into a subject-wise structure
+    const organizeSwotData = (rawData) => {
+        const organized = {};
+        for (const metric in rawData) {
+            const subjectMap = rawData[metric];
+            // Look up the category, title, and description for the current metric
+            const [category, title, description] = metricToCategoryMap[metric] || [];
+            // Skip if the category is not found in the mapping
+            if (!category) continue;
+
+            for (const subject in subjectMap) {
+                // Initialize the subject's SWOT categories if they don't exist
+                if (!organized[subject]) {
+                    organized[subject] = {
+                        'Focus Zone': [],
+                        'Edge Zone': [],
+                        'Steady Zone': [],
+                    };
+                }
+                // Push the SWOT item into the appropriate subject and category
+                organized[subject][category].push({
+                    title,
+                    description,
+                    topics: subjectMap[subject],
+                });
+            }
+        }
+        return organized;
+    };
+
+    // Return the state variables and setter functions for external use
+    return {
+        selectedSubject,
+        setSelectedSubject,
+        selectedTest,
+        setSelectedTest,
+        availableTests,
+        swotData,
+        loading,
+        error,
+    };
+};
+
+// Mapping of API metric keys to SWOT categories, titles, and descriptions
+const metricToCategoryMap = {
+    TW_MCT: ['Focus Zone', 'Most Challenging Topics', 'Topics where the student has struggled:'],
+    TO_RLT: ['Edge Zone', 'Rapid Learning Topics', 'Topics that can be quickly improved with targeted practice:'],
+    TS_BPT: ['Steady Zone', 'Best Performing Topics', 'Areas where the student excels:'],
+};
+
+const SwotSection = ({ label, icon, color, border, data, selectedSubject }) => {
+    // Safely access the data for the selected subject and the current label.
+    // Fallback to an empty array if the path doesn't exist to prevent errors.
+    const itemsToRender = data?.[selectedSubject]?.[label] || [];
+
+    // Small subtitle mapping for each zone (used under the title in mobile view)
+    const zoneSubtitleMap = {
+        'Focus Zone': 'Areas to improve',
+        'Edge Zone': 'Quick wins',
+        'Steady Zone': 'Strong areas',
+    };
+
+    // Gradient/background map for each zone
+    const zoneBgMap = {
+        'Focus Zone': 'bg-gradient-to-br from-pink-100 via-pink-50 to-pink-50',
+        'Edge Zone': 'bg-gradient-to-br from-blue-100 via-blue-50 to-blue-50',
+        'Steady Zone': 'bg-gradient-to-br from-green-100 via-green-50 to-green-50',
+    };
+
+    const subtitle = zoneSubtitleMap[label] || '';
+    const outerBg = zoneBgMap[label] || 'bg-base-100';
+
+    return (
+        // Make card a column flex container and full height so siblings in the desktop grid can match heights
+        // Add a thin border whose color is provided via the `border` prop so the border is slightly
+        // darker than the background gradient.
+        <Card className={`${outerBg} rounded-2xl overflow-hidden h-full flex flex-col border ${border}`}>
+            <CardHeader className="px-4 py-2">
+                <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center">
+                        <div>
+                            <CardTitle className={`${color} font-semibold items-center mb-0 text-lg`}>{label}</CardTitle>
+                            {subtitle && <div className="text-sm text-gray-700">{subtitle}</div>}
+                        </div>
+                    </div>
+                </div>
+            </CardHeader>
+
+            <CardContent className="px-4 pb-4 pt-0 flex-1">
+                {/* Inner white rounded box that holds the items (matches design in screenshot) */}
+                <div className="bg-white p-4 rounded-lg flex flex-col h-full">
+                    <div className="space-y-4 flex-1 overflow-auto">
+                        {itemsToRender.length > 0 ? (
+                            itemsToRender.map((item, idx) => (
+                                <div key={item.id || `${label}-${selectedSubject}-${item.title || ''}-${idx}`} className={`p-3 rounded-lg`}>
+                                    {item.topics && item.topics.length > 0 && (
+                                        <ul className="list-disc list-inside text-sm md:text-base text-gray-700 space-y-2">
+                                            {item.topics.map((topic, i) => (
+                                                <li
+                                                    key={`${item.id || item.title || ''}-topic-${topic}-${i}`}
+                                                    className="py-1 leading-relaxed break-words whitespace-pre-wrap"
+                                                >
+                                                    {topic}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                            ))
+                        ) : (
+                            <p className="text-sm text-gray-500 italic">No data available for this category.</p>
+                        )}
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    );
+};
+
+// Prop Types for validation and documentation
+SwotSection.propTypes = {
+    label: PropTypes.string.isRequired,
+    icon: PropTypes.element.isRequired,
+    color: PropTypes.string.isRequired,
+    border: PropTypes.string.isRequired,
+    selectedSubject: PropTypes.string.isRequired,
+    data: PropTypes.objectOf(
+        PropTypes.objectOf(
+            PropTypes.arrayOf(
+                PropTypes.shape({
+                    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+                    title: PropTypes.string.isRequired,
+                    description: PropTypes.string.isRequired,
+                    topics: PropTypes.arrayOf(PropTypes.string).isRequired,
+                })
+            )
+        )
+    ).isRequired,
+};
 
 /**
  * Hardcoded list of subjects. In a production environment, this might ideally be fetched from an API.
@@ -20,11 +227,11 @@ const subjects = ['Physics', 'Chemistry', 'Botany', 'Zoology'];
 /**
  * SSWOT Component
  *
- * This component is responsible for displaying the Student's SWOT (Strengths, Weaknesses, Opportunities, Threats)
+ * This component is responsible for displaying the Student's Focus Zone, Edge Zone, and Steady Zone
  * analysis based on selected test and subject. It integrates several child components and a custom hook
  * to manage data fetching and display.
  *
- * @returns {JSX.Element} The rendered SWOT analysis dashboard.
+ * @returns {JSX.Element} The rendered analysis dashboard.
  */
 const SSWOT = () => {
     /**
@@ -39,9 +246,10 @@ const SSWOT = () => {
         setSelectedSubject,
         selectedTest,
         setSelectedTest,
-        availableTests,
+        availableTests = [],
         swotData,
-        loading
+        loading,
+        error
     } = useSwotData(fetchStudentSWOT, fetchAvailableSwotTests);
 
     /**
@@ -50,28 +258,25 @@ const SSWOT = () => {
      */
     const sections = [
         {
-            label: 'Strengths',
+            label: 'Focus Zone',
+            icon: <Target className="mr-2" />,
+            color: 'text-red-600',
+            // slightly darker than the pink/red background
+            border: 'border-red-200'
+        },
+        {
+            label: 'Edge Zone',
+            icon: <Lightning className="mr-2" />,
+            color: 'text-blue-600',
+            // slightly darker than the blue background
+            border: 'border-blue-200'
+        },
+        {
+            label: 'Steady Zone',
             icon: <CheckCircle className="mr-2" />,
             color: 'text-green-600',
-            border: 'border-green-100'
-        },
-        {
-            label: 'Weaknesses',
-            icon: <XCircle className="mr-2" />,
-            color: 'text-red-600',
-            border: 'border-red-100'
-        },
-        {
-            label: 'Opportunities',
-            icon: <ArrowCircleUp className="mr-2" />,
-            color: 'text-accent', // Assuming 'text-accent' is a defined Tailwind color for blue-like shades
-            border: 'border-blue-100'
-        },
-        {
-            label: 'Threats',
-            icon: <WarningCircle className="mr-2" />,
-            color: 'text-yellow-500',
-            border: 'border-yellow-100'
+            // slightly darker than the green background
+            border: 'border-green-200'
         }
     ];
 
@@ -80,55 +285,149 @@ const SSWOT = () => {
      * compatible with the `SelectDropdown` component's `options` prop.
      * @type {Array<{value: string, label: string}>}
      */
-    const testOptions = availableTests.map(test => ({
-        value: test,
-        label: test
-    }));
+    const testOptions = availableTests.map(test => ({ value: test, label: test }));
     // Transform subjects into options for SelectDropdown
-    const subjectOptions = subjects.map(subject => ({
-        value: subject,
-        label: subject
-    }));
+    const subjectOptions = subjects.map(subject => ({ value: subject, label: subject }));
 
-    // Display a loading message while data is being fetched.
+    // Panels for the generic FilterDrawer (keeps component fully generic)
+    const panels = [
+        { key: 'test', label: 'Test', options: testOptions, selected: selectedTest, onSelect: setSelectedTest },
+        { key: 'subject', label: 'Subject', options: subjectOptions, selected: selectedSubject, onSelect: setSelectedSubject },
+    ];
+
+    // Drawer state for filter selection (single common drawer for both Test and Subject)
+    const [drawerOpen, setDrawerOpen] = React.useState(false);
+
+    // Active panel key for the drawer
+    const [activePanelKey, setActivePanelKey] = React.useState('test');
+
+    // (no active tab needed for mobile — zones will stack)
+
+    // Loading state
     if (loading) {
         return (
-            <div className="flex justify-center items-center h-screen">
-                <div className="text-lg font-semibold text-gray-700">
-                    Loading SWOT insights...
+            <div className="flex flex-col justify-center items-center h-screen gap-4">
+                <svg
+                    className="animate-spin h-8 w-8 text-primary"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                >
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                </svg>
+                <p className="text-gray-600">Loading insights...</p>
+            </div>
+        );
+    }
+
+    // Error state
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center h-screen p-4">
+                <div className="alert alert-error max-w-md ">
+                    <WarningCircle className="stroke-current shrink-0 h-6 w-6" weight="bold" />
+                    <div>
+                        <h3 className="font-bold">Error</h3>
+                        <div className="text-xs">{String(error)}</div>
+                    </div>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="mt-6 p-6 space-y-4">
-            {/* Filter and Selector Section */}
-            <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 mb-4 border-b border-base-200 pb-4">
-                <Funnel className="text-gray-400 w-5 h-5" />
-                <span className="text-sm text-gray-400 min-w-max">Test</span>
-                <SelectDropdown
-                    options={testOptions}
-                    selectedValue={selectedTest}
-                    onSelect={setSelectedTest}
-                    buttonClassName="btn btn-sm justify-start truncate m-1 flex-grow"
-                    placeholder="Select Test" // Added placeholder for clarity
-                />
-                <span className="text-sm text-gray-400 min-w-max">Subject</span>
-                <SelectDropdown
-                    options={subjectOptions}
-                    selectedValue={selectedSubject}
-                    onSelect={setSelectedSubject}
-                    buttonClassName="btn btn-sm justify-start truncate m-1 flex-grow"
-                    placeholder="Select Subject" // Added placeholder for clarity
-                />
+        <div className="lg:mt-12 mt-6 sm:p-6 space-y-6">
+            {/* Selector Section */}
+            <div className="flex flex-col sm:flex-row  items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 mb-4 pb-4 bg-white sm:pt-4 px-4 pt-2 rounded-xl shadow-xl">
+                <Funnel className="hidden sm:block text-gray-400 w-5 h-5" />
+                {/* Mobile: buttons that open the drawer (keep desktop selects unchanged) */}
+                <div className="flex items-center gap-2 flex-1 lg:hidden">
+                    <span className="text-xs text-gray-400 min-w-max pl-1">Test:</span>
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        className="m-1 w-auto justify-start rounded-lg text-sm"
+                        onClick={() => { setActivePanelKey('test'); setDrawerOpen(true); }}
+                    >
+                        {selectedTest || 'Select Test'}
+                        <CaretDown size={2} className="ml-1" />
+                    </Button>
+
+                    <span className="text-xs text-gray-400 min-w-max pl-1">Sub:</span>
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        className="m-1 w-auto justify-start rounded-lg text-sm"
+                        onClick={() => { setActivePanelKey('subject'); setDrawerOpen(true); }}
+                    >
+                        {selectedSubject || 'Select Subject'}
+                        <CaretDown size={2} className="ml-1" />
+                    </Button>
+                </div>
+
+                {/* Desktop: keep original Select dropdowns */}
+                <div className="hidden lg:flex items-center gap-2">
+                    <span className="text-sm text-gray-400 min-w-max pl-1">Test</span>
+                    <Select value={selectedTest} onValueChange={(v) => setSelectedTest && setSelectedTest(v)}>
+                        <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full sm:w-auto text-start">
+                            <SelectValue placeholder="Select Test" />
+                        </SelectTrigger>
+                        <SelectContent side="bottom" align="end">
+                            {testOptions.map(opt => (
+                                <SelectItem key={String(opt.value)} value={opt.value}>
+                                    {opt.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    <span className="text-sm text-gray-400 min-w-max pl-1">Subject</span>
+                    <Select value={selectedSubject} onValueChange={(v) => setSelectedSubject && setSelectedSubject(v)}>
+                        <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full sm:w-auto text-start">
+                            <SelectValue placeholder="Select Subject" />
+                        </SelectTrigger>
+                        <SelectContent side="bottom" align="end">
+                            {subjectOptions.map(opt => (
+                                <SelectItem key={String(opt.value)} value={opt.value}>
+                                    {opt.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
 
             {/* SWOT Sections Display Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Mobile: tabbed view for SWOT categories, mirrors educator layout */}
+            <div className="lg:hidden space-y-4">
+                {/* Filter Drawer (shared component) */}
+                <FilterDrawer
+                    open={drawerOpen}
+                    onOpenChange={(v) => setDrawerOpen(v)}
+                    panels={panels}
+                    initialActivePanel={activePanelKey}
+                />
+
+                {/* Stack all zones on mobile (no per-zone selection buttons) */}
                 {sections.map(({ label, icon, color, border }) => (
                     <SwotSection
-                        key={label} // Unique key for list rendering
+                        key={label}
+                        label={label}
+                        icon={icon}
+                        color={color}
+                        border={border}
+                        data={swotData}
+                        selectedSubject={selectedSubject}
+                    />
+                ))}
+            </div>
+
+            {/* Desktop/large screens: stacked vertical layout to make it look more filled */}
+            <div className="hidden lg:flex lg:flex-col lg:space-y-6">
+                {sections.map(({ label, icon, color, border }) => (
+                    <SwotSection
+                        key={label}
                         label={label}
                         icon={icon}
                         color={color}
