@@ -206,8 +206,29 @@ def get_student_response(answer_sheet_path, class_id):
             for idx, student_id in zip(filtered_indices, filtered_student_ids):
                 if idx >= len(answers):
                     continue
-                answer = str(answers[idx]).strip().upper()
-                mapped_answer = answer_map.get(answer) if answer else None
+                raw_answer = answers[idx]
+                if pd.isna(raw_answer) or raw_answer == '' or str(raw_answer).strip() == '':
+                    mapped_answer = None
+                    logger.info(f"Empty answer found: {raw_answer}")
+                else:
+                    # Debug log the raw answer
+                    logger.info(f"Processing raw answer: {raw_answer} of type {type(raw_answer)}")
+                    
+                    # Handle both numeric and string answers
+                    if isinstance(raw_answer, (int, float)):
+                        # Direct mapping for numbers
+                        int_val = int(raw_answer)
+                        mapped_answer = answer_map.get(int_val, None)
+                        logger.info(f"Numeric answer: {raw_answer} -> {mapped_answer}")
+                    else:
+                        # String processing for letter answers
+                        answer = str(raw_answer).strip().upper()
+                        answer = answer.rstrip('0').rstrip('.') if '.' in answer else answer
+                        mapped_answer = answer_map.get(answer, None)
+                        logger.info(f"String answer: {raw_answer} -> {mapped_answer}")
+                    
+                    # Log the final mapped answer
+                    logger.info(f"Final mapped answer: {mapped_answer}")
                 data.append({
                     "student_id": student_id,
                     "question_number": question_number,

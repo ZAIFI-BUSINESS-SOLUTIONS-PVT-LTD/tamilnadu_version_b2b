@@ -67,17 +67,17 @@ def generate_all_test_swot_with_AI(db_name):
         # Each metric function returns processed data for (typically) four subjects.
         all_metric_results = {
             "TS_BPT": best_topics(kg_manager),
-            "TS_IOT": improvement_over_time(kg_manager),
-            "TS_SQT": strongest_question_type(kg_manager),
+            # "TS_IOT": improvement_over_time(kg_manager),
+            # "TS_SQT": strongest_question_type(kg_manager),
             "TW_MCT": most_challenging_topics(kg_manager),
-            "TW_WOT": weakness_over_time(kg_manager),
-            "TW_LRT": low_retention_topics(kg_manager),
-            "TO_PR": practice_recommendation(kg_manager),
-            "TO_MO": missed_opportunities(kg_manager),
+            # "TW_WOT": weakness_over_time(kg_manager),
+            # "TW_LRT": low_retention_topics(kg_manager),
+            # "TO_PR": practice_recommendation(kg_manager),
+            # "TO_MO": missed_opportunities(kg_manager),
             "TO_RLT": rapid_learning(kg_manager),
-            "TT_RMCG": recurring_mistake_conceptual_gap(kg_manager),
-            "TT_WHIT": weakness_on_high_impact(kg_manager),
-            "TT_IP": inconsistent_performance(kg_manager)
+            # "TT_RMCG": recurring_mistake_conceptual_gap(kg_manager),
+            # "TT_WHIT": weakness_on_high_impact(kg_manager),
+            # "TT_IP": inconsistent_performance(kg_manager)
         }
         
         insights_by_metric = {}
@@ -112,32 +112,32 @@ def generate_swot_data_with_AI(db_name, test_num):
         # Run analysis functions to generate metric data
         results = {}
         results["best_topic"] = best_topic_analysis(kg_manager, test_name)
-        results["improvement_over_time"] = improvement_over_time_analysis(kg_manager, test_name)
-        results["inconsistent_performance"] = inconsistent_performance_analysis(kg_manager, test_name)
-        results["low_retention_rate"] = low_retention_rate_analysis(kg_manager, test_name)
-        results["missed_opportunities"] = missed_opportunities_analysis(kg_manager, test_name)
+        # results["improvement_over_time"] = improvement_over_time_analysis(kg_manager, test_name)
+        # results["inconsistent_performance"] = inconsistent_performance_analysis(kg_manager, test_name)
+        # results["low_retention_rate"] = low_retention_rate_analysis(kg_manager, test_name)
+        # results["missed_opportunities"] = missed_opportunities_analysis(kg_manager, test_name)
         results["most_challenging_topic"] = most_challenging_topic_analysis(kg_manager, test_name)
-        results["practice_recommendation"] = practice_recommendation_analysis(kg_manager, test_name)
+        # results["practice_recommendation"] = practice_recommendation_analysis(kg_manager, test_name)
         results["rapid_learning_topic"] = rapid_learning_analysis(kg_manager, test_name)
-        results["recurring_mistake_conceptual_gap"] = recurring_mistake_conceptual_gap_analysis(kg_manager, test_name)
-        results["strongest_question_type"] = strongest_question_type_analysis(kg_manager, test_name)
-        results["weakness_on_high_impact"] = weakness_on_high_impact_analysis(kg_manager, test_name)
-        results["weakness_over_time"] = weakness_over_time_analysis(kg_manager, test_name)
+        # results["recurring_mistake_conceptual_gap"] = recurring_mistake_conceptual_gap_analysis(kg_manager, test_name)
+        # results["strongest_question_type"] = strongest_question_type_analysis(kg_manager, test_name)
+        # results["weakness_on_high_impact"] = weakness_on_high_impact_analysis(kg_manager, test_name)
+        # results["weakness_over_time"] = weakness_over_time_analysis(kg_manager, test_name)
         
         # Map metric keys to analysis result keys and prompts
         metric_prompt_mapping = {
             "TS_BPT": ("best_topic", t_prompts["SS_BPT"]),
-            "TS_IOT": ("improvement_over_time", t_prompts["SS_IOT"]),
-            "TS_SQT": ("strongest_question_type", t_prompts["SS_SQT"]),
+            # "TS_IOT": ("improvement_over_time", t_prompts["SS_IOT"]),
+            # "TS_SQT": ("strongest_question_type", t_prompts["SS_SQT"]),
             "TW_MCT": ("most_challenging_topic", t_prompts["SW_MCT"]),
-            "TW_WOT": ("weakness_over_time", t_prompts["SW_WOT"]),
-            "TW_LRT": ("low_retention_rate", t_prompts["SW_LRT"]),
-            "TO_PR": ("practice_recommendation", t_prompts["SO_PR"]),
-            "TO_MO": ("missed_opportunities", t_prompts["SO_MO"]),
+            # "TW_WOT": ("weakness_over_time", t_prompts["SW_WOT"]),
+            # "TW_LRT": ("low_retention_rate", t_prompts["SW_LRT"]),
+            # "TO_PR": ("practice_recommendation", t_prompts["SO_PR"]),
+            # "TO_MO": ("missed_opportunities", t_prompts["SO_MO"]),
             "TO_RLT": ("rapid_learning_topic", t_prompts["SO_RLT"]),
-            "TT_RMCG": ("recurring_mistake_conceptual_gap", t_prompts["ST_RMCG"]),
-            "TT_WHIT": ("weakness_on_high_impact", t_prompts["ST_WHIT"]),
-            "TT_IP": ("inconsistent_performance", t_prompts["ST_IP"])
+            # "TT_RMCG": ("recurring_mistake_conceptual_gap", t_prompts["ST_RMCG"]),
+            # "TT_WHIT": ("weakness_on_high_impact", t_prompts["ST_WHIT"]),
+            # "TT_IP": ("inconsistent_performance", t_prompts["ST_IP"])
         }
         
         insights_by_metric = {}

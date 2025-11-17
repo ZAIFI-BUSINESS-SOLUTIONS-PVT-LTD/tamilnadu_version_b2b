@@ -117,6 +117,7 @@ Instructions:
 - Each insight must be exactly **two concise sentences**: direct, specific, and actionable.  
 - Avoid complex academic language or technical jargon.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
 Return exactly two bullet-point insights. Each should reflect a ranked, high-impact takeaway from the data with a brief explanation or recommendation.''',
@@ -130,6 +131,7 @@ Instructions:
 - Rank insights by their impact on overall performance.  
 - Keep language student-friendly and actionable.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output: 
 Return exactly two bullet-point insights. Each should reflect a ranked, high-impact takeaway from the data with a brief explanation or recommendation.''',
@@ -143,6 +145,7 @@ Instructions:
 - Rank insights based on performance impact.  
 - Keep feedback concise, supportive, and practical.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
 Return exactly two bullet-point insights. Each should reflect a ranked, high-impact takeaway from the data with a brief explanation or recommendation.''',
@@ -156,6 +159,7 @@ Instructions:
 - Rank insights by urgency and impact.  
 - Keep tone constructive and clear.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
 Return exactly two bullet-point insights. Each should reflect a ranked, high-impact takeaway from the data with a brief explanation or recommendation.''',
@@ -169,6 +173,7 @@ Instructions:
 - Use “potential” to encourage correction and growth.  
 - Rank by impact on exam readiness.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
 Return exactly two bullet-point insights. Each should reflect a ranked, high-impact takeaway from the data with a brief explanation or recommendation.''',
@@ -181,6 +186,7 @@ Instructions:
 - Highlight potential for improvement with better revision methods.  
 - Rank insights by their performance impact.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
 Return exactly two bullet-point insights. Each should reflect a ranked, high-impact takeaway from the data with a brief explanation or recommendation.''',
@@ -193,6 +199,7 @@ Instructions:
 - Use “potential” to highlight the upside of extra effort.  
 - Rank insights by score improvement potential.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
 Return exactly two bullet-point insights. Each should reflect a ranked, high-impact takeaway from the data with a brief explanation or recommendation.''',
@@ -205,6 +212,7 @@ Instructions:
 - Rank by impact and ease of improvement.  
 - Keep tone encouraging and focused on future gain.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
 Return exactly two bullet-point insights. Each should reflect a ranked, high-impact takeaway from the data with a brief explanation or recommendation.''',
@@ -217,6 +225,7 @@ Instructions:
 - Suggest next steps to fully capitalize on this learning speed.  
 - Rank insights based on immediate performance gain.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output: 
 Return exactly two bullet-point insights. Each should reflect a ranked, high-impact takeaway from the data with a brief explanation or recommendation.''',
@@ -229,6 +238,8 @@ Instructions:
 - Use “potential” to indicate that closing this gap will raise performance.  
 - Rank by recurrence and impact.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
+
 
 
 Output:  
@@ -242,6 +253,7 @@ Instructions:
 - Highlight potential score loss if not corrected.  
 - Rank by exam weight and impact.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
 Return exactly two bullet-point insights. Each should reflect a ranked, high-impact takeaway from the data with a brief explanation or recommendation.''',
@@ -254,6 +266,7 @@ Instructions:
 - Use “potential” if stabilizing this area can unlock more marks.  
 - Rank by variability and performance impact.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
 Return exactly two bullet-point insights. Each should reflect a ranked, high-impact takeaway from the data with a brief explanation or recommendation.'''
@@ -273,6 +286,7 @@ Instructions:
 - Each insight must be exactly **two concise sentences**: direct, specific, and actionable.  
 - Avoid complex academic language or technical jargon. Be clear, supportive, and student-friendly.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
 Return exactly two bullet-point insights. Each should reflect a ranked, high-impact takeaway from the data with a brief explanation or recommendation.''',
@@ -286,6 +300,7 @@ Instructions:
 - Rank insights by their impact on overall performance.  
 - Keep language student-friendly and actionable.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output: 
 Return exactly two bullet-point insights. Each should reflect a ranked, high-impact takeaway from the data with a brief explanation or recommendation.''',
@@ -299,6 +314,7 @@ Instructions:
 - Rank insights based on performance impact.  
 - Keep feedback concise, supportive, and practical.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
 Return exactly two bullet-point insights. Each should reflect a ranked, high-impact takeaway from the data with a brief explanation or recommendation.''',
@@ -312,6 +328,7 @@ Instructions:
 - Rank insights by urgency and impact.  
 - Keep tone constructive and clear.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
 Return exactly two bullet-point insights. Each should reflect a ranked, high-impact takeaway from the data with a brief explanation or recommendation.''',
@@ -325,6 +342,7 @@ Instructions:
 - Use “potential” to encourage correction and growth.  
 - Rank by impact on exam readiness.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
 Return exactly two bullet-point insights. Each should reflect a ranked, high-impact takeaway from the data with a brief explanation or recommendation.''',
@@ -337,6 +355,7 @@ Instructions:
 - Highlight potential for improvement with better revision methods.  
 - Rank insights by their performance impact.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
 Return exactly two bullet-point insights. Each should reflect a ranked, high-impact takeaway from the data with a brief explanation or recommendation.''',
@@ -349,6 +368,7 @@ Instructions:
 - Use “potential” to highlight the upside of extra effort.  
 - Rank insights by score improvement potential.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 
 Output:  
@@ -361,6 +381,7 @@ Instructions:
 - Rank by impact and ease of improvement.  
 - Keep tone encouraging and focused on future gain.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
 Return exactly two bullet-point insights. Each should reflect a ranked, high-impact takeaway from the data with a brief explanation or recommendation.''',
@@ -373,6 +394,7 @@ Instructions:
 - Suggest next steps to fully capitalize on this learning speed.  
 - Rank insights based on immediate performance gain.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output: 
 Return exactly two bullet-point insights. Each should reflect a ranked, high-impact takeaway from the data with a brief explanation or recommendation.''',
@@ -385,6 +407,7 @@ Instructions:
 - Use “potential” to indicate that closing this gap will raise performance.  
 - Rank by recurrence and impact.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
 Return exactly two bullet-point insights. Each should reflect a ranked, high-impact takeaway from the data with a brief explanation or recommendation.''',
@@ -397,6 +420,7 @@ Instructions:
 - Highlight potential score loss if not corrected.  
 - Rank by exam weight and impact.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
 Return exactly two bullet-point insights. Each should reflect a ranked, high-impact takeaway from the data with a brief explanation or recommendation.''',
@@ -409,6 +433,7 @@ Instructions:
 - Use “potential” if stabilizing this area can unlock more marks.  
 - Rank by variability and performance impact.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
 Return exactly two bullet-point insights. Each should reflect a ranked, high-impact takeaway from the data with a brief explanation or recommendation.'''
@@ -447,6 +472,7 @@ Rules:
 - Never return null for any value.
 - Make sure you generate for all the chapters(A-Z).
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 """
 
@@ -455,7 +481,7 @@ overview_prompts = {
 
 **Input**: Top 5 high-performing chapters per subject with correctly answered questions and their metadata (type, feedback, misconception, etc.)
 
-**Instruction**: Analyze the data holistically across all subjects.- It is crucial that you Use highly simple, very easy-to-understand Indian-English.  Identify key strengths based on accuracy, conceptual clarity, and question type patterns. Prioritize insights that reflect valuable academic traits(max 10 words each line). Use simple, easy-to-understand English.
+**Instruction**: Analyze the data holistically across all subjects.- It is crucial that you Use highly simple, very easy-to-understand English.  Identify key strengths based on accuracy, conceptual clarity, and question type patterns. Prioritize insights that reflect valuable academic traits(max 10 words each line). Use simple, easy-to-understand English.
 
 **Output**: Return exactly 3 short insights summarizing the student’s strongest learning attributes across subjects.
 

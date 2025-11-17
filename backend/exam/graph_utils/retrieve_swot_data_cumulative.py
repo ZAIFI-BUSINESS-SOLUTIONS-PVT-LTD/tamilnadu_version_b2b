@@ -140,6 +140,11 @@ def fetch_correct_questions_by_qtype(kg_manager, subject, types):
 def best_topics(kg_manager):
     #("Running Best Topics Analysis...")
     df_scores = fetch_topic_scores(kg_manager)
+    
+    # Return empty dict if no data found
+    if df_scores.empty:
+        return {}
+        
     df_scores["WeightedScore"] = df_scores.apply(lambda row: calculate_weighted_score(row["Total"], row["Correct"]), axis=1)
     topic_metrics = []
     for (subject, topic), group in df_scores.groupby(["Subject", "Topic"]):

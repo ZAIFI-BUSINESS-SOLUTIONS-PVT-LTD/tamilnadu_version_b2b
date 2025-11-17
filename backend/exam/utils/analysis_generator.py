@@ -30,18 +30,32 @@ def parse_metadata(response,subject):
 
 
 
-def infer_subject_with_gemini(questions):
+def infer_subject_with_gemini(questions, excluded_subjects=None):
     """
     Infers the subject (Physics, Chemistry, Botany, Zoology) from a batch of NEET questions.
-    """
     
+    Args:
+        questions: List of question dicts
+        excluded_subjects: List of subjects to exclude from consideration (already assigned to other batches)
+    """
+    if excluded_subjects is None:
+        excluded_subjects = []
+    
+    available_subjects = [s for s in ["Physics", "Chemistry", "Botany", "Zoology"] if s not in excluded_subjects]
+    
+    if not available_subjects:
+        available_subjects = ["Physics", "Chemistry", "Botany", "Zoology"]
+    
+    subjects_str = ", ".join(available_subjects)
+    exclusion_note = f"\nIMPORTANT: Do NOT assign {', '.join(excluded_subjects)}. Choose only from: {subjects_str}" if excluded_subjects else ""
 
     prompt = f"""
 You are an expert NEET subject classifier. The following NEET questions belong to only **one subject**:
 
-Physics, Chemistry, Botany, Zoology
+{subjects_str}
 kindly differentiate between Botany and Zoology
 if you have doubt choose based on majority
+{exclusion_note}
 
 Strictly output only the subject name — no punctuation or explanation.
 - return single word as string once not for every question.
@@ -67,21 +81,25 @@ im_desp: {q['im_desp']}
 
         if response:
             subject = response
-            if subject in ["Physics", "Chemistry", "Botany", "Zoology"]:
+            if subject in available_subjects:
                 return subject
             else:
-                subject = infer_subject_with_gemini(questions)
+                subject = infer_subject_with_gemini(questions, excluded_subjects)
                 return subject
     return subject
 
 
 
 
-def recursive_metadata_generation(batch):
+def recursive_metadata_generation(batch, excluded_subjects=None):
     """
     Detects subject, then generates structured metadata for each question.
+    
+    Args:
+        batch: List of question dicts
+        excluded_subjects: List of subjects to exclude (already assigned to other batches)
     """
-    subject = infer_subject_with_gemini(batch)
+    subject = infer_subject_with_gemini(batch, excluded_subjects)
     logger.info(f"📘 Subject detected: {subject}")
     #print(f"📘 Subject detected: {subject}")
 
@@ -330,9 +348,13 @@ def chunk_questions(q_list, chunk_size):
         yield current_chunk
 
 
-def process_question_batch(batch):
+def process_question_batch(batch, excluded_subjects=None):
     """
     Processes a batch of 45 questions — full pipeline with subject inference.
+    
+    Args:
+        batch: List of question dicts
+        excluded_subjects: List of subjects to exclude (already assigned to other batches)
     """
 
     def task_runner(fn, data):
@@ -344,7 +366,7 @@ def process_question_batch(batch):
             return []
 
     with ThreadPoolExecutor(max_workers=3) as executor:
-        future_metadata = executor.submit(recursive_metadata_generation, batch)
+        future_metadata = executor.submit(recursive_metadata_generation, batch, excluded_subjects)
         future_feedback = executor.submit(generate_feedback_with_gemini_batch, batch)
         future_errors = executor.submit(generate_errors_with_gemini_batch, batch)
 
@@ -402,6 +424,7 @@ def analyze_questions_in_batches(questions_list, chunk_size):
     """
     Takes a full list of questions (e.g., 180), splits into 45-question chunks,
     and processes each using Gemini: subject detection, metadata, feedback, and error analysis.
+    Ensures each batch gets a unique subject assignment.
     """
     # Prepare each question for Gemini input format
 
@@ -410,17 +433,21 @@ def analyze_questions_in_batches(questions_list, chunk_size):
     logger.info(f"🔄 Total Batches: {len(question_batches)} (each of {chunk_size} questions)")
     #print(f"🔄 Total Batches: {len(question_batches)} (each of {chunk_size} questions)")
 
-    with ThreadPoolExecutor(max_workers=min(5, len(question_batches))) as executor:
-        futures = [executor.submit(process_question_batch, batch) for batch in question_batches]
-
-        for idx, future in enumerate(as_completed(futures), 1):
-            try:
-                batch_result = future.result()
-                logger.info(f"✅ Batch {idx} processed successfully.")
-                #print(f"✅ Batch {idx} processed successfully.")
-                results.extend(batch_result)
-            except Exception as e:
-                logger.error(f"❌ Error processing batch {idx}: {e}")
-                #print(f"❌ Error processing batch {idx}: {e}")
+    assigned_subjects = []
+    
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        futures = []
+        for batch in question_batches:
+            future = executor.submit(process_question_batch, batch, assigned_subjects.copy())
+            futures.append(future)
+            
+            # Wait for this batch to complete and extract its subject before starting next
+            batch_result = future.result()
+            if batch_result:
+                batch_subject = batch_result[0].get("Subject")
+                if batch_subject and batch_subject not in assigned_subjects:
+                    assigned_subjects.append(batch_subject)
+                    logger.info(f"✅ Batch assigned subject: {batch_subject}. Excluded for next batches: {assigned_subjects}")
+            results.extend(batch_result)
 
     return results

@@ -57,7 +57,23 @@ class StudentAnalyzer:
         return self.analysis
 
     def get_summary(self):
+        # Get unique subjects from the analyzed questions
+        all_subjects = list(set(q.get('subject') for q in self.analysis if q.get('subject')))
+        
         student_df = pd.DataFrame(self.analysis)
+        
+        # If student_df is empty for any subject, we need to ensure it's represented with zeros
+        for subject in all_subjects:
+            if subject not in student_df['Subject'].unique():
+                # Add empty row for missing subject
+                empty_row = pd.DataFrame([{
+                    'Subject': subject,
+                    'QuestionNumber': None,
+                    'OptedAnswer': None,
+                    'IsCorrect': False
+                }])
+                student_df = pd.concat([student_df, empty_row], ignore_index=True)
+        
         total_questions = student_df.groupby("Subject")["QuestionNumber"].count().rename("TotalQuestions")
         attended_questions = student_df[
             student_df["OptedAnswer"].notnull() & (student_df["OptedAnswer"] != '')
@@ -67,11 +83,13 @@ class StudentAnalyzer:
             (student_df["OptedAnswer"] != '') &
             (student_df["IsCorrect"] == True)
         ].groupby("Subject")["QuestionNumber"].count().rename("CorrectQuestions")
+        
         summary_df = pd.concat([total_questions, attended_questions, correct_questions], axis=1).fillna(0).astype(int)
         summary_df.reset_index(inplace=True)
         return summary_df
 
     def save_results(self, summary_df):
+        # Initialize result data with all fields set to 0
         result_data = {
             'student_id': self.student_id,
             'class_id': self.class_id,
@@ -82,34 +100,63 @@ class StudentAnalyzer:
             'zoo_total': 0, 'zoo_attended': 0, 'zoo_correct': 0,
             'total_attended': 0, 'total_correct': 0
         }
+
+        # Update with current subject data from summary_df
         for _, row in summary_df.iterrows():
-            sub = self.subject_map.get(row['Subject'])
+            subject = row['Subject']
+            sub = self.subject_map.get(subject)
             if sub:
+                # Update subject-specific data
                 result_data[f'{sub}_total'] = row['TotalQuestions']
                 result_data[f'{sub}_attended'] = row['AttendedQuestions']
                 result_data[f'{sub}_correct'] = row['CorrectQuestions']
-                result_data['total_attended'] += row['AttendedQuestions']
-                result_data['total_correct'] += row['CorrectQuestions']
-        # Calculate scores here before saving
-        result_data['phy_score'] = result_data['phy_correct'] * 5 - result_data['phy_attended']
-        result_data['chem_score'] = result_data['chem_correct'] * 5 - result_data['chem_attended']
-        result_data['bot_score'] = result_data['bot_correct'] * 5 - result_data['bot_attended']
-        result_data['zoo_score'] = result_data['zoo_correct'] * 5 - result_data['zoo_attended']
-        result_data['total_score'] = (
-            result_data['phy_score'] + result_data['chem_score'] +
-            result_data['bot_score'] + result_data['zoo_score']
-        )
-        Result.objects.update_or_create(
-            student_id=self.student_id,
-            class_id=self.class_id,
-            test_num=self.test_num,
-            defaults=result_data
-        )
+                logger.info(f"Processing {subject} data for student {self.student_id}: {row['CorrectQuestions']}/{row['TotalQuestions']}")
+
+        # Recalculate totals across all subjects
+        for metric in ['attended', 'correct']:
+            total = sum(
+                result_data[f'{sub}_{metric}']
+                for sub in ['phy', 'chem', 'bot', 'zoo']
+            )
+            result_data[f'total_{metric}'] = total
+
+        # Calculate scores for all subjects using the standard formula
+        total_score = 0
+        for subject_prefix in ['phy', 'chem', 'bot', 'zoo']:
+            # Score formula: (correct answers × 5) - total attended
+            score = (result_data[f'{subject_prefix}_correct'] * 5) - result_data[f'{subject_prefix}_attended']
+            result_data[f'{subject_prefix}_score'] = score
+            total_score += score
+        
+        result_data['total_score'] = total_score
+
+        # Save results and log the operation
+        try:
+            result, created = Result.objects.update_or_create(
+                student_id=self.student_id,
+                class_id=self.class_id,
+                test_num=self.test_num,
+                defaults=result_data
+            )
+            logger.info(f"{'Created' if created else 'Updated'} results for student {self.student_id}, "
+                      f"test {self.test_num} with scores: "
+                      f"Physics: {result_data['phy_score']}, "
+                      f"Chemistry: {result_data['chem_score']}, "
+                      f"Botany: {result_data['bot_score']}, "
+                      f"Zoology: {result_data['zoo_score']}, "
+                      f"Total: {total_score}")
+        except Exception as e:
+            logger.error(f"Error saving results for student {self.student_id}: {str(e)}")
 
 # Utility functions
 
-def fetch_questions(class_id, test_num, subject):
-    return list(QuestionAnalysis.objects.filter(class_id=class_id, test_num=test_num, subject=subject).values(
+def fetch_questions(class_id, test_num, subject=None):
+    # If subject is provided, filter by it, otherwise get all subjects
+    query = QuestionAnalysis.objects.filter(class_id=class_id, test_num=test_num)
+    if subject:
+        query = query.filter(subject=subject)
+    
+    return list(query.values(
         "question_number", "chapter", "topic", "subtopic", "typeOfquestion", "question_text",
         "option_1", "option_2", "option_3", "option_4", "correct_answer",
         "option_1_feedback", "option_2_feedback", "option_3_feedback", "option_4_feedback",
@@ -138,7 +185,7 @@ def analyze_single_student(student_id, class_id, student_db, questions, test_dat
     create_graph(student_id, student_db.lower(), pd.DataFrame(analyzer.analysis), test_num)
 
 @shared_task
-def analyse_students(class_id, test_num, subject):
+def analyse_students(class_id, test_num, subject=None):
     status_obj, _ = TestProcessingStatus.objects.get_or_create(class_id=class_id, test_num=test_num)
     students = Student.objects.filter(class_id=class_id)
     if not students:
@@ -146,14 +193,24 @@ def analyse_students(class_id, test_num, subject):
         status_obj.save()
         logger.warning(f"⚠️ No students found for class {class_id}.")
         return
-    questions = fetch_questions(class_id, test_num, subject)
-    if not questions:
-        status_obj.logs += f"⚠️ No analysed questions for class {class_id}, test {test_num}."
+        
+    # Get all unique subjects for this test from QuestionAnalysis
+    subjects = list(QuestionAnalysis.objects.filter(
+        class_id=class_id,
+        test_num=test_num
+    ).values_list('subject', flat=True).distinct())
+    
+    # Get all questions for the test, optionally filtered by subject
+    if not subjects:
+        status_obj.logs += f"⚠️ No subjects found in QuestionAnalysis for class {class_id}, test {test_num}."
         status_obj.save()
-        logger.warning(f"⚠️ No analysed questions for class {class_id}, test {test_num}.")
+        logger.warning(f"⚠️ No subjects found in QuestionAnalysis for class {class_id}, test {test_num}.")
         return
+
     test_obj = Test.objects.filter(class_id=class_id, test_num=test_num).first()
     test_date = test_obj.date if test_obj else "Unknown"
+    
+    # Create tasks for each student, processing all subjects
     tasks = []
     for student in students:
         response_map = fetch_student_responses(student.student_id, class_id, test_num)
@@ -162,8 +219,21 @@ def analyse_students(class_id, test_num, subject):
             status_obj.save()
             logger.info(f"🚫 Student {student.student_id} did not attend test {test_num}. Skipping.")
             continue
+            
+        # Get all questions for all subjects
+        all_questions = []
+        for subject in subjects:
+            subject_questions = fetch_questions(class_id, test_num, subject)
+            if subject_questions:
+                all_questions.extend(subject_questions)
+            
+        if not all_questions:
+            status_obj.logs += f"⚠️ No questions found for any subject in class {class_id}, test {test_num}."
+            status_obj.save()
+            continue
+            
         tasks.append(analyze_single_student.s(
-            student.student_id, student.class_id, student.neo4j_db, questions, test_date, response_map, test_num
+            student.student_id, student.class_id, student.neo4j_db, all_questions, test_date, response_map, test_num
         ))
     if tasks:
         job = group(tasks)()

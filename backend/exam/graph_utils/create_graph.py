@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 def create_graph(student_id, db_name, student_analysis, test_name):
     test_name = f"Test{test_name}"
-    #kg_manager = KnowledgeGraphManager(database_name=db_name)
+    
     kg_manager = KnowledgeGraphManager(database_name=db_name, create_if_missing=True)
 
 
@@ -60,6 +60,11 @@ def create_graph(student_id, db_name, student_analysis, test_name):
                     question.type = $question_type,
                     question.imdesp = $im_desp,
                     question.text = $text
+                ON MATCH SET
+                    question.optedAnswer = $opted_answer,
+                    question.isCorrect = $is_correct,
+                    question.correctAnswer = $correct_answer,
+                    question.type = $question_type
                 MERGE (subtopic)-[:CONTAINS]->(question)
                 """,
                 test_name=test_name, subject=subject, chapter=chapter, topic=topic,
