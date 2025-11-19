@@ -22,6 +22,7 @@ def update_student_dashboard(class_id, test_num=None):
         class_id (str): The ID of the class.
         test_num (int, optional): The test number. If None, fetches cumulative data.
     """
+    logger.info(f"🎯 Starting update_student_dashboard for class {class_id}, test {test_num}")
     status_obj = TestProcessingStatus.objects.filter(class_id=class_id, test_num=test_num).first()
     
 
@@ -79,8 +80,11 @@ def update_student_dashboard(class_id, test_num=None):
             status_obj.save()
             logger.info(f"✅Test wise swot saved for {student_id} test{test_num}")
             #print(f"✅Test wise swot saved for {student_id} test{test_num}")
-
-
+    
+    # Trigger educator dashboard update after all student dashboards are complete
+    logger.info(f"🎓 Triggering educator dashboard update for class {class_id}, test {test_num}")
+    update_educator_dashboard.apply_async(args=(class_id, test_num))
+    logger.info(f"✅ Student dashboard update completed for class {class_id}, test {test_num}")
 
 
 @shared_task
@@ -91,6 +95,7 @@ def update_educator_dashboard(class_id, test_num):
         class_id (str): The ID of the class.
         test_num (int, optional): The test number. If None, fetches cumulative data.
     """
+    logger.info(f"🎓 Starting update_educator_dashboard for class {class_id}, test {test_num}")
     
     status_obj, _ = TestProcessingStatus.objects.get_or_create(
         class_id=class_id, test_num=test_num,

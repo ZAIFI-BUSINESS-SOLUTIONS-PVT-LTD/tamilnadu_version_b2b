@@ -78,12 +78,13 @@ def process_test_data(class_id, test_num):
             if questions_list:
                 save_questions_bulk(class_id, test_num, questions_list, answer_dict)
                 
-                # Analyze each subject separately
-                for subject_info in subject_ranges:
-                    subject = subject_info['subject']
-                    logger.info(f"🔍 Analyzing {subject}...")
-                    analyse_questions(class_id, test_num, subject)
-                    analyse_students(class_id, test_num, subject)
+                # Analyze all subjects at once - analyse_questions will discover subjects from QuestionPaper
+                logger.info(f"🔍 Analyzing all subjects...")
+                analyse_questions(class_id, test_num, subject=None)
+                
+                # Analyze students ONCE after all subjects are analyzed
+                logger.info(f"🔍 Analyzing students for all subjects...")
+                analyse_students(class_id, test_num, subject=None)
             else:
                 logger.warning("⚠️ Metadata extraction failed, falling back to automatic detection")
                 status_obj.logs += "\n⚠️ Metadata extraction failed, using fallback"
@@ -104,8 +105,10 @@ def process_test_data(class_id, test_num):
             analyse_questions(class_id, test_num, subject)
             analyse_students(class_id, test_num, subject)
 
-        update_student_dashboard(class_id, test_num)
-        update_educator_dashboard(class_id, test_num)
+        # NOTE: update_student_dashboard is now called automatically via chord callback
+        # after all student analysis tasks complete (see student_analysis.py)
+        # update_educator_dashboard will be triggered automatically after update_student_dashboard completes
+        logger.info(f"📊 Student & educator dashboards will be updated after all student analysis tasks complete.")
         
         status_obj.status = "Successful"
         status_obj.logs += "\n✅ Processing completed"

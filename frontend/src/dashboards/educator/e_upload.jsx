@@ -101,13 +101,25 @@ const EUpload = () => {
   // Handles the upload process and closes the modal upon successful upload
   const handleUploadAndClose = async () => {
     // Pass metadata config (if exists) to be sent with files
-    const metadata = savedMetadataConfig ? {
-      pattern: savedMetadataConfig.pattern,
-      subject_order: savedMetadataConfig.subject_order,
-      total_questions: savedMetadataConfig.total_questions,
-      section_counts: savedMetadataConfig.section_counts,
-    } : null;
+    // Only include properties that are actually defined
+    let metadata = null;
+    if (savedMetadataConfig) {
+      metadata = {};
+      if (savedMetadataConfig.pattern !== undefined) {
+        metadata.pattern = savedMetadataConfig.pattern;
+      }
+      if (savedMetadataConfig.subject_order !== undefined) {
+        metadata.subject_order = savedMetadataConfig.subject_order;
+      }
+      if (savedMetadataConfig.total_questions !== undefined) {
+        metadata.total_questions = savedMetadataConfig.total_questions;
+      }
+      if (savedMetadataConfig.section_counts !== undefined && savedMetadataConfig.section_counts !== null) {
+        metadata.section_counts = savedMetadataConfig.section_counts;
+      }
+    }
 
+    console.debug('e_upload - metadata to send with upload:', metadata);
     const success = await handleUpload(metadata);
     if (success) {
       setIsModalOpen(false);
@@ -130,6 +142,7 @@ const EUpload = () => {
   // Handle subject configuration completion - just save config locally, don't call API
   const handleSubjectConfigComplete = (config) => {
     // Store the config locally to be sent with file upload
+    console.debug('e_upload - received config from SubjectConfig:', config);
     setSavedMetadataConfig(config);
     toast.success('Subject configuration saved!');
 

@@ -48,66 +48,94 @@ def upload_test(request):
         subject_order = request.data.get('subject_order')
         total_questions = request.data.get('total_questions')
         section_counts = request.data.get('section_counts')
+
+        # Debug: log incoming metadata keys/values to help diagnose frontend issues
+        try:
+            received_keys = list(request.data.keys())
+            logger.debug(f"Upload endpoint received data keys: {received_keys}")
+            logger.debug(f"Raw metadata -> pattern: {pattern}, subject_order: {subject_order}, total_questions: {total_questions}, section_counts: {section_counts}")
+        except Exception as _log_err:
+            logger.debug(f"Failed to log request.data: {_log_err}")
         
         # If metadata is provided, validate and save it
         if pattern and subject_order and total_questions:
             try:
-                # Parse JSON strings if they come as strings
+                import json
+
+                # Parse JSON strings if they come as strings, but only when non-empty
                 if isinstance(subject_order, str):
-                    import json
-                    subject_order = json.loads(subject_order)
+                    subject_order_str = subject_order.strip()
+                    if subject_order_str:
+                        subject_order = json.loads(subject_order_str)
+                    else:
+                        subject_order = None
+
                 if isinstance(section_counts, str):
-                    import json
-                    section_counts = json.loads(section_counts)
-                
-                # Convert total_questions to int if it's a string
+                    section_counts_str = section_counts.strip()
+                    if section_counts_str:
+                        section_counts = json.loads(section_counts_str)
+                    else:
+                        section_counts = None
+
+                # Convert total_questions to int if it's a string and non-empty
                 if isinstance(total_questions, str):
-                    total_questions = int(total_questions)
-                
-                # Validate pattern and subject_order match
-                valid_subjects = {
-                    'PHY_CHEM_BOT_ZOO': ['Physics', 'Chemistry', 'Botany', 'Zoology'],
-                    'PHY_CHEM_BIO': ['Physics', 'Chemistry', 'Biology']
-                }
-                
-                if pattern not in valid_subjects:
-                    return JsonResponse({'error': f'Invalid pattern. Must be one of: {list(valid_subjects.keys())}'}, status=400)
-                
-                expected_subjects = set(valid_subjects[pattern])
-                provided_subjects = set(subject_order)
-                
-                if expected_subjects != provided_subjects:
-                    return JsonResponse({
-                        'error': f'subject_order does not match pattern {pattern}. Expected: {valid_subjects[pattern]}'
-                    }, status=400)
-                
-                # Validate section_counts if provided
-                if section_counts:
-                    for subject in subject_order:
-                        if subject not in section_counts:
-                            return JsonResponse({'error': f'Missing count for subject: {subject}'}, status=400)
-                        if not isinstance(section_counts[subject], int) or section_counts[subject] <= 0:
-                            return JsonResponse({'error': f'Invalid count for {subject}: must be positive integer'}, status=400)
-                    
-                    sum_counts = sum(section_counts.values())
-                    if sum_counts != total_questions:
+                    tq_str = total_questions.strip()
+                    if tq_str:
+                        total_questions = int(tq_str)
+                    else:
+                        total_questions = None
+
+                # Re-check required fields after normalization
+                if not (pattern and subject_order and total_questions):
+                    logger.warning(f"Normalized metadata missing required fields: pattern={pattern}, subject_order={subject_order}, total_questions={total_questions}")
+                else:
+                    # Validate pattern and subject_order match
+                    valid_subjects = {
+                        'PHY_CHEM_BOT_ZOO': ['Physics', 'Chemistry', 'Botany', 'Zoology'],
+                        'PHY_CHEM_BIO': ['Physics', 'Chemistry', 'Biology']
+                    }
+
+                    if pattern not in valid_subjects:
+                        return JsonResponse({'error': f'Invalid pattern. Must be one of: {list(valid_subjects.keys())}'}, status=400)
+
+                    expected_subjects = set(valid_subjects[pattern])
+                    provided_subjects = set(subject_order)
+
+                    if expected_subjects != provided_subjects:
                         return JsonResponse({
-                            'error': f'Sum of section_counts ({sum_counts}) does not match total_questions ({total_questions})'
+                            'error': f'subject_order does not match pattern {pattern}. Expected: {valid_subjects[pattern]}'
                         }, status=400)
-                
-                # Create TestMetadata
-                TestMetadata.objects.create(
-                    class_id=class_id,
-                    test_num=test_num,
-                    pattern=pattern,
-                    subject_order=subject_order,
-                    total_questions=total_questions,
-                    section_counts=section_counts
-                )
-                logger.info(f"Created test metadata for {class_id} Test {test_num} with pattern {pattern}")
+
+                    # Validate section_counts if provided
+                    if section_counts:
+                        for subject in subject_order:
+                            if subject not in section_counts:
+                                return JsonResponse({'error': f'Missing count for subject: {subject}'}, status=400)
+                            if not isinstance(section_counts[subject], int) or section_counts[subject] <= 0:
+                                return JsonResponse({'error': f'Invalid count for {subject}: must be positive integer'}, status=400)
+
+                        sum_counts = sum(section_counts.values())
+                        if sum_counts != total_questions:
+                            return JsonResponse({
+                                'error': f'Sum of section_counts ({sum_counts}) does not match total_questions ({total_questions})'
+                            }, status=400)
+
+                    # Create TestMetadata
+                    TestMetadata.objects.create(
+                        class_id=class_id,
+                        test_num=test_num,
+                        pattern=pattern,
+                        subject_order=subject_order,
+                        total_questions=total_questions,
+                        section_counts=section_counts
+                    )
+                    logger.info(f"Created test metadata for {class_id} Test {test_num} with pattern {pattern}")
+            except json.JSONDecodeError as jde:
+                logger.warning(f"Failed to parse JSON metadata: {jde}. Continuing with file upload...")
+            except ValueError as ve:
+                logger.warning(f"Failed to convert metadata value: {ve}. Continuing with file upload...")
             except Exception as metadata_error:
-                logger.warning(f"Failed to save metadata: {metadata_error}. Continuing with file upload...")
-                # Don't fail the entire upload if metadata save fails - just log and continue
+                logger.exception(f"Failed to save metadata: {metadata_error}. Continuing with file upload...")
 
         test_prefix = f"inzighted/uploads/{class_id}/TEST_{test_num}/"
 

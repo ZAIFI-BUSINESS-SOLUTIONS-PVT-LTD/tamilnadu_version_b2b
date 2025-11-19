@@ -3,7 +3,7 @@ from exam.models import Student, QuestionAnalysis, StudentResponse, Test, Result
 from exam.graph_utils.create_graph import create_graph
 from exam.models.test_status import TestProcessingStatus
 import logging
-from celery import group, shared_task
+from celery import group, shared_task, chord
 
 logger = logging.getLogger(__name__)
 
@@ -229,17 +229,27 @@ def analyse_students(class_id, test_num, subject=None):
             if subject_questions:
                 all_questions.extend(subject_questions)
             
-        if not all_questions:
-            status_obj.logs += f"⚠️ No questions found for any subject in class {class_id}, test {test_num}."
-            status_obj.save()
-            continue
+            if not all_questions:
+                status_obj.logs += f"⚠️ No questions found for any subject in class {class_id}, test {test_num}."
+                status_obj.save()
+                continue
             
         tasks.append(analyze_single_student.s(
             student.student_id, student.class_id, student.neo4j_db, all_questions, test_date, response_map, test_num
         ))
+    
     if tasks:
-        job = group(tasks)()
+        logger.info(f"🔄 Scheduling {len(tasks)} student analysis tasks for class {class_id}, test {test_num}...")
+        # Import here to avoid circular dependency
+        from exam.services.update_dashboard import update_student_dashboard
+        
+        # Use chord: run all student analysis tasks, then update dashboard when all complete
+        chord(tasks)(update_student_dashboard.s(class_id, test_num))
+        logger.info(f"✅ Student analysis tasks scheduled with dashboard update callback for class {class_id}, test {test_num}.")
+    else:
+        logger.warning(f"⚠️ No student analysis tasks to schedule for class {class_id}, test {test_num}.")
+    
     status_obj.status = "Successful"
-    status_obj.logs += f"✅ Analysis complete for class {class_id}, test {test_num}."
+    status_obj.logs += f"✅ Analysis tasks scheduled for class {class_id}, test {test_num}."
     status_obj.save()
-    logger.info(f"✅ Analysis complete for class {class_id}, test {test_num}.")
+    logger.info(f"✅ Analysis tasks scheduled for class {class_id}, test {test_num}.")

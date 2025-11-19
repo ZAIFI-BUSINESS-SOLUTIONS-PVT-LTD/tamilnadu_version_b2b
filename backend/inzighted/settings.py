@@ -14,7 +14,7 @@ load_dotenv(os.path.join(BASE_DIR, '../.env'))
 # === Security and Core Settings ===
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'your-secret-key')
 DEBUG = True
-ALLOWED_HOSTS = ['tamilnaduapi.inzighted.com','tamilnadu.inzighted.com', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['tamilnaduapi.inzighted.com','tamilnadu.inzighted.com', 'localhost', '127.0.0.1','13.219.64.187']
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

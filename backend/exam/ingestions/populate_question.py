@@ -35,8 +35,8 @@ def save_questions_bulk(class_id, test_num, questions, answer_dict):
                 )
             )
 
-        # ✅ Perform bulk insert
-        QuestionPaper.objects.bulk_create(question_objects, batch_size=500)
+        # ✅ Perform bulk insert (ignore_conflicts to handle re-uploads)
+        QuestionPaper.objects.bulk_create(question_objects, batch_size=500, ignore_conflicts=True)
         status_obj.status = "Successful"
         status_obj.logs += f"✅ Bulk inserted {len(question_objects)} questions for Class `{class_id}`, Test `{test_num}`"
         status_obj.save()

@@ -93,6 +93,7 @@ const SubjectConfig = ({ onComplete, onSkip }) => {
       total_questions: questionMode === 'total' ? parseInt(totalQuestions) : calculateTotal(),
       section_counts: questionMode === 'perSubject' ? subjectCounts : null
     };
+    console.debug('SubjectConfig complete - sending config:', config);
     onComplete(config);
   };
 

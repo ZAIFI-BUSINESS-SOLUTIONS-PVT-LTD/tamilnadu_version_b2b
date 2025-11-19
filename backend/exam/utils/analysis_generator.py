@@ -91,7 +91,7 @@ im_desp: {q['im_desp']}
 
 
 
-def recursive_metadata_generation(batch, excluded_subjects=None):
+def recursive_metadata_generation(batch, excluded_subjects=None, subject=None):
     """
     Detects subject, then generates structured metadata for each question.
     
@@ -99,8 +99,12 @@ def recursive_metadata_generation(batch, excluded_subjects=None):
         batch: List of question dicts
         excluded_subjects: List of subjects to exclude (already assigned to other batches)
     """
-    subject = infer_subject_with_gemini(batch, excluded_subjects)
-    logger.info(f"📘 Subject detected: {subject}")
+    # If a subject is provided (from admin metadata), use it and skip inference.
+    if subject is None:
+        subject = infer_subject_with_gemini(batch, excluded_subjects)
+        logger.info(f"📘 Subject detected: {subject}")
+    else:
+        logger.info(f"📘 Using provided subject (metadata): {subject}")
     #print(f"📘 Subject detected: {subject}")
 
     S_chapter_list = chapter_list.get(subject, [])
@@ -348,7 +352,7 @@ def chunk_questions(q_list, chunk_size):
         yield current_chunk
 
 
-def process_question_batch(batch, excluded_subjects=None):
+def process_question_batch(batch, excluded_subjects=None, known_subject=None):
     """
     Processes a batch of 45 questions — full pipeline with subject inference.
     
@@ -366,7 +370,7 @@ def process_question_batch(batch, excluded_subjects=None):
             return []
 
     with ThreadPoolExecutor(max_workers=3) as executor:
-        future_metadata = executor.submit(recursive_metadata_generation, batch, excluded_subjects)
+        future_metadata = executor.submit(recursive_metadata_generation, batch, excluded_subjects, known_subject)
         future_feedback = executor.submit(generate_feedback_with_gemini_batch, batch)
         future_errors = executor.submit(generate_errors_with_gemini_batch, batch)
 
@@ -420,7 +424,7 @@ def process_question_batch(batch, excluded_subjects=None):
         })
     return results
 
-def analyze_questions_in_batches(questions_list, chunk_size):
+def analyze_questions_in_batches(questions_list, chunk_size, known_subject=None):
     """
     Takes a full list of questions (e.g., 180), splits into 45-question chunks,
     and processes each using Gemini: subject detection, metadata, feedback, and error analysis.
@@ -438,13 +442,19 @@ def analyze_questions_in_batches(questions_list, chunk_size):
     with ThreadPoolExecutor(max_workers=1) as executor:
         futures = []
         for batch in question_batches:
-            future = executor.submit(process_question_batch, batch, assigned_subjects.copy())
+            # If a known subject is provided (from admin metadata), pass it through
+            future = executor.submit(process_question_batch, batch, assigned_subjects.copy(), known_subject)
             futures.append(future)
             
             # Wait for this batch to complete and extract its subject before starting next
             batch_result = future.result()
             if batch_result:
-                batch_subject = batch_result[0].get("Subject")
+                # Determine batch subject: if known_subject provided, use it; else use detected subject
+                if known_subject:
+                    batch_subject = known_subject
+                else:
+                    batch_subject = batch_result[0].get("Subject")
+
                 if batch_subject and batch_subject not in assigned_subjects:
                     assigned_subjects.append(batch_subject)
                     logger.info(f"✅ Batch assigned subject: {batch_subject}. Excluded for next batches: {assigned_subjects}")

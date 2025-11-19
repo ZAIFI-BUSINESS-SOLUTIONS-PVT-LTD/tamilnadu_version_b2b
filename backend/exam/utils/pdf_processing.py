@@ -252,23 +252,114 @@ def questions_extract_with_metadata(pdf_path: str, test_path: str, subject_range
         default_storage.save(markdown_path, ContentFile(markdown_content))
         logger.info(f"[METADATA EXTRACTION] ✅ OCR data saved at: {markdown_path}")
         
-        # Extract questions for each subject range
+        # First, try extracting the entire paper once and then assign subjects by metadata ranges.
+        logger.info("[METADATA EXTRACTION] ℹ️ Attempting full-paper extraction before per-range extraction")
+        whole_questions = questions_extract(pdf_path, test_path)
+
+        if whole_questions and isinstance(whole_questions, list) and len(whole_questions) > 0:
+            logger.info(f"[METADATA EXTRACTION] ✅ Full-paper extraction returned {len(whole_questions)} questions. Assigning to ranges...")
+
+            # Build a map of question_number -> question dict (deduplicate keeping first occurrence)
+            question_map = {}
+            dup_count = 0
+            for q in whole_questions:
+                try:
+                    qnum = int(q.get('question_number'))
+                except Exception:
+                    logger.warning(f"[METADATA EXTRACTION] ⚠️ Skipping invalid question number: {q.get('question_number')}")
+                    continue
+                if qnum in question_map:
+                    dup_count += 1
+                    logger.debug(f"[METADATA EXTRACTION] ⚠️ Duplicate question number {qnum} in full extraction; keeping first occurrence")
+                    continue
+                question_map[qnum] = q
+
+            if dup_count:
+                logger.warning(f"[METADATA EXTRACTION] ⚠️ Skipped {dup_count} duplicate questions from full extraction")
+
+            assigned_questions = []
+            unassigned_qnums = set(question_map.keys())
+
+            # Assign by metadata ranges in given order
+            for range_info in subject_ranges:
+                subject = range_info['subject']
+                start = range_info['start']
+                end = range_info['end']
+                expected_count = range_info.get('count') or (end - start + 1)
+
+                qnums_in_range = sorted([qn for qn in unassigned_qnums if start <= qn <= end])
+                if not qnums_in_range:
+                    logger.warning(f"[METADATA EXTRACTION] ⚠️ No questions found in extracted data for {subject} range {start}-{end}")
+
+                for qn in qnums_in_range:
+                    q = question_map.get(qn)
+                    if not q:
+                        continue
+                    q['subject'] = subject
+                    assigned_questions.append(q)
+                    unassigned_qnums.discard(qn)
+
+                logger.info(f"[METADATA EXTRACTION] ✅ Assigned {len(qnums_in_range)} questions to {subject} (requested {expected_count})")
+
+            # If there are still unassigned question numbers, log them for investigation
+            if unassigned_qnums:
+                logger.warning(f"[METADATA EXTRACTION] ⚠️ {len(unassigned_qnums)} questions unassigned to any subject: {sorted(unassigned_qnums)[:10]}{'...' if len(unassigned_qnums)>10 else ''}")
+
+            # Save assigned questions
+            if assigned_questions:
+                question_paper_json_path = os.path.join(test_path, "qp.json")
+                json_data = json.dumps(assigned_questions, indent=4)
+                default_storage.save(question_paper_json_path, ContentFile(json_data))
+                logger.info(f"[METADATA EXTRACTION] ✅ Saved {len(assigned_questions)}/{total_questions} assigned questions to {question_paper_json_path}")
+
+                # Validate count
+                if abs(len(assigned_questions) - total_questions) > 2:
+                    logger.warning(f"[METADATA EXTRACTION] ⚠️ Question count mismatch after assignment: assigned {len(assigned_questions)}, expected {total_questions}")
+
+                return assigned_questions
+            else:
+                logger.error(f"[METADATA EXTRACTION] ❌ No questions assigned after full-paper extraction; will fall back to per-range extraction")
+
+        else:
+            logger.warning("[METADATA EXTRACTION] ⚠️ Full-paper extraction failed or returned no questions; falling back to per-range extraction")
+
+        # Fallback: Extract questions for each subject range individually
         for range_info in subject_ranges:
             subject = range_info['subject']
             start = range_info['start']
             end = range_info['end']
             
-            logger.info(f"[METADATA EXTRACTION] 📄 Extracting {subject}: Q{start}-Q{end}")
+            logger.info(f"[METADATA EXTRACTION] 📄 Extracting {subject}: Q{start}-Q{end} (fallback)")
             
             questions = extract_chunk_subtask(ocr_text, start, end, images)
             
             if questions and 'questions' in questions:
+                # Filter to only include question numbers within the expected range
+                filtered = []
+                seen_qnums = set()
                 for q in questions['questions']:
+                    try:
+                        qnum = int(q.get('question_number'))
+                    except Exception:
+                        logger.warning(f"[METADATA EXTRACTION] ⚠️ Skipping question with invalid number: {q.get('question_number')}")
+                        continue
+
+                    if qnum < start or qnum > end:
+                        logger.warning(f"[METADATA EXTRACTION] ⚠️ Question {qnum} out of expected range {start}-{end}; skipping")
+                        continue
+
+                    if qnum in seen_qnums:
+                        logger.warning(f"[METADATA EXTRACTION] ⚠️ Duplicate question number {qnum} in {subject}; skipping duplicate")
+                        continue
+
+                    seen_qnums.add(qnum)
                     q['subject'] = subject
-                all_questions.extend(questions['questions'])
-                logger.info(f"[METADATA EXTRACTION] ✅ Extracted {len(questions['questions'])} questions for {subject}")
+                    filtered.append(q)
+
+                all_questions.extend(filtered)
+                logger.info(f"[METADATA EXTRACTION] ✅ Extracted {len(filtered)} questions for {subject} (requested {end - start + 1})")
             else:
-                logger.error(f"[METADATA EXTRACTION] ❌ Failed to extract {subject} questions")
+                logger.error(f"[METADATA EXTRACTION] ❌ Failed to extract {subject} questions (fallback)")
         
         if len(all_questions) > 0:
             # Save extracted questions
