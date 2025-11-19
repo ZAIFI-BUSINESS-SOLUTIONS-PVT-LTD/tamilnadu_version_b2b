@@ -11,6 +11,7 @@ const BLOG_DIR = path.join(ROOT, 'src', 'landing page', 'components', 'blog', 'b
 const ROUTE_META_PATH = path.join(ROOT, 'src', 'landing page', 'route-meta.js');
 const BASE_URL = 'https://inzighted.com';
 
+
 function toAbsolute(u) {
   if (!u) return u;
   try {
