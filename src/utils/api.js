@@ -376,24 +376,30 @@ export const uploadTest = async (questionPaper, answerKey, answerSheet, metadata
   try {
     const token = localStorage.getItem('token'); // ✅ Get Token from Storage
     if (!token) return { error: 'Unauthorized: No Token Found' };
+    // DEBUG: log metadata being sent (no files)
+    try {
+      console.debug('uploadTest metadata:', metadata);
+    } catch (e) {
+      // ignore logging errors
+    }
 
     const formData = new FormData();
     formData.append('question_paper', questionPaper);
     formData.append('answer_key', answerKey);
     formData.append('answer_sheet', answerSheet);
 
-    // Add metadata fields if provided
+    // Add metadata fields if provided (only append if value is defined and not null)
     if (metadata) {
-      if (metadata.pattern) {
+      if (metadata.pattern && metadata.pattern !== undefined) {
         formData.append('pattern', metadata.pattern);
       }
-      if (metadata.subject_order) {
+      if (metadata.subject_order && metadata.subject_order !== undefined) {
         formData.append('subject_order', JSON.stringify(metadata.subject_order));
       }
-      if (metadata.total_questions) {
+      if (metadata.total_questions !== undefined && metadata.total_questions !== null) {
         formData.append('total_questions', metadata.total_questions.toString());
       }
-      if (metadata.section_counts) {
+      if (metadata.section_counts && metadata.section_counts !== undefined) {
         formData.append('section_counts', JSON.stringify(metadata.section_counts));
       }
     }
