@@ -8,6 +8,7 @@ from exam.models.student import Student
 from exam.models.swot import SWOT
 from django.http import JsonResponse
 from exam.models.educator import Educator
+from exam.models.test_metadata import TestMetadata
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -72,12 +73,20 @@ def get_student_dashboard(request):
         performanceTrendDataMapping = json.loads(metric_dict.get('PT', '[]'))
         subjectWiseDataMapping = json.loads(metric_dict.get('SA', '[]'))
 
+        # Include compact test metadata mapping for the student's class
+        try:
+            metas = TestMetadata.objects.filter(class_id=class_id).order_by('test_num')
+            test_metadata_map = {str(m.test_num): {'pattern': m.pattern, 'subject_order': m.subject_order} for m in metas}
+        except Exception:
+            test_metadata_map = {}
+
 
         return Response({
             "summaryCardsData": summaryCardsData,
             "performanceTrendDataMapping": performanceTrendDataMapping,
             "subjectWiseDataMapping": subjectWiseDataMapping,
-            "keyInsightsData": keyInsightsData
+            "keyInsightsData": keyInsightsData,
+            "testMetadata": test_metadata_map
         })
     except Exception as e:
         return Response({"error": str(e)}, status=500)

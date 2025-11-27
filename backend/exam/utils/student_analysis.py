@@ -244,7 +244,10 @@ def analyse_students(class_id, test_num, subject=None):
         from exam.services.update_dashboard import update_student_dashboard
         
         # Use chord: run all student analysis tasks, then update dashboard when all complete
-        chord(tasks)(update_student_dashboard.s(class_id, test_num))
+        # Use an immutable signature (.si) so Celery does NOT prepend the header results
+        # as the first positional argument to the callback. This keeps the callback
+        # signature as `update_student_dashboard(class_id, test_num)`.
+        chord(tasks)(update_student_dashboard.si(class_id, test_num))
         logger.info(f"✅ Student analysis tasks scheduled with dashboard update callback for class {class_id}, test {test_num}.")
     else:
         logger.warning(f"⚠️ No student analysis tasks to schedule for class {class_id}, test {test_num}.")

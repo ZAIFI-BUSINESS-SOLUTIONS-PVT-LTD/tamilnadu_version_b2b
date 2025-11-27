@@ -325,3 +325,40 @@ def get_test_metadata(request, class_id, test_num):
     except Exception as e:
         logger.error(f"Error retrieving test metadata: {e}")
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@api_view(['GET'])
+@authentication_classes([UniversalJWTAuthentication])
+@permission_classes([IsAuthenticated])
+def list_test_metadata_by_class(request, class_id):
+    """
+    Retrieve all test metadata entries for a class and return a compact
+    mapping of test_num -> { pattern, subject_order }.
+
+    Response structure:
+    {
+        "class_id": "CLASS123",
+        "metadata": {
+            "1": {"pattern": "PHY_CHEM_BIO", "subject_order": ["Physics","Chemistry","Biology"]},
+            "2": {"pattern": "PHY_CHEM_BOT_ZOO", "subject_order": ["Physics","Chemistry","Botany","Zoology"]}
+        }
+    }
+    """
+    try:
+        metas = TestMetadata.objects.filter(class_id=class_id).order_by('test_num')
+
+        if not metas.exists():
+            return JsonResponse({'error': 'No test metadata found for this class'}, status=404)
+
+        mapping = {}
+        for m in metas:
+            mapping[str(m.test_num)] = {
+                'pattern': m.pattern,
+                'subject_order': m.subject_order
+            }
+
+        return JsonResponse({'class_id': class_id, 'metadata': mapping}, status=200)
+
+    except Exception as e:
+        logger.error(f"Error listing test metadata for class {class_id}: {e}")
+        return JsonResponse({'error': str(e)}, status=500)

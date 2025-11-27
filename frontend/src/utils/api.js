@@ -62,6 +62,7 @@ export const getStudentPerformanceData = async () => {
     });
 
     const data = await response.data;
+    console.log('All data from getStudentPerformanceData:', data);
     return data;
   } catch (error) {
     console.error('Error fetching performance data:', error);

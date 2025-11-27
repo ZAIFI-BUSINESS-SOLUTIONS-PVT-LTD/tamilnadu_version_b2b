@@ -10,6 +10,7 @@ import json
 from exam.services.save_students import save_students
 from exam.models.test_status import TestProcessingStatus
 from exam.models.swot import SWOT
+from exam.models.test_metadata import TestMetadata
 import logging
 
 logger = logging.getLogger(__name__)
@@ -202,9 +203,17 @@ def get_educator_dashboard(request):
 
 
 
+        # Include compact test metadata mapping for the educator's class
+        try:
+            metas = TestMetadata.objects.filter(class_id=class_id).order_by('test_num')
+            test_metadata_map = {str(m.test_num): {'pattern': m.pattern, 'subject_order': m.subject_order} for m in metas}
+        except Exception:
+            test_metadata_map = {}
+
         return Response({
             "summaryCardsData": summaryCardsData,
-            "keyInsightsData": keyInsightsData
+            "keyInsightsData": keyInsightsData,
+            "testMetadata": test_metadata_map
         })
     except Exception as e:
         return Response({"error": str(e)}, status=500)

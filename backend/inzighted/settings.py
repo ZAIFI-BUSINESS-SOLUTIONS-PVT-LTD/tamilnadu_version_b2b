@@ -145,6 +145,16 @@ CELERY_BROKER_URL = 'redis://localhost:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 
+# === Celery Result Backend ===
+# Chords require a result backend that supports chords (Redis, django-db, database, memcached, etc.).
+# Default to Redis on localhost (db 1). You can override by setting `CELERY_RESULT_BACKEND` in the environment
+# or use the django-db backend provided by `django-celery-results` by setting it to 'django-db'.
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/1')
+
+# Convenience: allow an explicit flag to force django-db backend (useful in production when using DB-backed results)
+if os.getenv('USE_DJANGO_CELERY_RESULTS', '').lower() in ('1', 'true', 'yes'):
+    CELERY_RESULT_BACKEND = 'django-db'
+
 # === REST Framework ===
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (

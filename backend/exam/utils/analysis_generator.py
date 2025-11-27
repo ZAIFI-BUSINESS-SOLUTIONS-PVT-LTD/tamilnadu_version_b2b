@@ -108,6 +108,14 @@ def recursive_metadata_generation(batch, excluded_subjects=None, subject=None):
     #print(f"📘 Subject detected: {subject}")
 
     S_chapter_list = chapter_list.get(subject, [])
+
+    # Quick-fix: when tests are labeled as 'Biology' we don't have a
+    # dedicated chapter list in `NEET_data.py`. Treat Biology as a
+    # combination of Botany + Zoology so the LLM has a valid chapter list
+    # to choose from. This prevents empty/"[]" chapter outputs.
+    if subject == "Biology" and not S_chapter_list:
+        S_chapter_list = chapter_list.get("Botany", []) + chapter_list.get("Zoology", [])
+        logger.info(f"Fallback chapter list applied for Biology: Botany+Zoology ({len(S_chapter_list)} chapters)")
     
     # Build metadata prompt
     prompt = f"""
