@@ -2,8 +2,9 @@ name: 🚀 Deploy Frontend to S3 + Invalidate CloudFront
 
 on:
   push:
-    branches: [front_end]  # ✅ Set this to your deployment branch
-
+    branches: [main]  # ✅ Set this to your deployment branch
+    paths:
+      - 'frontend/**'
 jobs:
   deploy:
     runs-on: ubuntu-latest
