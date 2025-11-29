@@ -14,13 +14,22 @@ load_dotenv(os.path.join(BASE_DIR, '../.env'))
 # === Security and Core Settings ===
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'your-secret-key')
 DEBUG = True
-ALLOWED_HOSTS = ['tamilnaduapi.inzighted.com','tamilnadu.inzighted.com', 'localhost', '127.0.0.1','13.219.64.187']
+
+# === Hosts (from environment) ===
+def _parse_env_list(var_name):
+    val = os.getenv(var_name, '')
+    if not val:
+        return []
+    return [item.strip() for item in val.split(',') if item.strip()]
+
+ALLOWED_HOSTS = _parse_env_list('ALLOWED_HOSTS') or ['tamilnaduapi.inzighted.com', 'tamilnadu.inzighted.com', 'localhost', '127.0.0.1', '13.219.64.187']
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # === CORS Configuration ===
-#CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOWED_ORIGINS = [
+# You can set `CORS_ALLOWED_ORIGINS` in .env as a comma-separated list.
+# Example: CORS_ALLOWED_ORIGINS=https://tamilnadu.inzighted.com,http://localhost:5173
+CORS_ALLOWED_ORIGINS = _parse_env_list('CORS_ALLOWED_ORIGINS') or [
     "https://tamilnadu.inzighted.com",
     "http://localhost:5173",
     "http://13.219.64.187:5173",

@@ -291,7 +291,7 @@ def get_performance_trend_graph(kg_manager):
         records = [record.data() for record in result]
         warnings = result.consume()
 
-    kg_manager.close()
+    # Do not close kg_manager here — the top-level caller will close it.
 
     df = pd.DataFrame(records)
     if df.empty:
@@ -348,7 +348,8 @@ def get_test_wise_subject_score(kg_manager):
         records = [record.data() for record in result]
         warnings = result.consume()
 
-    kg_manager.close()
+    # Keep the driver open here; `get_overview_data` closes it after all parts
+    # have been generated.
 
     if not records:
         return []

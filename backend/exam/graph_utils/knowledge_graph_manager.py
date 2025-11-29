@@ -1,4 +1,5 @@
 from neo4j import GraphDatabase
+from neo4j.exceptions import DriverError
 from dotenv import load_dotenv
 import os
 import time
@@ -23,7 +24,12 @@ class KnowledgeGraphManager:
                     time.sleep(2)
 
     def get_session(self):
-        return self.driver.session(database=self.database_name)
+        try:
+            return self.driver.session(database=self.database_name)
+        except DriverError:
+            # Driver was closed or unusable; recreate and return a new session.
+            self.driver = GraphDatabase.driver(self.uri, auth=(self.username, self.password))
+            return self.driver.session(database=self.database_name)
 
     def close(self):
         self.driver.close()
