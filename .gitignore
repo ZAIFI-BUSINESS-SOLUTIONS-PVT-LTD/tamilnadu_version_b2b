@@ -11,3 +11,5 @@ build/
 
 # Environment files
 .env
+.env.docker
+.env.save

@@ -76,3 +76,5 @@ django-celery-beat
 boto3 
 django-storages
 mistralai
+python-magic
+gunicorn
