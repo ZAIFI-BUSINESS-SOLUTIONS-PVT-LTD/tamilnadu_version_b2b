@@ -4,7 +4,7 @@ venvk/
 venv311/
 __pycache__/
 *.pyc
-
+ssl/
 # Node
 node_modules/
 build/

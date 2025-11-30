@@ -55,6 +55,8 @@ echo "📦 Collecting static files..."
 python manage.py collectstatic --noinput --clear
 
 echo "✅ Initialization complete!"
+# Ensure we're back at repository root so Gunicorn's --chdir works
+cd /usr/src/app || true
 
 # Execute the main container command
 exec "$@"
