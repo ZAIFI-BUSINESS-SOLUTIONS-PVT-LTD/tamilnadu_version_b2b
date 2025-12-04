@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { GraduationCap, ChalkboardTeacher, ArrowLeft } from '@phosphor-icons/react';
+import { GraduationCap, ChalkboardTeacher, ArrowLeft, Building } from '@phosphor-icons/react';
 import { motion } from 'framer-motion';
 import logo from '../assets/images/logo.svg';
 import {
@@ -81,6 +81,18 @@ const LoginOptions = () => {
                   <div className="flex-1 text-left">
                     <p className="font-medium text-slate-800">Educator</p>
                     <p className="text-sm text-slate-500">Access reports and manage students</p>
+                  </div>
+                </div>
+              </Link>
+
+              <Link to="./institution/login" className="group block">
+                <div className="flex items-center gap-4 p-3 rounded-lg border border-slate-100 hover:border-blue-300 hover:bg-blue-50 transition-colors">
+                  <div className="bg-blue-100 p-3 rounded-md">
+                    <Building weight="fill" size={20} className="text-blue-600" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="font-medium text-slate-800">Institution</p>
+                    <p className="text-sm text-slate-500">Manage institution and educators</p>
                   </div>
                 </div>
               </Link>

@@ -27,6 +27,7 @@
     "date-fns": "^4.1.0",
     "file-saver": "^2.0.5",
     "framer-motion": "^12.23.12",
+    "lottie-react": "^2.4.1",
     "lucide-react": "^0.509.0",
     "motion": "^12.23.12",
     "prop-types": "^15.8.1",

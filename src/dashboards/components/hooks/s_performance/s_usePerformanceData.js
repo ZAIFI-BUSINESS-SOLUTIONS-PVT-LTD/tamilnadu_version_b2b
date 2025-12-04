@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getStudentPerformanceData } from '../../../../utils/api';
+import { getStudentPerformanceData, getStudentDashboardData } from '../../../../utils/api';
 
 const usePerformanceData = () => {
   // State to hold the overall performance data
@@ -13,6 +13,7 @@ const usePerformanceData = () => {
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedChapter, setSelectedChapter] = useState('');
   const [selectedTopic, setSelectedTopic] = useState('');
+  const [latestTest, setLatestTest] = useState('');
 
   // useEffect hook to fetch performance data on component mount
   useEffect(() => {
@@ -21,8 +22,21 @@ const usePerformanceData = () => {
         const response = await getStudentPerformanceData();
         const { performanceData: perfData, performanceInsights: perfInsights } = response;
 
+        // Try to fetch dashboard data to determine the student's most recent test
+        try {
+          const dashboard = await getStudentDashboardData();
+          const mapping = dashboard?.subjectWiseDataMapping || [];
+          const lastEntry = mapping && mapping.length ? mapping[mapping.length - 1] : null;
+          const lastTestName = lastEntry?.Test || '';
+          setLatestTest(lastTestName);
+        } catch (dashErr) {
+          console.warn('Failed to fetch dashboard data for latest test marker', dashErr);
+        }
+
         // Initialize selected subject, chapter, and topic based on the fetched data
-        const firstSubject = Object.keys(perfData)[0];
+        // Prioritize 'Physics' as the default subject if available, otherwise use the first subject
+        const availableSubjects = Object.keys(perfData);
+        const firstSubject = availableSubjects.includes('Physics') ? 'Physics' : availableSubjects[0];
         const subjectData = perfData[firstSubject];
         const firstChapterIndex = Object.keys(subjectData?.chapter_accuracy || {})[0];
         const firstChapterName = subjectData?.chapter?.[firstChapterIndex];
@@ -55,11 +69,20 @@ const usePerformanceData = () => {
 
   // Derived state for chapter options to display in a dropdown
   const chapterOptions = Object.values(chapterMap);
+  const updatedChapterFlags = Object.fromEntries(
+    Object.entries(chapterMap).map(([idx, name]) => [name, Object.keys(chapterAccuracy[idx] || {}).includes(latestTest)])
+  );
   // Derived state to find the index of the selected chapter
   const chapterIndex = Object.entries(chapterMap).find(([, name]) => name === selectedChapter)?.[0];
 
   // Derived state for topic options based on the selected chapter
   const topicOptions = Object.keys(topicsMap[chapterIndex] || {});
+  const updatedTopicFlags = Object.fromEntries(
+    Object.entries(topicsMap || {}).map(([cIdx, topics]) => [
+      cIdx,
+      Object.fromEntries(Object.keys(topics || {}).map(tName => [tName, Object.keys(topics?.[tName] || {}).includes(latestTest)]))
+    ])
+  );
   // Derived state for chapter-wise accuracy data for visualization
   const chapterData = Object.values(chapterAccuracy[chapterIndex] || {});
   // Derived state for topic-wise performance data
@@ -147,6 +170,9 @@ const usePerformanceData = () => {
     chapterMap,
     topicsMap,
     performanceInsights,
+    latestTest,
+    updatedChapterFlags,
+    updatedTopicFlags,
     handleSubjectChange,
     handleChapterChange,
     handleTopicChange,

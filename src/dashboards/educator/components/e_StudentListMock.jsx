@@ -92,9 +92,9 @@ const EStudentListMock = () => {
         { field: 'student_name', label: 'Student Name', sortable: false, headerClass: 'text-left' },
         { field: 'phy_score', label: 'Physics', sortable: false, headerClass: 'text-center' },
         { field: 'chem_score', label: 'Chemistry', sortable: false, headerClass: 'text-center' },
+        { field: 'bio_score', label: 'Biology', sortable: false, headerClass: 'text-center' },
         { field: 'bot_score', label: 'Botany', sortable: false, headerClass: 'text-center' },
         { field: 'zoo_score', label: 'Zoology', sortable: false, headerClass: 'text-center' },
-        { field: 'bio_score', label: 'Biology', sortable: false, headerClass: 'text-center' },
         { field: 'total_score', label: 'Total', sortable: false, headerClass: 'text-center' },
         { field: 'improvement_rate', label: 'Improvement Rate', sortable: false, headerClass: 'text-center' },
     ];
@@ -135,11 +135,11 @@ const EStudentListMock = () => {
             <tr key={test.student_id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-left">{test.student_id}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-left">{studentNameMap[test.student_id] || test.student_name || `Student ${test.student_id}`}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.phy_score}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.chem_score}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.bot_score}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.zoo_score}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.bio_score ?? 0}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.phy_score || "-"}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.chem_score || "-"}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.bio_score || "-"}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.bot_score || "-"}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.zoo_score || "-"}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.total_score}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{badge}</td>
             </tr>

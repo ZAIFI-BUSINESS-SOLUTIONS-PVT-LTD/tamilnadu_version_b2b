@@ -12,15 +12,13 @@ import {
   Target,
   List
 } from "@phosphor-icons/react";
-import { useUserData } from '../components/hooks/z_header/z_useUserData';
-import { fetcheducatordetail, fetchAvailableSwotTests_Educator, fetcheducatorstudent } from '../../utils/api';
-import HeaderBase from '../shared/header/HeaderBase.jsx';
-import UserDropdown from '../shared/header/UserDropDown.jsx';
-import DesktopSidebar from '../shared/header/DesktopSidebar.jsx';
-import MobileSidebar from '../shared/header/MobileDock.jsx';
+import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
+import { fetcheducatordetail, fetchAvailableSwotTests_Educator, fetcheducatorstudent } from '../../utils/api.js';
+import UserDropdown from '../components/header/UserDropDown.jsx';
+import DesktopSidebar from '../components/header/DesktopSidebar.jsx';
 import TeacherReportModal from './components/e_teacherreport.jsx';
 import StudentReportModal from './components/e_studentreport.jsx';
-import Logo from '../../assets/images/logo.svg';
+import EducatorHeaderMobile from './e_header-mobile.jsx';
 
 /**
  * EducatorHeader Component
@@ -37,9 +35,6 @@ import Logo from '../../assets/images/logo.svg';
 const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
   // Fetch educator user data using a custom hook
   const { userData: educatorInfo, isLoading } = useUserData(fetcheducatordetail, { name: '', inst: '' });
-
-  // State for controlling the visibility of the mobile sidebar
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // States for controlling the visibility of report modals
   const [showStudentReportModal, setShowStudentReportModal] = useState(false);
@@ -81,7 +76,7 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
     {
       to: '/educator/swot',
       icon: <Target weight="regular" size={20} />,
-      text: 'SWOT',
+      text: 'Analysis',
       activePattern: /^\/educator\/swot/
     },
     {
@@ -135,8 +130,8 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
         }
       },
       caretIcon: isReportsCollapsed ? <CaretRight size={16} /> : <CaretDown size={16} />,
-  // Always provide the children for mobile dock popups. Desktop will respect `isCollapsed`.
-  children: reportItems
+      // Always provide the children for mobile dock popups. Desktop will respect `isCollapsed`.
+      children: reportItems
     }
   ];
 
@@ -201,39 +196,6 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
         <TeacherReportModal onClose={() => setShowTeacherReportModal(false)} />
       )}
 
-      {/* Mobile Header (visible on small screens) */}
-      <HeaderBase isMobile>
-        <div className="flex items-center justify-between w-full py-3">
-          {/* App Logo for Mobile (left aligned) */}
-          <div className="flex items-center">
-            <img
-              src={Logo}
-              alt="InzightEd Logo"
-              className="h-7 pt-1"
-            />
-          </div>
-
-          {/* Mobile Notification and User Dropdown */}
-          <div className="flex items-center gap-3">
-            {/* User Dropdown for Mobile */}
-            <UserDropdown
-              userInfo={educatorInfo}
-              onLogout={handleLogout}
-              type="educator"
-            />
-          </div>
-        </div>
-      </HeaderBase>
-
-      {/* Mobile Sidebar Component */}
-      <MobileSidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        items={sidebarItems}
-        additionalItems={additionalItems}
-        onLogout={handleLogout}
-      />
-
       {/* Desktop Layout (visible on medium and larger screens) */}
       <div className="hidden md:flex">
         {/* Desktop Sidebar Component */}
@@ -247,9 +209,9 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
 
         {/* Desktop Header Bar */}
         <header
-          className="bg-white fixed top-0 right-0 z-30 h-20 flex items-center justify-between transition-all duration-300 px-8 border-b border-gray-200" // Added border-b for better separation
+          className="bg-white fixed top-0 right-0 z-30 h-20 flex items-center justify-between transition-all duration-300 px-8 border-b border-gray-200"
           style={{
-            left: isSidebarCollapsed ? "5rem" : "16rem", // Adjusts based on sidebar collapse state
+            left: isSidebarCollapsed ? "5rem" : "16rem",
           }}
         >
           <div className="flex items-center gap-4">
@@ -265,7 +227,7 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
             {/* Greeting and Current Date */}
             <div className="flex flex-col">
               <h1 className="text-2xl font-semibold text-gray-800 font-poppins">
-                {getGreeting()}, <span className="text-blue-600">{isLoading ? "Educator" : educatorInfo.name.split(' ')[0]}</span>
+                {getGreeting()}, <span className="text-blue-600">{isLoading ? "Educator" : (educatorInfo?.name?.split?.(' ')[0] ?? 'Educator')}</span>
               </h1>
               <p className="text-sm text-gray-500">
                 {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -274,9 +236,6 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Notifications Bell Icon and Dropdown (Desktop) */}
-            {/* notifications removed from desktop header */}
-
             {/* Separator */}
             <div className="h-8 w-px bg-gray-200 mx-1"></div>
 
@@ -291,6 +250,9 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
           </div>
         </header>
       </div>
+
+      {/* Mobile Header component (kept separate) */}
+      <EducatorHeaderMobile />
     </>
   );
 };

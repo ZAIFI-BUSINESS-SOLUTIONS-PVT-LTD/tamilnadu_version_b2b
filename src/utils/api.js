@@ -352,6 +352,26 @@ export const educatorLogin = async (email, password) => {
 };
 
 /**
+ * Institution Login
+ */
+export const institutionLogin = async (email, password) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/institution/login/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    return { error: 'Network error, please try again' };
+  }
+};
+
+/**
  * Register Educator (Handles CSV Upload)
  */
 export const registerEducator = async (formData) => {
@@ -562,5 +582,122 @@ export const generateTeacherSelfPdfReport = async (testId) => {
     return blob;
   } catch (error) {
     throw error;
+  }
+};
+
+// =============================================================================
+// 4. INSTITUTION DATA
+// =============================================================================
+
+/**
+ * Fetch Institution Educators
+ */
+export const fetchInstitutionEducators = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_BASE_URL}/institution/educators/`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching institution educators:', error);
+    return { error: 'Failed to fetch educators' };
+  }
+};
+
+/**
+ * Fetch Dashboard Data for a specific Educator (Institution View)
+ */
+export const getInstitutionEducatorDashboardData = async (educatorId) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_BASE_URL}/institution/educator/${educatorId}/dashboard/`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching educator dashboard data:', error);
+    return { error: 'Failed to fetch dashboard data' };
+  }
+};
+
+/**
+ * Fetch All Student Results for a specific Educator (Institution View)
+ */
+export const fetchInstitutionEducatorAllStudentResults = async (educatorId) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_BASE_URL}/institution/educator/${educatorId}/students/results/`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching educator student results:', error);
+    return { error: 'Failed to fetch student results' };
+  }
+};
+
+/**
+ * Fetch Institution Educator SWOT Analysis
+ */
+export const fetchInstitutionEducatorSWOT = async (educatorId, testNum) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.post(
+      `${API_BASE_URL}/institution/educator/${educatorId}/swot/`,
+      { test_num: testNum },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    const data = await response.data;
+    return data;
+  } catch (error) {
+    console.error('Error fetching SWOT data:', error);
+    return { error: 'Failed to fetch SWOT data' };
+  }
+};
+
+/**
+ * Fetch Available SWOT Tests for Institution Educator
+ */
+export const fetchAvailableSwotTests_InstitutionEducator = async (educatorId) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_BASE_URL}/institution/educator/${educatorId}/swot/tests/`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    return response.data?.available_tests || [];
+  } catch (error) {
+    console.error('Error fetching available SWOT tests:', error);
+    return [];
+  }
+};
+
+/**
+ * Fetch Institution Educator's Students
+ */
+export const fetchInstitutionEducatorStudents = async (educatorId) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_BASE_URL}/institution/educator/${educatorId}/students/`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    return response.data
+  } catch (error) {
+    console.error('Error fetching student name:', error);
+    return [];
   }
 };

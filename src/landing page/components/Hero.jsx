@@ -415,7 +415,7 @@ export default function HeroSection() {
         </div>
       </div>
       <motion.div
-        className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent pointer-events-none"
+        className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.7, duration: 0.6 }}

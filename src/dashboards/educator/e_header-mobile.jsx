@@ -2,8 +2,8 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
 import { fetcheducatordetail } from '../../utils/api.js';
-import HeaderBase from '../shared/header/HeaderBase.jsx';
-import UserDropdown from '../shared/header/UserDropDown.jsx';
+import HeaderBase from '../components/header/HeaderBase.jsx';
+import UserDropdown from '../components/header/UserDropDown.jsx';
 import Logo from '../../assets/images/logo.svg';
 
 /**

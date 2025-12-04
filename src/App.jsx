@@ -4,6 +4,7 @@ import { Index, Contact, PricingPage, BlogPage, BlogPostPage } from "./landing p
 import LoginOptions from './auth/loginoptions';
 import StudentLogin from './auth/student/studentlogin';
 import EducatorLogin from './auth/educator/educatorlogin';
+import InstitutionLogin from './auth/institution/institutionlogin';
 import EducatorRegister from './auth/educator/educatorregister';
 import AdminLogin from './auth/admin/adminlogin.jsx';
 import Unauthorized from './auth/Unauthorized';
@@ -34,6 +35,14 @@ import {
   SPerformance
 } from './dashboards/student';
 
+// Import institution layout and nested pages
+import {
+  ILayout,
+  IDashboard,
+  IAnalysis,
+  IStudentDetails
+} from './dashboards/institution';
+
 
 function App() {
   return (
@@ -60,6 +69,7 @@ function App() {
         <Route path="/auth" element={<LoginOptions />} />
         <Route path="/auth/student/login" element={<StudentLogin />} />
         <Route path="/auth/educator/login" element={<EducatorLogin />} />
+        <Route path="/auth/institution/login" element={<InstitutionLogin />} />
         <Route path="/auth/admin/login" element={<AdminLogin />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="/register" element={<EducatorRegister />} />
@@ -79,6 +89,13 @@ function App() {
           <Route path="dashboard" element={<SDashboard />} />
           <Route path="swot" element={<SSWOT />} />
           <Route path="performance" element={<SPerformance />} />
+        </Route>
+
+        {/* Institution protected pages via layout */}
+        <Route path="/institution/*" element={<ILayout />}>
+          <Route path="dashboard" element={<IDashboard />} />
+          <Route path="analysis" element={<IAnalysis />} />
+          <Route path="students" element={<IStudentDetails />} />
         </Route>
       </Routes>
     </>

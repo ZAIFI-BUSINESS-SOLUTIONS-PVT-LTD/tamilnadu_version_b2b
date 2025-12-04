@@ -231,9 +231,6 @@ const EducatorSignup = () => {
                   <p className="mt-1 text-sm text-gray-600">📄 {studentCSV.name}</p>
                 )}
               </div>
-              <div className="form-control">
-                {/* Biology split removed — educators no longer choose splitting here */}
-              </div>
               <motion.div
                 variants={buttonVariants}
                 whileHover="hover"
