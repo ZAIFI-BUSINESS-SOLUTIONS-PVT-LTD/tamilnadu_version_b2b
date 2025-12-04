@@ -9,7 +9,7 @@ import {
 } from "@phosphor-icons/react";
 import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
 import { fetcheducatordetail, fetchAvailableSwotTests_Educator, fetcheducatorstudent } from '../../utils/api.js';
-import MobileDock from '../shared/header/MobileDock.jsx';
+import MobileDock from '../components/header/MobileDock.jsx';
 import TeacherReportModal from './components/e_teacherreport.jsx';
 import StudentReportModal from './components/e_studentreport.jsx';
 import EducatorHeaderMobile from './e_header-mobile.jsx';
@@ -132,7 +132,7 @@ export const ELayout = () => {
 
 // Export educator pages for easy import
 export { default as EDashboard } from './e_dashboard.jsx';
-export { default as ESWOT } from './e_swot.jsx';
+export { default as ESWOT } from './e_analysis.jsx';
 export { default as EUpload } from './e_upload.jsx';
 export { default as EResults } from './e_studentdetails.jsx';
 export { default as EChatbot } from './e_chatbot.jsx';

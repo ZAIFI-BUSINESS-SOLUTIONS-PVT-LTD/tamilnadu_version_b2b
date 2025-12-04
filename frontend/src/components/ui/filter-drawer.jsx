@@ -26,6 +26,8 @@ const FilterDrawer = ({
     // new generic panels prop: [{ key, label, options, selected, onSelect }]
     panels,
     initialActivePanel,
+    // optional header title for the drawer (defaults to Subject & Test for backward compat)
+    title = 'Subject & Test',
 }) => {
     const [isMounted, setIsMounted] = useState(false);
     const [isVisible, setIsVisible] = useState(false);
@@ -82,10 +84,10 @@ const FilterDrawer = ({
     if (!isMounted) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex sm:hidden">
+        <div className="fixed inset-0 z-[70] flex sm:hidden">
             {/* backdrop */}
             <div
-                className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'
+                className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'
                     }`}
                 onClick={() => onOpenChange && onOpenChange(false)}
                 aria-hidden
@@ -93,16 +95,16 @@ const FilterDrawer = ({
 
             {/* drawer panel - slides from bottom */}
             <aside
-                className={`relative mt-auto w-full h-2/3 bg-white rounded-t-2xl shadow-2xl overflow-hidden transition-transform duration-300 ${isVisible ? 'translate-y-0' : 'translate-y-full'
-                    }`}
+                className={`relative mt-auto w-full h-1/2 bg-white rounded-t-2xl shadow-2xl overflow-hidden transform-gpu transition-all duration-300 ease-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`}
+                style={{ transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)' }}
             >
                 {/* drag handle */}
-                <div className="flex justify-center pt-3 pb-2">
-                    <div className="w-12 h-1.5 bg-gray-300 rounded-full"></div>
+                <div className="flex justify-center pt-2 pb-1">
+                    <div className="w-10 h-1 bg-gray-300 rounded-full"></div>
                 </div>
 
-                <div className="flex items-center justify-between p-4 border-b">
-                    <h3 className="text-lg font-bold">Subject &amp; Test</h3>
+                <div className="flex items-center justify-between p-3 border-b">
+                    <h3 className="text-lg font-semibold">{title}</h3>
                     <button
                         aria-label="Close drawer"
                         onClick={() => onOpenChange && onOpenChange(false)}
@@ -112,66 +114,109 @@ const FilterDrawer = ({
                     </button>
                 </div>
 
-                {/* two column layout: left nav + right content */}
-                <div className="flex flex-col h-[calc(100%-120px)]">
-                    <div className="flex flex-1 min-h-0">
-                        {/* Left nav */}
-                        <nav className="w-36 bg-gray-50 border-r flex-shrink-0" aria-label="Filter sections">
-                            <ul className="flex flex-col h-full">
-                                {panelsToShow.map((p) => (
-                                    <li key={p.key} className="flex-shrink-0">
-                                        <button
-                                            className={`w-full text-left px-4 py-4 ${activePanel === p.key ? 'bg-blue-50 text-blue-500' : ''}`}
-                                            onClick={() => setActivePanel(p.key)}
-                                            aria-selected={activePanel === p.key}
-                                        >
-                                            {p.label}
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-                        </nav>
+                {/* adaptive layout: when there's only one panel, hide the left nav and center the list */}
+                {/* use max-height so the content can shrink to fit its children but won't exceed available space */}
+                <div className="flex flex-col max-h-[calc(100%-96px)]">
+                    <div className="flex flex-1 min-h-0 ">
+                        {(() => {
+                            const singlePanel = panelsToShow.length <= 1;
 
-                        {/* Right content list - FIXED SCROLL CONTAINER */}
-                        <div className="flex-1 bg-white overflow-hidden mb-10">
-                            <div className="h-full p-4 overflow-y-auto">
-                                {(() => {
-                                    const panel = panelsToShow.find((p) => p.key === activePanel) || panelsToShow[0];
-                                    if (!panel) return null;
-                                    const opts = Array.isArray(panel.options) ? panel.options : [];
-                                    if (opts.length === 0) return <div className="text-sm text-gray-500">No options available.</div>;
-                                    return (
-                                        <ul className="space-y-4">
-                                            {opts.map((opt) => {
-                                                // Use local selection while the drawer is open. Falls back to
-                                                // the panel's provided `selected` value when local not present.
-                                                const current = (localSelections && localSelections[panel.key]) ?? panel.selected;
-                                                const isSelected = String(opt.value) === String(current);
-                                                return (
-                                                    <li key={String(opt.value)}>
-                                                        <button
-                                                            onClick={() => setLocalSelections((prev) => ({ ...prev, [panel.key]: opt.value }))}
-                                                            className="w-full flex items-center justify-between pr-2"
-                                                        >
-                                                            <span className="text-base truncate">{opt.label}</span>
-                                                            <span className="pl-2">
-                                                                {isSelected ? (
-                                                                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600">
-                                                                        <span className="w-2 h-2 rounded-full bg-white" />
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="inline-block w-5 h-5 rounded-full border-2 border-slate-600/60" />
-                                                                )}
-                                                            </span>
-                                                        </button>
-                                                    </li>
-                                                );
-                                            })}
+                            // compute current panel and options once so we can reuse in both layouts
+                            const panel = panelsToShow.find((p) => p.key === activePanel) || panelsToShow[0];
+                            if (!panel) return null;
+                            // Support dynamic options: panel.options can be either
+                            // - an array of {value,label} options, or
+                            // - a function that receives the current localSelections and returns an array
+                            const opts = typeof panel.options === 'function'
+                                ? panel.options(localSelections || {})
+                                : Array.isArray(panel.options)
+                                    ? panel.options
+                                    : [];
+
+                            const panelContent = (() => {
+                                if (opts.length === 0) return <div className="text-sm text-gray-500">No options available.</div>;
+                                return (
+                                    <ul className="space-y-2 w-full">
+                                        {opts.map((opt) => {
+                                            // Use local selection while the drawer is open. Falls back to
+                                            // the panel's provided `selected` value when local not present.
+                                            const current = (localSelections && localSelections[panel.key]) ?? panel.selected;
+                                            const isSelected = String(opt.value) === String(current);
+                                            return (
+                                                <li key={String(opt.value)}>
+                                                    <button
+                                                        onClick={() => setLocalSelections((prev) => ({ ...prev, [panel.key]: opt.value }))}
+                                                        className="w-full flex items-start justify-between pr-2 py-2 text-left"
+                                                    >
+                                                        {/* Left-align and allow wrapping in the right-column label.
+                                                            Place the "updated" dot centered vertically next to the label
+                                                            and use a slightly stronger color so it's visible on light backgrounds. */}
+                                                        <span className="flex items-center gap-2">
+                                                            <span className="text-sm text-left whitespace-normal break-words">{opt.label}</span>
+                                                            {opt.updated && (
+                                                                <span aria-hidden className="inline-flex flex-shrink-0 w-2 h-2 rounded-full bg-blue-200 ml-1" />
+                                                            )}
+                                                        </span>
+                                                        <span className="pl-2">
+                                                            {isSelected ? (
+                                                                // squared selection indicator with slightly rounded corners
+                                                                <span className="inline-flex items-center justify-center w-4 h-4 rounded-md bg-blue-600">
+                                                                    <span className="w-1.5 h-1.5 rounded-sm bg-white" />
+                                                                </span>
+                                                            ) : (
+                                                                // squared unselected box
+                                                                <span className="inline-block w-4 h-4 rounded-md border-2 border-slate-600/60" />
+                                                            )}
+                                                        </span>
+                                                    </button>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                );
+                            })();
+
+                            if (singlePanel) {
+                                // Centered single-column layout for cases where only one panel exists
+                                // The scroll container fills all available space and always scrolls if content overflows
+                                return (
+                                    <div className="flex-1 bg-white overflow-hidden mb-10">
+                                        <div className="h-full overflow-y-auto p-3">
+                                            {panelContent}
+                                        </div>
+                                    </div>
+                                );
+                            }
+
+                            // Default: two-column layout with left nav
+                            return (
+                                <>
+                                    {/* Left nav */}
+                                    <nav className="w-auto min-w-max bg-gray-50 border-r flex-shrink-0" aria-label="Filter sections">
+                                        <ul className="flex flex-col h-full">
+                                            {panelsToShow.map((p) => (
+                                                <li key={p.key} className="flex-shrink-0">
+                                                    <button
+                                                        className={`w-full text-left px-4 py-4 ${activePanel === p.key ? 'bg-blue-50 text-blue-500' : ''}`}
+                                                        onClick={() => setActivePanel(p.key)}
+                                                        aria-selected={activePanel === p.key}
+                                                    >
+                                                        {p.label}
+                                                    </button>
+                                                </li>
+                                            ))}
                                         </ul>
-                                    );
-                                })()}
-                            </div>
-                        </div>
+                                    </nav>
+
+                                    {/* Right content list - FIXED SCROLL CONTAINER */}
+                                    <div className="flex-1 bg-white overflow-hidden mb-10">
+                                        <div className="h-full p-4 overflow-y-auto">
+                                            {panelContent}
+                                        </div>
+                                    </div>
+                                </>
+                            );
+                        })()}
                     </div>
                 </div>
 

@@ -1,31 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  List,
   House,
   Target,
   ChartBar,
-  SignOut,
   Files,
-  TextAlignLeft,
-  CaretDown, // Not explicitly used for collapsible items in StudentHeader, but imported.
-  CaretRight // Not explicitly used for collapsible items in StudentHeader, but imported.
+  TextAlignLeft
 } from "@phosphor-icons/react";
 import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
 import { fetchstudentdetail } from '../../utils/api.js';
-import HeaderBase from '../shared/header/HeaderBase.jsx';
-import UserDropdown from '../shared/header/UserDropDown.jsx';
-import DesktopSidebar from '../shared/header/DesktopSidebar.jsx';
-import MobileSidebar from '../shared/header/MobileDock.jsx';
+import DesktopSidebar from '../components/header/DesktopSidebar.jsx';
+import UserDropdown from '../components/header/UserDropDown.jsx';
 import DownloadReportModal from './components/s_studentreport.jsx';
-import Logo from '../../assets/images/logo.svg';
+import StudentHeaderMobile from './s_header-mobile.jsx';
 
 /**
  * StudentHeader Component
  *
- * This component serves as the main header and navigation control for the student's dashboard.
- * It provides responsive layouts for mobile and desktop, including sidebar toggling,
- * student information display, notifications, and navigation links to various sections relevant to a student.
+ * This component serves as the desktop header and navigation control for the student's dashboard.
+ * It provides the desktop layout, including sidebar toggling,
+ * student information display, and navigation links to various sections relevant to a student.
  *
  * @param {object} props - The component props.
  * @param {boolean} props.isSidebarCollapsed - Controls the collapsed state of the desktop sidebar.
@@ -35,9 +29,6 @@ import Logo from '../../assets/images/logo.svg';
 const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
   // Fetch student user data using a custom hook
   const { userData: studentInfo, isLoading } = useUserData(fetchstudentdetail, { name: '', student_id: '' });
-
-  // State for controlling the visibility of the mobile sidebar
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // State for controlling the visibility of the student report download modal
   const [showDownloadModal, setShowDownloadModal] = useState(false);
@@ -116,40 +107,6 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
         <DownloadReportModal onClose={() => setShowDownloadModal(false)} />
       )}
 
-      {/* Mobile Header (visible on small screens) */}
-      <HeaderBase isMobile>
-        <div className="flex items-center justify-between w-full py-3">
-          {/* App Logo for Mobile (moved to the leftmost side) */}
-          <div className="flex items-center">
-            <img
-              src={Logo}
-              alt="InzightEd Logo"
-              className="h-7 pt-1"
-            />
-          </div>
-
-          {/* Mobile User Dropdown */}
-          <div className="flex">
-            {/* User Dropdown for Mobile */}
-            <UserDropdown
-              userInfo={studentInfo}
-              onLogout={handleLogout}
-              type="student"
-            />
-          </div>
-        </div>
-      </HeaderBase>
-
-      {/* Mobile Sidebar Component */}
-      <MobileSidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        items={sidebarItems}
-        additionalItems={additionalItems}
-        onLogout={handleLogout}
-        userInfo={studentInfo}
-      />
-
       {/* Desktop Layout (hidden on small screens, visible on medium and larger) */}
       <div className="hidden md:flex">
         {/* Desktop Sidebar Component */}
@@ -201,6 +158,8 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
           </div>
         </header>
       </div>
+
+      <StudentHeaderMobile />
     </>
   );
 };

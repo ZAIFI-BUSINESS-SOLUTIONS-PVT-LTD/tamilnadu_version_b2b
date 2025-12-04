@@ -6,7 +6,7 @@ import Table from '../components/ui/table.jsx';
 import { Button } from '../../components/ui/button.jsx';
 import { Input } from '../../components/ui/input.jsx';
 import { Loader2, Search, CheckCircle2, XCircle } from 'lucide-react';
-import SubjectConfig from './components/SubjectConfig.jsx';
+import LoadingPage from '../components/LoadingPage.jsx';
 import { toast } from 'react-hot-toast';
 
 // Lazy load the modal component to improve initial load time
@@ -25,12 +25,12 @@ const EUpload = () => {
   // State for sorting the table
   const [sortField, setSortField] = useState('test_num');
   const [sortDirection, setSortDirection] = useState('desc');
-  // State to track if the table component has been loaded
-  const [isTableLoaded, setIsTableLoaded] = useState(false);
   // State to ensure that the initial data loading has completed before rendering the table or empty state
   const [hasInitialLoadCompleted, setHasInitialLoadCompleted] = useState(false);
   // State for search input
   const [searchTerm, setSearchTerm] = useState("");
+
+
 
   // Preload the table component and initial test data on component mount
   useEffect(() => {
@@ -38,7 +38,6 @@ const EUpload = () => {
       try {
         // Only load test data, no need to import the old table component
         await loadTests();
-        setIsTableLoaded(true);
         setHasInitialLoadCompleted(true);
       } catch (error) {
         console.error('Failed to load resources', error);
@@ -97,67 +96,12 @@ const EUpload = () => {
   // Handler to clear the search input
   const clearSearch = () => setSearchTerm("");
 
-
-  // Handles the upload process and closes the modal upon successful upload
-  const handleUploadAndClose = async () => {
-    // Pass metadata config (if exists) to be sent with files
-    // Only include properties that are actually defined
-    let metadata = null;
-    if (savedMetadataConfig) {
-      metadata = {};
-      if (savedMetadataConfig.pattern !== undefined) {
-        metadata.pattern = savedMetadataConfig.pattern;
-      }
-      if (savedMetadataConfig.subject_order !== undefined) {
-        metadata.subject_order = savedMetadataConfig.subject_order;
-      }
-      if (savedMetadataConfig.total_questions !== undefined) {
-        metadata.total_questions = savedMetadataConfig.total_questions;
-      }
-      if (savedMetadataConfig.section_counts !== undefined && savedMetadataConfig.section_counts !== null) {
-        metadata.section_counts = savedMetadataConfig.section_counts;
-      }
-    }
-
-    console.debug('e_upload - metadata to send with upload:', metadata);
-    const success = await handleUpload(metadata);
-    if (success) {
-      setIsModalOpen(false);
-      setStep(0);
-      setSavedMetadataConfig(null); // Clear metadata for next upload
-      loadTests(); // Reload the test data after a successful upload
-    }
-  };
-
-  // State to control the visibility of the subject config modal
-  const [isSubjectConfigOpen, setIsSubjectConfigOpen] = useState(false);
-  // State to store the saved metadata config
-  const [savedMetadataConfig, setSavedMetadataConfig] = useState(null);
-
-  // Handle opening the upload flow - starts with subject config
+  // Handle opening the upload flow - open the unified modal (includes subject config)
   const handleStartUpload = () => {
-    setIsSubjectConfigOpen(true);
-  };
-
-  // Handle subject configuration completion - just save config locally, don't call API
-  const handleSubjectConfigComplete = (config) => {
-    // Store the config locally to be sent with file upload
-    console.debug('e_upload - received config from SubjectConfig:', config);
-    setSavedMetadataConfig(config);
-    toast.success('Subject configuration saved!');
-
-    // Close subject config and open file upload modal
-    setIsSubjectConfigOpen(false);
     setIsModalOpen(true);
   };
 
-  // Handle skipping subject configuration
-  const handleSubjectConfigSkip = () => {
-    // Close subject config and open file upload modal without saving metadata
-    setIsSubjectConfigOpen(false);
-    setIsModalOpen(true);
-    toast.info('Using automatic subject detection');
-  };
+  // Subject configuration is handled inside the UploadModal now.
 
   // Placeholder function for handling download action
   const handleDownload = (testId) => {
@@ -169,6 +113,19 @@ const EUpload = () => {
   const handleViewDetails = (testId) => {
     console.log('Viewing details for test', testId);
     // Implement view details logic here
+  };
+
+
+  // Handles the upload process and closes the modal upon successful upload
+  // Accepts optional `metadata` from the modal's subject configurator
+  const handleUploadAndClose = async (metadata = null) => {
+    console.debug('e_upload - metadata to send with upload:', metadata);
+    const success = await handleUpload(metadata);
+    if (success) {
+      setIsModalOpen(false);
+      setStep(0);
+      loadTests(); // Reload the test data after a successful upload
+    }
   };
 
   // Helper to get status info (icon, text, color)
@@ -213,7 +170,6 @@ const EUpload = () => {
     { field: 'test_num', label: 'Test #', sortable: true },
     { field: 'progress', label: 'Status', sortable: true },
     { field: 'createdAt', label: 'Uploaded', sortable: true },
-    { field: 'actions', label: 'Actions', sortable: false },
   ];
 
   // Render a row for the Table component
@@ -234,27 +190,14 @@ const EUpload = () => {
             timeStyle: "short"
           })}
         </td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm flex gap-2">
-          <button
-            className="btn btn-xs btn-outline btn-primary"
-            onClick={() => handleDownload(row.test_id)}
-          >
-            Download
-          </button>
-          <button
-            className="btn btn-xs btn-outline btn-secondary"
-            onClick={() => handleViewDetails(row.test_id)}
-          >
-            Details
-          </button>
-        </td>
+        {/* Actions column removed - actions are not shown in desktop table */}
       </tr>
     );
   };
 
   return (
     <div className="w-full mx-auto">
-      <div className="hidden sm:block card rounded-2xl border border-gray-250 bg-white w-full mt-8 p-8">
+      <div className="hidden sm:block card rounded-2xl border border-gray-250 bg-white w-full mt-20 p-8">
         <div>
           <div className="flex flex-col sm:flex-row justify-between items-center sm:pb-8 sm:border-b sm:border-gray-200 gap-4">
             {/* Heading on the left (hidden on mobile) */}
@@ -288,7 +231,7 @@ const EUpload = () => {
               <Button
                 variant="default"
                 size="md"
-                  onClick={handleStartUpload}
+                onClick={handleStartUpload}
                 className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-all hover:shadow-md"
               >
                 <span>Upload New Test</span>
@@ -298,8 +241,8 @@ const EUpload = () => {
 
           {/* Initial loading state */}
           {!hasInitialLoadCompleted ? (
-            <div className="min-h-[300px] flex items-center justify-center sm:border-b sm:border-gray-200">
-              <div className="animate-pulse">Loading dashboard...</div>
+            <div className="relative min-h-[300px] flex items-center justify-center sm:border-b sm:border-gray-200">
+              <LoadingPage fixed={false} className="bg-transparent" />
             </div>
           ) : tests.length > 0 ? (
             // Desktop/tablet: show table inside card on sm+ screens
@@ -331,23 +274,8 @@ const EUpload = () => {
             </div>
           )}
         </div>
-
-        {/* Render the upload modal if isModalOpen is true */}
-        {isModalOpen && (
-          <Suspense fallback={<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">Loading modal...</div>}>
-            <UploadModal
-              step={step}
-              setStep={setStep}
-              files={files}
-              setFiles={setFiles}
-              onSubmit={handleUploadAndClose}
-              onClose={() => setIsModalOpen(false)}
-              isUploading={isUploading}
-            />
-          </Suspense>
-        )}
       </div>
-      <div className="sm:hidden mt-4">
+      <div className="sm:hidden mt-4 px-3">
         <div className="card bg-transparent w-full pt-2">
           <div className="flex flex-col gap-3">
             <div className="relative">
@@ -375,6 +303,7 @@ const EUpload = () => {
               )}
             </div>
             <Button
+              variant="default"
               size="md"
               onClick={handleStartUpload}
               className="w-full px-4 py-2 rounded-xl h-12 text-md font-bold"
@@ -384,13 +313,13 @@ const EUpload = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Mobile-only table container: visible only on small screens */}
-      <div className="sm:hidden mt-6">
+      <div className="sm:hidden mt-6 px-3">
         <div className="card rounded-2xl border border-gray-250 bg-white w-full p-4">
           {!hasInitialLoadCompleted ? (
-            <div className="min-h-[200px] flex items-center justify-center">
-              <div className="animate-pulse">Loading dashboard...</div>
+            <div className="relative min-h-[200px] flex items-center justify-center">
+              <LoadingPage fixed={false} className="bg-transparent" />
             </div>
           ) : tests.length > 0 ? (
             <div className="space-y-4">
@@ -441,17 +370,11 @@ const EUpload = () => {
         <Plus size={22} weight="bold" />
       </Button>
 
-      {/* Subject Configuration Modal */}
-      {isSubjectConfigOpen && (
-        <SubjectConfig
-          onComplete={handleSubjectConfigComplete}
-          onSkip={handleSubjectConfigSkip}
-        />
-      )}
+      {/* Subject configuration moved inside the UploadModal component */}
 
       {/* Render the upload modal if isModalOpen is true */}
       {isModalOpen && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">Loading modal...</div>}>
+        <Suspense fallback={<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"><LoadingPage fixed={false} className="bg-transparent" /></div>}>
           <UploadModal
             step={step}
             setStep={setStep}

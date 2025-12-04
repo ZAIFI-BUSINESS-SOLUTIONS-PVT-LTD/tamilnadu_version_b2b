@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, ArrowCircleUp, WarningCircle, Funnel, CaretDown, Target, Lightning } from '@phosphor-icons/react';
 import { fetchStudentSWOT, fetchAvailableSwotTests } from '../../utils/api';
-import FilterDrawer from '../../components/ui/filter-drawer.jsx';
+// import FilterDrawer from '../../components/ui/filter-drawer.jsx'; // Removed for desktop
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, } from '../../components/ui/select.jsx';
 import PropTypes from 'prop-types';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card.jsx';
-import { Button } from '../../components/ui/button.jsx';
+// import { Button } from '../../components/ui/button.jsx'; // Removed for desktop
+// Import mobile component
+import SSWOTMobile from './s_swot-mobile.jsx';
+import LoadingPage from '../components/LoadingPage.jsx';
 // Custom hook to fetch and manage SWOT analysis data
 const useSwotData = (fetchSwotData, fetchAvailableTestsData) => {
-    // State for the currently selected subject
-    const [selectedSubject, setSelectedSubject] = useState('Physics');
+    // State for the currently selected subject. Start empty and set after data loads.
+    const [selectedSubject, setSelectedSubject] = useState('');
     // State for the currently selected test
     const [selectedTest, setSelectedTest] = useState('Overall');
     // State to hold the list of available tests
@@ -53,12 +56,31 @@ const useSwotData = (fetchSwotData, fetchAvailableTestsData) => {
                 const testNum = selectedTest === 'Overall' ? 0 : parseInt(selectedTest.split(' ')[1]);
                 // Fetch the SWOT data for the selected test
                 const response = await fetchSwotData(testNum);
+                // Debug: expose the raw response for debugging in browser console
+                try { console.log('fetchStudentSWOT response:', response); } catch (e) { /* ignore logging errors */ }
                 // If the response is successful and contains SWOT data
                 if (!response?.error && response?.swot) {
                     // Organize the raw SWOT data into a more structured format
                     const formatted = organizeSwotData(response.swot);
                     // Update the swotData state
                     setSwotData(formatted);
+                    // If there's no selected subject yet or the currently selected subject
+                    // is not present in the new data, pick the first available subject.
+                    const keys = Object.keys(formatted);
+                    if (keys.length > 0 && (!selectedSubject || !keys.includes(selectedSubject))) {
+                        // Preferred ordering for subjects
+                        const preferredOrder = ['Physics', 'Chemistry', 'Biology', 'Botany', 'Zoology'];
+                        // Pick the first subject present in formatted data according to preferred order
+                        let pick = keys[0];
+                        for (const name of preferredOrder) {
+                            const match = keys.find(k => k.toLowerCase() === name.toLowerCase());
+                            if (match) {
+                                pick = match;
+                                break;
+                            }
+                        }
+                        setSelectedSubject(pick);
+                    }
                 } else if (response?.error) {
                     console.error('Error fetching SWOT data:', response.error);
                     setSwotData({}); // Clear previous data on error
@@ -219,10 +241,9 @@ SwotSection.propTypes = {
 };
 
 /**
- * Hardcoded list of subjects. In a production environment, this might ideally be fetched from an API.
- * @type {string[]}
+ * Subjects are determined dynamically from the fetched `swotData`.
+ * If there's no data yet, fall back to a sensible default list to keep the UI usable.
  */
-const subjects = ['Physics', 'Chemistry', 'Botany', 'Zoology'];
 
 /**
  * SSWOT Component
@@ -286,39 +307,44 @@ const SSWOT = () => {
      * @type {Array<{value: string, label: string}>}
      */
     const testOptions = availableTests.map(test => ({ value: test, label: test }));
+    // Derive subjects from swotData when available, otherwise fall back to preferred defaults
+    const subjectsFromData = Object.keys(swotData || {});
+    const preferredOrder = ['Physics', 'Chemistry', 'Biology', 'Botany', 'Zoology'];
+
+    const subjects = subjectsFromData.length
+        ? // sort available subjects by preferredOrder, unknown items go to the end alphabetically
+        [...new Set(subjectsFromData)].sort((a, b) => {
+            const idxA = preferredOrder.findIndex(x => x.toLowerCase() === a.toLowerCase());
+            const idxB = preferredOrder.findIndex(x => x.toLowerCase() === b.toLowerCase());
+            if (idxA !== -1 || idxB !== -1) {
+                if (idxA === -1) return 1;
+                if (idxB === -1) return -1;
+                return idxA - idxB;
+            }
+            return a.localeCompare(b);
+        })
+        : preferredOrder;
+
     // Transform subjects into options for SelectDropdown
     const subjectOptions = subjects.map(subject => ({ value: subject, label: subject }));
 
-    // Panels for the generic FilterDrawer (keeps component fully generic)
-    const panels = [
-        { key: 'test', label: 'Test', options: testOptions, selected: selectedTest, onSelect: setSelectedTest },
-        { key: 'subject', label: 'Subject', options: subjectOptions, selected: selectedSubject, onSelect: setSelectedSubject },
-    ];
+    // Panels for the generic FilterDrawer (keeps component fully generic) - removed for desktop
+    // const panels = [
+    //     { key: 'test', label: 'Test', options: testOptions, selected: selectedTest, onSelect: setSelectedTest },
+    //     { key: 'subject', label: 'Subject', options: subjectOptions, selected: selectedSubject, onSelect: setSelectedSubject },
+    // ];
 
-    // Drawer state for filter selection (single common drawer for both Test and Subject)
-    const [drawerOpen, setDrawerOpen] = React.useState(false);
+    // Drawer state for filter selection (single common drawer for both Test and Subject) - removed for desktop
+    // const [drawerOpen, setDrawerOpen] = React.useState(false);
 
-    // Active panel key for the drawer
-    const [activePanelKey, setActivePanelKey] = React.useState('test');
+    // Active panel key for the drawer - removed for desktop
+    // const [activePanelKey, setActivePanelKey] = React.useState('test');
 
     // (no active tab needed for mobile — zones will stack)
 
     // Loading state
     if (loading) {
-        return (
-            <div className="flex flex-col justify-center items-center h-screen gap-4">
-                <svg
-                    className="animate-spin h-8 w-8 text-primary"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                >
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-                </svg>
-                <p className="text-gray-600">Loading insights...</p>
-            </div>
-        );
+        return <LoadingPage />;
     }
 
     // Error state
@@ -337,107 +363,64 @@ const SSWOT = () => {
     }
 
     return (
-        <div className="lg:mt-12 mt-6 sm:p-6 space-y-6">
-            {/* Selector Section */}
-            <div className="flex flex-col sm:flex-row  items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 mb-4 pb-4 bg-white sm:pt-4 px-4 pt-2 rounded-xl shadow-xl">
-                <Funnel className="hidden sm:block text-gray-400 w-5 h-5" />
-                {/* Mobile: buttons that open the drawer (keep desktop selects unchanged) */}
-                <div className="flex items-center gap-2 flex-1 lg:hidden">
-                    <span className="text-xs text-gray-400 min-w-max pl-1">Test:</span>
-                    <Button
-                        size="sm"
-                        variant="secondary"
-                        className="m-1 w-auto justify-start rounded-lg text-sm"
-                        onClick={() => { setActivePanelKey('test'); setDrawerOpen(true); }}
-                    >
-                        {selectedTest || 'Select Test'}
-                        <CaretDown size={2} className="ml-1" />
-                    </Button>
+        <>
+            <div className="block md:hidden">
+                <SSWOTMobile />
+            </div>
+            <div className="hidden md:block">
+                <div className="lg:mt-12 mt-6 sm:p-6 px-4 space-y-6">
+                    {/* Selector Section */}
+                    <div className="flex flex-col sm:flex-row  items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 mb-4 pb-4 bg-white sm:pt-4 px-4 pt-2 rounded-xl shadow-xl">
+                        <Funnel className="hidden sm:block text-gray-400 w-5 h-5" />
+                        {/* Desktop: keep original Select dropdowns */}
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-400 min-w-max pl-1">Test</span>
+                            <Select value={selectedTest} onValueChange={(v) => setSelectedTest && setSelectedTest(v)}>
+                                <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full sm:w-auto text-start">
+                                    <SelectValue placeholder="Select Test" />
+                                </SelectTrigger>
+                                <SelectContent side="bottom" align="end">
+                                    {testOptions.map(opt => (
+                                        <SelectItem key={String(opt.value)} value={opt.value}>
+                                            {opt.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
 
-                    <span className="text-xs text-gray-400 min-w-max pl-1">Sub:</span>
-                    <Button
-                        size="sm"
-                        variant="secondary"
-                        className="m-1 w-auto justify-start rounded-lg text-sm"
-                        onClick={() => { setActivePanelKey('subject'); setDrawerOpen(true); }}
-                    >
-                        {selectedSubject || 'Select Subject'}
-                        <CaretDown size={2} className="ml-1" />
-                    </Button>
-                </div>
+                            <span className="text-sm text-gray-400 min-w-max pl-1">Subject</span>
+                            <Select value={selectedSubject} onValueChange={(v) => setSelectedSubject && setSelectedSubject(v)}>
+                                <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full sm:w-auto text-start">
+                                    <SelectValue placeholder="Select Subject" />
+                                </SelectTrigger>
+                                <SelectContent side="bottom" align="end">
+                                    {subjectOptions.map(opt => (
+                                        <SelectItem key={String(opt.value)} value={opt.value}>
+                                            {opt.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
 
-                {/* Desktop: keep original Select dropdowns */}
-                <div className="hidden lg:flex items-center gap-2">
-                    <span className="text-sm text-gray-400 min-w-max pl-1">Test</span>
-                    <Select value={selectedTest} onValueChange={(v) => setSelectedTest && setSelectedTest(v)}>
-                        <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full sm:w-auto text-start">
-                            <SelectValue placeholder="Select Test" />
-                        </SelectTrigger>
-                        <SelectContent side="bottom" align="end">
-                            {testOptions.map(opt => (
-                                <SelectItem key={String(opt.value)} value={opt.value}>
-                                    {opt.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-
-                    <span className="text-sm text-gray-400 min-w-max pl-1">Subject</span>
-                    <Select value={selectedSubject} onValueChange={(v) => setSelectedSubject && setSelectedSubject(v)}>
-                        <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full sm:w-auto text-start">
-                            <SelectValue placeholder="Select Subject" />
-                        </SelectTrigger>
-                        <SelectContent side="bottom" align="end">
-                            {subjectOptions.map(opt => (
-                                <SelectItem key={String(opt.value)} value={opt.value}>
-                                    {opt.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    {/* Desktop/large screens: stacked vertical layout to make it look more filled */}
+                    <div className="flex flex-col space-y-6">
+                        {sections.map(({ label, icon, color, border }) => (
+                            <SwotSection
+                                key={label}
+                                label={label}
+                                icon={icon}
+                                color={color}
+                                border={border}
+                                data={swotData}
+                                selectedSubject={selectedSubject}
+                            />
+                        ))}
+                    </div>
                 </div>
             </div>
-
-            {/* SWOT Sections Display Grid */}
-            {/* Mobile: tabbed view for SWOT categories, mirrors educator layout */}
-            <div className="lg:hidden space-y-4">
-                {/* Filter Drawer (shared component) */}
-                <FilterDrawer
-                    open={drawerOpen}
-                    onOpenChange={(v) => setDrawerOpen(v)}
-                    panels={panels}
-                    initialActivePanel={activePanelKey}
-                />
-
-                {/* Stack all zones on mobile (no per-zone selection buttons) */}
-                {sections.map(({ label, icon, color, border }) => (
-                    <SwotSection
-                        key={label}
-                        label={label}
-                        icon={icon}
-                        color={color}
-                        border={border}
-                        data={swotData}
-                        selectedSubject={selectedSubject}
-                    />
-                ))}
-            </div>
-
-            {/* Desktop/large screens: stacked vertical layout to make it look more filled */}
-            <div className="hidden lg:flex lg:flex-col lg:space-y-6">
-                {sections.map(({ label, icon, color, border }) => (
-                    <SwotSection
-                        key={label}
-                        label={label}
-                        icon={icon}
-                        color={color}
-                        border={border}
-                        data={swotData}
-                        selectedSubject={selectedSubject}
-                    />
-                ))}
-            </div>
-        </div>
+        </>
     );
 };
 

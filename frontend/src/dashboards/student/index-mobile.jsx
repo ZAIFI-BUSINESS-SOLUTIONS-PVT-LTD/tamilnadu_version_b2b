@@ -8,7 +8,7 @@ import {
 } from "@phosphor-icons/react";
 import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
 import { fetchstudentdetail } from '../../utils/api.js';
-import MobileDock from '../shared/header/MobileDock.jsx';
+import MobileDock from '../components/header/MobileDock.jsx';
 import DownloadReportModal from './components/s_studentreport.jsx';
 import StudentHeaderMobile from './s_header-mobile.jsx';
 
