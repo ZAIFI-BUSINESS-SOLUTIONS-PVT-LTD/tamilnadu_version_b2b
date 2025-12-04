@@ -12,6 +12,7 @@ from exam.models.test_status import TestProcessingStatus
 from exam.models.swot import SWOT
 from exam.models.test_metadata import TestMetadata
 import logging
+import sentry_sdk
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +128,7 @@ def educator_register(request):
         return Response({"message": "Educator registered successfully!"}, status=201)
 
     except Exception as e:
+        logger.exception(f"Error in educator_register: {str(e)}")
         return Response({"error": str(e)}, status=500)
     
 @api_view(['GET'])
@@ -155,6 +157,7 @@ def get_educator_tests(request):
         return JsonResponse({'tests': test_data}, status=200)
 
     except Exception as e:
+        logger.exception(f"Error in get_educator_tests: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
 
 
@@ -216,6 +219,7 @@ def get_educator_dashboard(request):
             "testMetadata": test_metadata_map
         })
     except Exception as e:
+        logger.exception(f"Error in get_educator_dashboard: {str(e)}")
         return Response({"error": str(e)}, status=500)
 
 
@@ -257,6 +261,7 @@ def get_educator_swot(request):
         })
 
     except Exception as e:
+        logger.exception(f"Error in get_educator_swot: {str(e)}")
         return Response({"error": str(e)}, status=500)
 
 @api_view(['POST'])
@@ -336,7 +341,7 @@ def get_educatorstudent_insights(request):
         })
 
     except Exception as e:
-        logger.error(f"[ERROR] Exception in get_educatorstudent_insights: {str(e)}")
+        logger.exception(f"[ERROR] Exception in get_educatorstudent_insights: {str(e)}")
         #print(f"[ERROR] Exception in get_educatorstudent_insights: {str(e)}")
         return Response({"error": str(e)}, status=500)
 
@@ -364,7 +369,7 @@ def get_educator_student_tests(request):
         return Response({"available_tests": list(tests)})
 
     except Exception as e:
-        logger.error(f"[ERROR] Exception in get_educator_student_tests: {str(e)}")
+        logger.exception(f"[ERROR] Exception in get_educator_student_tests: {str(e)}")
         #print(f"[ERROR] Exception in get_educator_student_tests: {str(e)}")
         return Response({"error": str(e)}, status=500)
     
@@ -393,4 +398,5 @@ def get_educator_students_result(request):
             ))
         }, status=200)
     except Exception as e:
+        logger.exception(f"Error in get_educator_students_result: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)

@@ -1,10 +1,12 @@
 from neo4j import GraphDatabase
-from neo4j.exceptions import DriverError
+from neo4j.exceptions import DriverError, ServiceUnavailable, TransientError
 from dotenv import load_dotenv
 import os
 import time
+import logging
 
 load_dotenv()  # Load env vars from .env file
+logger = logging.getLogger(__name__)
 
 class KnowledgeGraphManager:
     def __init__(self, database_name, create_if_missing=False):
@@ -45,6 +47,51 @@ class KnowledgeGraphManager:
             session.run(f"DROP DATABASE `{self.database_name}` IF EXISTS")
 
     def run_query(self, query, **params):
-        with self.driver.session(database=self.database_name) as session:
-            result = session.run(query, **params)
-            return [record.data() for record in result]
+        """
+        Run a query with automatic retry logic for transient failures.
+        
+        Args:
+            query: Cypher query string
+            **params: Query parameters
+        
+        Returns:
+            list: Query results as list of dicts
+        """
+        max_attempts = 3
+        delay = 1
+        last_exception = None
+        
+        for attempt in range(1, max_attempts + 1):
+            try:
+                with self.driver.session(database=self.database_name) as session:
+                    result = session.run(query, **params)
+                    return [record.data() for record in result]
+            except (ServiceUnavailable, TransientError, DriverError) as e:
+                last_exception = e
+                logger.warning(
+                    f"⚠️ Neo4j query failed (attempt {attempt}/{max_attempts}) on db '{self.database_name}': {e}"
+                )
+                
+                if attempt < max_attempts:
+                    logger.info(f"🔄 Retrying in {delay}s...")
+                    time.sleep(delay)
+                    delay *= 2  # Exponential backoff
+                    
+                    # Try to recreate driver on connection errors
+                    try:
+                        self.driver.close()
+                        self.driver = GraphDatabase.driver(self.uri, auth=(self.username, self.password))
+                    except Exception as driver_error:
+                        logger.error(f"❌ Failed to recreate driver: {driver_error}")
+                else:
+                    logger.error(
+                        f"❌ Neo4j query failed after {max_attempts} attempts on db '{self.database_name}': {last_exception}"
+                    )
+            except Exception as e:
+                # Non-retryable errors
+                logger.error(f"❌ Neo4j query error (non-retryable) on db '{self.database_name}': {e}")
+                raise
+        
+        # If all retries failed, return empty list instead of raising
+        logger.warning(f"⚠️ Returning empty result after failed retries for db '{self.database_name}'")
+        return []

@@ -17,7 +17,7 @@ def classify_biology_questions(questions_list: list) -> list:
             Question: {question['question_text']}
             Options: {question['options']}
             """
-            model = "gemini-2.0-flash-lite"
+            model = "gemini-2.0-flash"
             subject = call_gemini_api_with_rotation(prompt, model)
             subject = subject.strip().title()
 

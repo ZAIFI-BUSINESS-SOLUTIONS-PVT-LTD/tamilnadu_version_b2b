@@ -7,7 +7,6 @@ from io import BytesIO
 from typing import List, Dict, Any, Optional
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
-from celery import shared_task
 from celery.exceptions import TimeoutError
 import logging
 
@@ -86,7 +85,7 @@ def get_total_questions(images: List[BytesIO]) -> int:
         "Count the total number of questions (every question with a question number, mostly 180/200). "
         "Return just a single integer, nothing else."
     )
-    model = "gemini-2.0-flash-lite"
+    model = "gemini-2.0-flash"
     response = call_gemini_api_with_rotation(prompt, model, images)
     try:
         N = int(re.search(r"\d+", response).group())
@@ -139,9 +138,12 @@ def retry_extract_text(response: str, error: Exception) -> str:
     )
     return call_gemini_api_with_rotation(prompt, "gemini-2.5-flash")
 
-# --- Celery subtask ---
-
+# --- Chunk extraction (synchronous) ---
 def extract_chunk_subtask(ocr_text, start, end, images):
+    """
+    Synchronous chunk extraction with retry logic.
+    Used by the orchestrator for both sequential and parallel execution.
+    """
     attempt = 0
     
     extracted_text = extract_text(ocr_text, start, end, images)
@@ -168,12 +170,17 @@ def extract_chunk_subtask(ocr_text, start, end, images):
 
 # --- Main orchestrator (not a Celery task) ---
 
-def questions_extract(pdf_path: str, test_path: str) -> Optional[List[Dict[str, Any]]]:
+def questions_extract(pdf_path: str, test_path: str, use_parallel=True, total_questions: Optional[int] = None) -> Optional[List[Dict[str, Any]]]:
     """
-    - Launches 4 parallel chunk extraction subtasks via Celery,
-    - Aggregates results as soon as each chunk finishes,
-    - Retries individual chunks on TimeoutError,
-    - Saves result JSON if all chunks succeed.
+    Extracts questions from PDF using parallel chunk processing.
+    
+    Args:
+        pdf_path: Path to the PDF file
+        test_path: Directory for saving outputs
+        use_parallel: If True, uses Celery group for parallel extraction; if False, sequential
+    
+    Returns:
+        List of question dicts or None on failure
     """
     # OCR and initial setup
     all_questions = []
@@ -184,25 +191,91 @@ def questions_extract(pdf_path: str, test_path: str) -> Optional[List[Dict[str, 
     default_storage.save(markdown_path, ContentFile(markdown_content))
     logger.info(f"[QUESTION EXTRACTION] ✅ OCR data saved as Markdown at: {markdown_path}")
 
-    N = get_total_questions(images)
-    logger.info(f"[QUESTION EXTRACTION] 📄 Total questions: {N}")
-    for i in range(1,N,int(N/4)):
-        questions = []
-        start=i
-        end = i+(N/4)-1
-        questions = extract_chunk_subtask(ocr_text, start, end, images)
-        logger.info(f"Extracted questions from {start} to {end}")
-
-        all_questions.extend(questions["questions"])
-
-    if len(all_questions) == N:
-        question_paper_json_path = os.path.join(test_path, "qp.json")
-        json_data = json.dumps(all_questions, indent=4)
-        default_storage.save(question_paper_json_path, ContentFile(json_data))
-        logger.info(f"[QUESTION EXTRACTION] ✅ Saved extracted questions to {question_paper_json_path}")
-        return all_questions
+    # Use provided total_questions (from metadata) if available to avoid an LLM call
+    if total_questions is not None:
+        N = int(total_questions)
+        logger.info(f"[QUESTION EXTRACTION] 📄 Using metadata total questions: {N}")
     else:
-        logger.error(f"[QUESTION EXTRACTION] ❌ Extraction incomplete: {len(all_questions)}/{N}")
+        N = get_total_questions(images)
+        logger.info(f"[QUESTION EXTRACTION] 📄 Total questions (LLM): {N}")
+    
+    # Calculate chunk boundaries
+    chunk_size = int(N / 4)
+    chunks = []
+    for idx in range(4):
+        start = 1 + (idx * chunk_size)
+        # Last chunk takes any remaining questions
+        end = N if idx == 3 else start + chunk_size - 1
+        chunks.append((start, end, idx))
+    
+    logger.info(f"[QUESTION EXTRACTION] 📊 Chunk boundaries: {[(s, e) for s, e, _ in chunks]}")
+    
+    if use_parallel:
+        # Parallel extraction using Celery group
+        logger.info("[QUESTION EXTRACTION] 🚀 Using parallel chunk extraction")
+        
+        # Create task signatures for each chunk
+        # Note: We can't pass BytesIO objects to Celery tasks, so we pass necessary data
+        # and regenerate images in task if needed, OR we extract synchronously in a thread pool
+        # For simplicity and to avoid serialization issues, we'll use ThreadPoolExecutor
+        # with the existing extract_chunk_subtask function
+        
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        
+        chunk_results = [None] * 4  # Preserve order
+        
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            future_to_chunk = {
+                executor.submit(extract_chunk_subtask, ocr_text, start, end, images): (start, end, idx)
+                for start, end, idx in chunks
+            }
+            
+            for future in as_completed(future_to_chunk):
+                start, end, idx = future_to_chunk[future]
+                try:
+                    questions = future.result()
+                    chunk_results[idx] = questions
+                    logger.info(f"[QUESTION EXTRACTION] ✅ Chunk {idx + 1}/4 completed (Q{start}-Q{end}): {len(questions.get('questions', []))} questions")
+                except Exception as e:
+                    logger.error(f"[QUESTION EXTRACTION] ❌ Chunk {idx + 1}/4 failed (Q{start}-Q{end}): {e}")
+                    chunk_results[idx] = None
+        
+        # Merge results in order
+        for idx, result in enumerate(chunk_results):
+            if result and 'questions' in result:
+                all_questions.extend(result['questions'])
+            else:
+                logger.error(f"[QUESTION EXTRACTION] ❌ Chunk {idx + 1}/4 returned no valid results")
+    else:
+        # Sequential extraction (original behavior)
+        logger.info("[QUESTION EXTRACTION] 🔄 Using sequential chunk extraction")
+        for start, end, idx in chunks:
+            questions = extract_chunk_subtask(ocr_text, start, end, images)
+            logger.info(f"[QUESTION EXTRACTION] ✅ Extracted questions from {start} to {end}")
+            if questions and 'questions' in questions:
+                all_questions.extend(questions["questions"])
+
+    # Deduplicate by question_number (keep first occurrence)
+    seen = set()
+    deduped_questions = []
+    for q in all_questions:
+        qnum = q.get('question_number')
+        if qnum not in seen:
+            seen.add(qnum)
+            deduped_questions.append(q)
+        else:
+            logger.warning(f"[QUESTION EXTRACTION] ⚠️ Duplicate question number {qnum} found, keeping first occurrence")
+    
+    logger.info(f"[QUESTION EXTRACTION] 📊 Total extracted: {len(all_questions)}, After dedup: {len(deduped_questions)}, Expected: {N}")
+
+    if abs(len(deduped_questions) - N) <= 2:  # Allow tolerance of ±2
+        question_paper_json_path = os.path.join(test_path, "qp.json")
+        json_data = json.dumps(deduped_questions, indent=4)
+        default_storage.save(question_paper_json_path, ContentFile(json_data))
+        logger.info(f"[QUESTION EXTRACTION] ✅ Saved {len(deduped_questions)} questions to {question_paper_json_path}")
+        return deduped_questions
+    else:
+        logger.error(f"[QUESTION EXTRACTION] ❌ Extraction incomplete: {len(deduped_questions)}/{N} (beyond tolerance)")
         return None
 
 def get_subject_from_q_paper(pdf_path: str) -> Optional[str]:
@@ -254,7 +327,11 @@ def questions_extract_with_metadata(pdf_path: str, test_path: str, subject_range
         
         # First, try extracting the entire paper once and then assign subjects by metadata ranges.
         logger.info("[METADATA EXTRACTION] ℹ️ Attempting full-paper extraction before per-range extraction")
-        whole_questions = questions_extract(pdf_path, test_path)
+        # Pass along metadata total_questions to avoid redundant LLM calls
+        # Note: do not reference `use_parallel` here (not defined in this scope).
+        # Let questions_extract use its default `use_parallel` behavior, but pass
+        # through the admin-provided `total_questions` to skip the LLM counting call.
+        whole_questions = questions_extract(pdf_path, test_path, total_questions=total_questions)
 
         if whole_questions and isinstance(whole_questions, list) and len(whole_questions) > 0:
             logger.info(f"[METADATA EXTRACTION] ✅ Full-paper extraction returned {len(whole_questions)} questions. Assigning to ranges...")

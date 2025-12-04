@@ -39,9 +39,6 @@ CELERY_RESULT_BACKEND=redis://broker:6379/1
 
 **Note**: A template `.env.docker` file is provided. You can copy it to `.env`:
 
-```powershell
-Copy-Item .env.docker .env
-```
 
 ### 2. Build and Start Services
 

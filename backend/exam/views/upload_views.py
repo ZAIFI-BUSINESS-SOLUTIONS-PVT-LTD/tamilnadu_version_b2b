@@ -11,6 +11,7 @@ from datetime import datetime
 import os
 import magic
 import logging
+import sentry_sdk
 
 logger = logging.getLogger(__name__)
 
@@ -178,6 +179,7 @@ def upload_test(request):
         return JsonResponse({'message': f'Test {test_num} uploaded successfully!', 'test_num': test_num}, status=200)
 
     except Exception as e:
+        logger.exception(f"Error in upload_test: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
 
 
@@ -293,7 +295,7 @@ def save_test_metadata(request):
         }, status=201 if created else 200)
         
     except Exception as e:
-        logger.error(f"Error saving test metadata: {e}")
+        logger.exception(f"Error saving test metadata: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
 
@@ -323,7 +325,7 @@ def get_test_metadata(request, class_id, test_num):
         }, status=200)
         
     except Exception as e:
-        logger.error(f"Error retrieving test metadata: {e}")
+        logger.exception(f"Error retrieving test metadata: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
 
@@ -360,5 +362,5 @@ def list_test_metadata_by_class(request, class_id):
         return JsonResponse({'class_id': class_id, 'metadata': mapping}, status=200)
 
     except Exception as e:
-        logger.error(f"Error listing test metadata for class {class_id}: {e}")
+        logger.exception(f"Error listing test metadata for class {class_id}: {e}")
         return JsonResponse({'error': str(e)}, status=500)

@@ -5,6 +5,7 @@ import concurrent.futures
 import re
 from exam.llm_call.prompts import performance_prompt as base_prompt
 import logging
+import sentry_sdk
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ def generate_perfomance_data(db_name):
             return subject, {}
 
         except Exception as e:
-            logger.error(f"❌ Error while generating performance for {subject}: {e}")
+            logger.exception(f"❌ Error while generating performance for {subject}: {e}")
             #print(f"❌ Error while generating performance for {subject}: {e}")
             return subject, {}
 
@@ -65,7 +66,7 @@ def generate_perfomance_data(db_name):
                 _, insights = future.result()
                 results[subject] = insights
             except Exception as e:
-                logger.error(f"❌ Failed processing {subject}: {e}")
+                logger.exception(f"❌ Failed processing {subject}: {e}")
                 #print(f"❌ Failed processing {subject}: {e}")
                 results[subject] = {}
     performance_insights = results

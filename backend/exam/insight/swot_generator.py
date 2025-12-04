@@ -10,6 +10,7 @@ import re
 
 from exam.graph_utils.knowledge_graph_manager import KnowledgeGraphManager
 import logging
+import sentry_sdk
 
 
 logger = logging.getLogger(__name__)
@@ -59,7 +60,7 @@ output format (JSON):
             insights_json = json.loads(stripped_response)
             return insights_json  # Success
         except Exception as e:
-            logger.error(f"Attempt {attempt} failed: {e}")
+            logger.exception(f"Attempt {attempt} failed: {e}")
             #print(f"Attempt {attempt} failed: {e}")
 
 
@@ -163,7 +164,7 @@ def generate_swot_data_with_AI(db_name, test_num):
                 try:
                     insights_by_metric[metric_key] = future.result()
                 except Exception as e:
-                    logger.error(f"Error for swot data: {e}")
+                    logger.exception(f"Error for swot data: {e}")
                     #print(f"Error for swot data: {e}")
         
         # For example, print the insight for subject 'Botany' from the SW_LRT metric
@@ -323,6 +324,6 @@ Insights:
         return swot_final  
 
     except Exception as e:
-        logger.error(f"❌ Error aggregating SWOT for educator: {e}")
+        logger.exception(f"❌ Error aggregating SWOT for educator: {e}")
         #print(f"❌ Error aggregating SWOT for educator: {e}")
         return None

@@ -1,0 +1,168 @@
+🚀 Starting Django application...
+⏳ Waiting for database to be ready...
+✅ Database is ready!
+🔄 Running database migrations...
+✅ Redis is reachable at broker:6379
+Operations to perform:
+  Apply all migrations: admin, auth, contenttypes, django_celery_beat, django_celery_results, exam, sessions
+Running migrations:
+  No migrations to apply.
+📦 Collecting static files...
+✅ Redis is reachable at broker:6379
+Deleting 'admin/img/calendar-icons.svg'
+Deleting 'admin/img/icon-deletelink.svg'
+Deleting 'admin/img/inline-delete.svg'
+Deleting 'admin/img/icon-addlink.svg'
+Deleting 'admin/img/icon-alert.svg'
+Deleting 'admin/img/icon-unknown.svg'
+Deleting 'admin/img/README.txt'
+Deleting 'admin/img/search.svg'
+Deleting 'admin/img/sorting-icons.svg'
+Deleting 'admin/img/icon-no.svg'
+Deleting 'admin/img/tooltag-add.svg'
+Deleting 'admin/img/icon-clock.svg'
+Deleting 'admin/img/icon-yes.svg'
+Deleting 'admin/img/icon-changelink.svg'
+Deleting 'admin/img/icon-unknown-alt.svg'
+Deleting 'admin/img/icon-hidelink.svg'
+Deleting 'admin/img/LICENSE'
+Deleting 'admin/img/icon-viewlink.svg'
+Deleting 'admin/css/vendor/select2/LICENSE-SELECT2.md'
+Deleting 'admin/css/vendor/select2/select2.min.css'
+Deleting 'admin/css/vendor/select2/select2.css'
+Deleting 'admin/js/urlify.js'
+Deleting 'admin/js/unusable_password_field.js'
+Deleting 'admin/js/nav_sidebar.js'
+Deleting 'admin/js/filters.js'
+Deleting 'admin/js/prepopulate.js'
+Deleting 'admin/js/cancel.js'
+Deleting 'admin/js/autocomplete.js'
+Deleting 'admin/js/jquery.init.js'
+Deleting 'admin/js/inlines.js'
+Deleting 'admin/js/popup_response.js'
+Deleting 'admin/js/actions.js'
+Deleting 'admin/js/vendor/select2/select2.full.min.js'
+Deleting 'admin/js/vendor/select2/LICENSE.md'
+Deleting 'admin/js/vendor/select2/select2.full.js'
+Deleting 'admin/js/vendor/select2/i18n/it.js'
+Deleting 'admin/js/vendor/select2/i18n/hi.js'
+Deleting 'admin/js/vendor/select2/i18n/el.js'
+Deleting 'admin/js/vendor/select2/i18n/hr.js'
+Deleting 'admin/js/vendor/select2/i18n/vi.js'
+Deleting 'admin/js/vendor/select2/i18n/is.js'
+Deleting 'admin/js/vendor/select2/i18n/uk.js'
+Deleting 'admin/js/vendor/select2/i18n/sq.js'
+Deleting 'admin/js/vendor/select2/i18n/ro.js'
+Deleting 'admin/js/vendor/select2/i18n/bs.js'
+Deleting 'admin/js/vendor/select2/i18n/de.js'
+Deleting 'admin/js/vendor/select2/i18n/tk.js'
+Deleting 'admin/js/vendor/select2/i18n/fa.js'
+Deleting 'admin/js/vendor/select2/i18n/gl.js'
+Deleting 'admin/js/vendor/select2/i18n/nb.js'
+Deleting 'admin/js/vendor/select2/i18n/az.js'
+Deleting 'admin/js/vendor/select2/i18n/af.js'
+Deleting 'admin/js/vendor/select2/i18n/nl.js'
+Deleting 'admin/js/vendor/select2/i18n/fr.js'
+Deleting 'admin/js/vendor/select2/i18n/hu.js'
+Deleting 'admin/js/vendor/select2/i18n/th.js'
+Deleting 'admin/js/vendor/select2/i18n/zh-TW.js'
+Deleting 'admin/js/vendor/select2/i18n/sr-Cyrl.js'
+Deleting 'admin/js/vendor/select2/i18n/ka.js'
+Deleting 'admin/js/vendor/select2/i18n/hy.js'
+Deleting 'admin/js/vendor/select2/i18n/pl.js'
+Deleting 'admin/js/vendor/select2/i18n/lt.js'
+Deleting 'admin/js/vendor/select2/i18n/ar.js'
+Deleting 'admin/js/vendor/select2/i18n/id.js'
+Deleting 'admin/js/vendor/select2/i18n/ms.js'
+Deleting 'admin/js/vendor/select2/i18n/sr.js'
+Deleting 'admin/js/vendor/select2/i18n/es.js'
+Deleting 'admin/js/vendor/select2/i18n/sv.js'
+Deleting 'admin/js/vendor/select2/i18n/fi.js'
+Deleting 'admin/js/vendor/select2/i18n/lv.js'
+Deleting 'admin/js/vendor/select2/i18n/et.js'
+Deleting 'admin/js/vendor/select2/i18n/ps.js'
+Deleting 'admin/js/vendor/select2/i18n/da.js'
+Deleting 'admin/js/vendor/select2/i18n/hsb.js'
+Deleting 'admin/js/vendor/select2/i18n/ru.js'
+Deleting 'admin/js/vendor/select2/i18n/ja.js'
+Deleting 'admin/js/vendor/select2/i18n/ca.js'
+Deleting 'admin/js/vendor/select2/i18n/bg.js'
+Deleting 'admin/js/vendor/select2/i18n/bn.js'
+Deleting 'admin/js/vendor/select2/i18n/en.js'
+Deleting 'admin/js/vendor/select2/i18n/he.js'
+Deleting 'admin/js/vendor/select2/i18n/zh-CN.js'
+Deleting 'admin/js/vendor/select2/i18n/mk.js'
+Deleting 'admin/js/vendor/select2/i18n/eu.js'
+Deleting 'admin/js/vendor/select2/i18n/pt.js'
+Deleting 'admin/js/vendor/select2/i18n/pt-BR.js'
+Deleting 'admin/js/vendor/select2/i18n/ko.js'
+Deleting 'admin/js/vendor/select2/i18n/tr.js'
+Deleting 'admin/js/vendor/select2/i18n/km.js'
+Deleting 'admin/js/vendor/select2/i18n/cs.js'
+Deleting 'admin/js/vendor/select2/i18n/dsb.js'
+Deleting 'admin/js/vendor/select2/i18n/sk.js'
+Deleting 'admin/js/vendor/select2/i18n/sl.js'
+Deleting 'admin/js/vendor/select2/i18n/ne.js'
+Deleting 'rest_framework/css/bootstrap-tweaks.css'
+Deleting 'rest_framework/css/font-awesome-4.0.3.css'
+Deleting 'rest_framework/css/bootstrap.min.css'
+Deleting 'rest_framework/css/bootstrap-theme.min.css'
+Deleting 'rest_framework/css/bootstrap-theme.min.css.map'
+Deleting 'rest_framework/css/prettify.css'
+Deleting 'rest_framework/css/default.css'
+Deleting 'rest_framework/css/bootstrap.min.css.map'
+Deleting 'rest_framework/docs/img/favicon.ico'
+Deleting 'rest_framework/docs/img/grid.png'
+Deleting 'rest_framework/docs/css/highlight.css'
+Deleting 'rest_framework/docs/css/base.css'
+Deleting 'rest_framework/docs/css/jquery.json-view.min.css'
+Deleting 'rest_framework/docs/js/highlight.pack.js'
+Deleting 'rest_framework/docs/js/jquery.json-view.min.js'
+Deleting 'rest_framework/docs/js/api.js'
+Deleting 'rest_framework/fonts/fontawesome-webfont.woff'
+Deleting 'rest_framework/fonts/fontawesome-webfont.svg'
+Deleting 'rest_framework/fonts/glyphicons-halflings-regular.eot'
+Deleting 'rest_framework/fonts/glyphicons-halflings-regular.svg'
+Deleting 'rest_framework/fonts/glyphicons-halflings-regular.ttf'
+Deleting 'rest_framework/fonts/fontawesome-webfont.eot'
+Deleting 'rest_framework/fonts/glyphicons-halflings-regular.woff2'
+Deleting 'rest_framework/fonts/fontawesome-webfont.ttf'
+Deleting 'rest_framework/fonts/glyphicons-halflings-regular.woff'
+Deleting 'rest_framework/js/prettify-min.js'
+Deleting 'rest_framework/js/default.js'
+Deleting 'rest_framework/js/ajax-form.js'
+Deleting 'rest_framework/js/load-ajax-form.js'
+Deleting 'rest_framework/js/jquery-3.7.1.min.js'
+Deleting 'rest_framework/js/coreapi-0.1.1.js'
+Deleting 'rest_framework/js/bootstrap.min.js'
+Deleting 'rest_framework/js/csrf.js'
+
+140 static files copied to '/usr/src/app/static_root', 28 unmodified.
+✅ Initialization complete!
+✅ Redis is reachable at broker:6379
+ 
+ -------------- celery@67f02a4ed63a v5.3.6 (emerald-rush)
+--- ***** ----- 
+-- ******* ---- Linux-6.14.0-1017-aws-x86_64-with-glibc2.41 2025-12-03 22:12:13
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         inzighted:0x7cd9655b1790
+- ** ---------- .> transport:   redis://broker:6379/0
+- ** ---------- .> results:     redis://broker:6379/1
+- *** --- * --- .> concurrency: 3 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . exam.services.process_test_data.process_test_data
+  . exam.services.save_students.save_students
+  . exam.services.update_dashboard.update_educator_dashboard
+  . exam.services.update_dashboard.update_single_student_dashboard
+  . exam.services.update_dashboard.update_student_dashboard
+  . exam.utils.analysis_generator.process_question_batch_task
+  . exam.utils.student_analysis.analyse_students
+  . exam.utils.student_analysis.analyze_single_student
+

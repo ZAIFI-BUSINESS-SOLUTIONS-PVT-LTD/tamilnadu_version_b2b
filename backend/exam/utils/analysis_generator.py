@@ -2,8 +2,22 @@ from exam.llm_call.gemini_api import call_gemini_api_with_rotation
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from exam.llm_call.NEET_data import chapter_list
 import logging
+import threading
+from celery import shared_task, group, current_task
 
 logger = logging.getLogger(__name__)
+
+# Global semaphore to limit concurrent LLM API calls across all threads/workers
+# This prevents overwhelming the API when running multiple batches in parallel
+_llm_semaphore = threading.Semaphore(6)  # Max 6 concurrent LLM calls
+
+
+def _is_running_in_celery_task():
+    """Check if we're currently executing inside a Celery task."""
+    try:
+        return current_task.request.id is not None
+    except (AttributeError, RuntimeError):
+        return False
 
 
 def parse_metadata(response,subject):
@@ -77,7 +91,7 @@ im_desp: {q['im_desp']}
     subject = None
 
     while not subject:
-        response = call_gemini_api_with_rotation(prompt,model_name="gemini-2.5-flash-preview-05-20")
+        response = call_gemini_api_with_rotation(prompt, model_name="gemini-2.5-flash")
 
         if response:
             subject = response
@@ -362,21 +376,26 @@ def chunk_questions(q_list, chunk_size):
 
 def process_question_batch(batch, excluded_subjects=None, known_subject=None):
     """
-    Processes a batch of 45 questions — full pipeline with subject inference.
+    Core logic: Processes a batch of 45 questions with ThreadPool for 3 LLM tasks.
     
     Args:
         batch: List of question dicts
         excluded_subjects: List of subjects to exclude (already assigned to other batches)
+        known_subject: Subject provided from metadata (skips inference if provided)
+    
+    Returns:
+        List of processed question results with metadata, feedback, and errors
     """
+    # Ensure fresh DB connections for this worker (Django thread safety)
+    try:
+        from django.db import close_old_connections
+        close_old_connections()
+    except ImportError:
+        pass  # Not in Django context
 
-    def task_runner(fn, data):
-        try:
-            return fn(data)
-        except Exception as e:
-            logger.error(f"[Error in {fn.__name__}] {e}")
-            #print(f"[Error in {fn.__name__}] {e}")
-            return []
+    logger.info(f"🔄 Processing batch with {len(batch)} questions (subject={known_subject or 'infer'})")
 
+    # Use ThreadPoolExecutor (max_workers=3) for the 3 LLM tasks within this batch
     with ThreadPoolExecutor(max_workers=3) as executor:
         future_metadata = executor.submit(recursive_metadata_generation, batch, excluded_subjects, known_subject)
         future_feedback = executor.submit(generate_feedback_with_gemini_batch, batch)
@@ -432,40 +451,121 @@ def process_question_batch(batch, excluded_subjects=None, known_subject=None):
         })
     return results
 
-def analyze_questions_in_batches(questions_list, chunk_size, known_subject=None):
+
+@shared_task
+def process_question_batch_task(batch, excluded_subjects=None, known_subject=None):
+    """
+    Celery task wrapper: Delegates to process_question_batch for actual processing.
+    """
+    return process_question_batch(batch, excluded_subjects, known_subject)
+
+
+def analyze_questions_in_batches(questions_list, chunk_size, known_subject=None, max_batch_workers=3):
     """
     Takes a full list of questions (e.g., 180), splits into 45-question chunks,
-    and processes each using Gemini: subject detection, metadata, feedback, and error analysis.
-    Ensures each batch gets a unique subject assignment.
+    and processes each using Celery workers with subject detection, metadata, feedback, and error analysis.
+    
+    Args:
+        questions_list: List of question dicts to process
+        chunk_size: Number of questions per batch (e.g., 45)
+        known_subject: If provided (from admin metadata), batches run in PARALLEL via Celery.
+                      If None, batches run SEQUENTIALLY with subject inference.
+        max_batch_workers: Max parallel Celery tasks when known_subject is provided (default: 3)
+    
+    Returns:
+        List of processed question results with metadata, feedback, and errors
+    
+    Behavior:
+        - known_subject provided: Batches processed in parallel via Celery group (faster)
+        - known_subject=None: Batches processed sequentially to ensure unique subject per batch
     """
-    # Prepare each question for Gemini input format
+    # Close any stale DB connections before spawning tasks (Django thread safety)
+    try:
+        from django.db import close_old_connections
+        close_old_connections()
+    except ImportError:
+        pass  # Not in Django context
 
     results = []
     question_batches = list(chunk_questions(questions_list, chunk_size))
     logger.info(f"🔄 Total Batches: {len(question_batches)} (each of {chunk_size} questions)")
-    #print(f"🔄 Total Batches: {len(question_batches)} (each of {chunk_size} questions)")
-
-    assigned_subjects = []
     
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        futures = []
-        for batch in question_batches:
-            # If a known subject is provided (from admin metadata), pass it through
-            future = executor.submit(process_question_batch, batch, assigned_subjects.copy(), known_subject)
-            futures.append(future)
+    # Check if we're running inside a Celery task
+    in_celery_task = _is_running_in_celery_task()
+    
+    if known_subject:
+        if in_celery_task:
+            # FALLBACK MODE: We're already in a Celery task, use local ThreadPool to avoid .get() blocking
+            logger.info(f"⚙️ Running inside Celery task - using local ThreadPool for batch processing (subject={known_subject}, workers={max_batch_workers})")
             
-            # Wait for this batch to complete and extract its subject before starting next
-            batch_result = future.result()
-            if batch_result:
-                # Determine batch subject: if known_subject provided, use it; else use detected subject
-                if known_subject:
-                    batch_subject = known_subject
+            # Process batches locally using ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=max_batch_workers) as executor:
+                # Submit all batch jobs
+                future_to_batch = {
+                    executor.submit(process_question_batch, batch, None, known_subject): idx
+                    for idx, batch in enumerate(question_batches)
+                }
+                
+                # Collect results as they complete
+                batch_results = [None] * len(question_batches)
+                for future in as_completed(future_to_batch):
+                    batch_idx = future_to_batch[future]
+                    try:
+                        batch_result = future.result()
+                        batch_results[batch_idx] = batch_result
+                        if batch_result:
+                            logger.info(f"✅ Batch {batch_idx + 1}/{len(question_batches)} completed")
+                        else:
+                            logger.error(f"❌ Batch {batch_idx + 1}/{len(question_batches)} returned empty results")
+                    except Exception as e:
+                        logger.error(f"❌ Batch {batch_idx + 1}/{len(question_batches)} failed: {e}")
+                        batch_results[batch_idx] = None
+                
+                # Flatten results in order
+                for batch_result in batch_results:
+                    if batch_result:
+                        results.extend(batch_result)
+        else:
+            # PARALLEL MODE: Not in a Celery task, safe to use Celery group
+            logger.info(f"🚀 Celery parallel batch processing enabled (subject={known_subject}, max_workers={max_batch_workers})")
+            
+            # Create Celery group with all batch tasks
+            batch_tasks = [
+                process_question_batch_task.s(batch, None, known_subject)
+                for batch in question_batches
+            ]
+            
+            # Execute all tasks in parallel and collect results
+            job = group(batch_tasks)
+            result_group = job.apply_async()
+            
+            # Wait for all tasks to complete and collect results in order
+            batch_results = result_group.get()  # Safe to call .get() here (not in a task)
+            
+            for idx, batch_result in enumerate(batch_results):
+                if batch_result:
+                    results.extend(batch_result)
+                    logger.info(f"✅ Batch {idx + 1}/{len(question_batches)} completed")
                 else:
-                    batch_subject = batch_result[0].get("Subject")
-
+                    logger.error(f"❌ Batch {idx + 1}/{len(question_batches)} returned empty results")
+    else:
+        # SEQUENTIAL MODE: Subject inference required, process batches one-by-one
+        logger.info("🔄 Sequential batch processing (subject inference mode)")
+        assigned_subjects = []
+        
+        for idx, batch in enumerate(question_batches):
+            logger.info(f"🔄 Processing batch {idx + 1}/{len(question_batches)} sequentially...")
+            
+            # Always use local processing for sequential mode (subject inference)
+            batch_result = process_question_batch(batch, assigned_subjects.copy(), None)
+            
+            if batch_result:
+                batch_subject = batch_result[0].get("Subject")
                 if batch_subject and batch_subject not in assigned_subjects:
                     assigned_subjects.append(batch_subject)
-                    logger.info(f"✅ Batch assigned subject: {batch_subject}. Excluded for next batches: {assigned_subjects}")
-            results.extend(batch_result)
+                    logger.info(f"✅ Batch {idx + 1} assigned subject: {batch_subject}. Excluded for next: {assigned_subjects}")
+                results.extend(batch_result)
+            else:
+                logger.error(f"❌ Batch {idx + 1} returned empty results")
 
     return results

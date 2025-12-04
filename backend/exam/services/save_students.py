@@ -3,6 +3,7 @@ from exam.utils.csv_processing import process_student_csv
 from exam.models.educator import Educator
 from exam.ingestions.populate_student import save_students_to_db
 import logging
+import sentry_sdk
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ def save_students(email, class_id):
         except Exception as e:
             educator.csv_status = "failed"
             educator.save(update_fields=["csv_status"])
-            logger.error(f"saving students failed for class {class_id}")
+            logger.exception(f"saving students failed for class {class_id}")
             #print(f"saving students failed for class {class_id}")
     
     else:

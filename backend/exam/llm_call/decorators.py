@@ -20,7 +20,7 @@ def trace_api_call(user_type=None, user_id=None):
             error = None
             response = ""
             prompt = kwargs.get("prompt", "")
-            current_model_name = kwargs.get("model_name", "gemini-2.0-flash-thinking-exp-01-21")
+            current_model_name = kwargs.get("model_name", "gemini-2.5-flash")
             from exam.llm_call.gemini_api import get_next_key, call_gemini_api
             import sys
 

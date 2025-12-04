@@ -55,12 +55,25 @@ def call_mistral_ocr_api(pdf_file,api_key):
     return data
     
 
+# Import semaphore from analysis_generator to enforce global LLM concurrency limit
+try:
+    from exam.utils.analysis_generator import _llm_semaphore
+except ImportError:
+    import threading
+    _llm_semaphore = threading.Semaphore(6)  # Fallback if not yet defined
+
 def call_mistrall_ocr_api_with_rotation(pdf_file):
     """
     Attempts up to RETRIES * len(API_KEYS) calls.
     Each attempt picks the next key in a round-robin manner.
     If resource exhausted (or 429) or any error occurs, it does exponential backoff, then tries the next key.
     """
+    # Acquire semaphore to limit global LLM concurrency
+    with _llm_semaphore:
+        return _call_mistrall_ocr_api_with_rotation_impl(pdf_file)
+
+def _call_mistrall_ocr_api_with_rotation_impl(pdf_file):
+    """Internal implementation of call_mistrall_ocr_api_with_rotation (wrapped by semaphore)"""
     total_attempts = RETRIES * len(API_KEYS)
     attempt_count = 0
 

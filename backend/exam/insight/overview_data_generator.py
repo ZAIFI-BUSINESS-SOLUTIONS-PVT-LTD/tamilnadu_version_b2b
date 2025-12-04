@@ -9,6 +9,7 @@ from exam.models.overview import Overview
 from exam.models.test import Test
 from exam.llm_call.prompts import overview_prompts as prompts
 import logging
+import sentry_sdk
 
 logger = logging.getLogger(__name__)
 
@@ -187,6 +188,6 @@ Insights:
         return aggregated_metrics, insight_key_map,keyInsightsData, email
     
     except Exception as e:
-        logger.error(f"❌ Error updating teacher dashboard: {str(e)}")
+        logger.exception(f"❌ Error updating teacher dashboard: {str(e)}")
         #print(f"❌ Error updating teacher dashboard: {str(e)}")
         return None

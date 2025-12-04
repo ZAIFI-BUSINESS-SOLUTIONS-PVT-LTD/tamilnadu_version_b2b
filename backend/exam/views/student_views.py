@@ -9,6 +9,10 @@ from exam.models.swot import SWOT
 from django.http import JsonResponse
 from exam.models.educator import Educator
 from exam.models.test_metadata import TestMetadata
+import logging
+import sentry_sdk
+
+logger = logging.getLogger(__name__)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -26,6 +30,7 @@ def get_student_details(request):
         return JsonResponse({'name': name, "student_id": student_id, "class_id":class_id, "inst": inst_name}, status=200)
 
     except Exception as e:
+        logger.exception(f"Error in get_student_details: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
 
 
@@ -89,6 +94,7 @@ def get_student_dashboard(request):
             "testMetadata": test_metadata_map
         })
     except Exception as e:
+        logger.exception(f"Error in get_student_dashboard: {str(e)}")
         return Response({"error": str(e)}, status=500)
 
 
@@ -120,6 +126,7 @@ def get_student_performance(request):
         })
 
     except Exception as e:
+        logger.exception(f"Error in get_student_performance: {str(e)}")
         return Response({"error": str(e)}, status=500)
 
 
@@ -155,6 +162,7 @@ def get_student_swot(request):
         })
 
     except Exception as e:
+        logger.exception(f"Error in get_student_swot: {str(e)}")
         return Response({"error": str(e)}, status=500)
     
 

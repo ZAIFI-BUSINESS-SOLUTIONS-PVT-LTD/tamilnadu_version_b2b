@@ -5,6 +5,7 @@ from celery import shared_task
 from django.utils.timezone import now
 from exam.models.test_status import TestProcessingStatus
 import logging
+import sentry_sdk
 
 logger = logging.getLogger(__name__)
 
@@ -52,21 +53,21 @@ def start_from_analysis(class_id, test_num):
                 status_obj.status = "Failed"
                 status_obj.logs += f"❌ Error Updating students dashboard {test_num} for class {class_id}: {e}"
                 status_obj.save()
-                logger.error(f"❌ Error Updating students dashboard {test_num} for class {class_id}: {e}")
+                logger.exception(f"❌ Error Updating students dashboard {test_num} for class {class_id}: {e}")
                 #print(f"❌ Error Updating students dashboard {test_num} for class {class_id}: {e}")
             
         except Exception as e:
             status_obj.status = "Failed"
             status_obj.logs += f"❌ Error analysing student {test_num} for class {class_id}: {e}"
             status_obj.save()
-            logger.error(f"❌ Error analysing student {test_num} for class {class_id}: {e}")
+            logger.exception(f"❌ Error analysing student {test_num} for class {class_id}: {e}")
             #print(f"❌ Error analysing student {test_num} for class {class_id}: {e}")
 
     except Exception as e:
         status_obj.status = "Failed"
         status_obj.logs += f"❌ Error analysing test {test_num} for class {class_id}: {e}"
         status_obj.save()
-        logger.error(f"❌ Error analysing test {test_num} for class {class_id}: {e}")
+        logger.exception(f"❌ Error analysing test {test_num} for class {class_id}: {e}")
         #print(f"❌ Error analysing test {test_num} for class {class_id}: {e}")
 
 
@@ -109,14 +110,14 @@ def start_from_student_analysis(class_id, test_num):
             status_obj.status = "Failed"
             status_obj.logs += f"❌ Error Updating students dashboard {test_num} for class {class_id}: {e}"
             status_obj.save()
-            logger.error(f"❌ Error Updating students dashboard {test_num} for class {class_id}: {e}")
+            logger.exception(f"❌ Error Updating students dashboard {test_num} for class {class_id}: {e}")
             #print(f"❌ Error Updating students dashboard {test_num} for class {class_id}: {e}")
             
     except Exception as e:
         status_obj.status = "Failed"
         status_obj.logs += f"❌ Error analysing student {test_num} for class {class_id}: {e}"
         status_obj.save()
-        logger.error(f"❌ Error analysing student {test_num} for class {class_id}: {e}")
+        logger.exception(f"❌ Error analysing student {test_num} for class {class_id}: {e}")
         #print(f"❌ Error analysing student {test_num} for class {class_id}: {e}")
 
 @shared_task
@@ -142,6 +143,9 @@ def start_dashboard_update(class_id, test_num):
 
     except Exception as e:
         status_obj.status = "Failed"
+        status_obj.logs += f"❌ Error Updating students dashboard {test_num} for class {class_id}: {e}"
+        status_obj.save()
+        logger.exception(f"❌ Error Updating students dashboard {test_num} for class {class_id}: {e}")
         status_obj.logs += f"❌ Error Updating students dashboard {test_num} for class {class_id}: {e}"
         status_obj.save()
         logger.error(f"❌ Error Updating students dashboard {test_num} for class {class_id}: {e}")

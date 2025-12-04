@@ -36,6 +36,14 @@ CORS_ALLOWED_ORIGINS = _parse_env_list('CORS_ALLOWED_ORIGINS') or [
 ]
 CORS_ALLOW_CREDENTIALS = True
 
+# === Proxy SSL Configuration (for ALB/ACM) ===
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+CSRF_TRUSTED_ORIGINS = [
+    'https://tamilnaduapi.inzighted.com',
+    'https://tamilnadu.inzighted.com',
+]
+SECURE_SSL_REDIRECT = False  # ALB handles HTTPS redirect
+
 # === Email Configuration (Zoho SMTP) ===
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # Use SMTP backend for sending emails
@@ -132,7 +140,9 @@ USE_TZ = True
 
 # === Static Files ===
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+# Put collected static files where the Docker `static_data` volume and nginx expect them.
+# Default to `/usr/src/app/static_root` but allow overriding with env var.
+STATIC_ROOT = os.getenv('DJANGO_STATIC_ROOT', '/usr/src/app/static_root')
 
 # === AWS S3 Storage ===
 AWS_S3_REGION_NAME = 'us-east-1'  # e.g., 'us-east-1'
@@ -181,8 +191,24 @@ SIMPLE_JWT = {
 # === Sentry Error Logging ===
 SENTRY_DSN = os.getenv("SENTRY_DSN", "")  # Optional env var
 if SENTRY_DSN:
+    from sentry_sdk.integrations.django import DjangoIntegration
+    from sentry_sdk.integrations.logging import LoggingIntegration
+    from sentry_sdk.integrations.celery import CeleryIntegration
+    
+    sentry_logging = LoggingIntegration(
+        level=None,         # Don't capture logs as breadcrumbs by default
+        event_level="ERROR" # Send ERROR+ logs as Sentry events
+    )
+    
     sentry_sdk.init(
         dsn=SENTRY_DSN,
-        traces_sample_rate=1.0,  # optional: controls performance tracing
+        integrations=[
+            DjangoIntegration(),
+            sentry_logging,
+            CeleryIntegration()
+        ],
+        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+        send_default_pii=os.getenv("SENTRY_SEND_PII", "false").lower() in ("1", "true", "yes"),
+        environment=os.getenv("SENTRY_ENV", os.getenv("DJANGO_ENV", "development")),
     )
 

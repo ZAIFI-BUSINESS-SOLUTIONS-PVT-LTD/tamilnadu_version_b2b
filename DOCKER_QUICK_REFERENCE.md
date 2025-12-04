@@ -34,7 +34,7 @@ docker compose down -v
 ```powershell
 # All services
 docker compose logs -f
-
+docker compose logs app --tail=100
 # Specific service
 docker compose logs -f app
 docker compose logs -f worker
@@ -98,25 +98,6 @@ docker compose exec worker celery -A inzighted --workdir /usr/src/app/backend in
 
 # Check Celery registered tasks
 docker compose exec worker celery -A inzighted --workdir /usr/src/app/backend inspect registered
-```
-
-## 🐛 Troubleshooting
-
-```powershell
-# View recent errors (last 100 lines)
-docker compose logs app --tail=100
-
-# Rebuild from scratch
-docker compose down -v
-docker rmi tamilnadu_backend_app:latest tamilnadu_backend_worker:latest
-docker compose build --no-cache
-docker compose up -d
-
-# Check if entrypoint completed
-docker compose exec app ls -la /usr/src/app/static_root
-
-# Test database connectivity from container
-docker compose exec app python -c "import psycopg2; print('DB OK')"
 ```
 
 ## 📋 Environment Setup
