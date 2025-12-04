@@ -701,3 +701,74 @@ export const fetchInstitutionEducatorStudents = async (educatorId) => {
     return [];
   }
 };
+
+/**
+ * Create a new student (Institution View)
+ */
+export const createInstitutionStudent = async (educatorId, payload) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.post(`${API_BASE_URL}/institution/educator/${educatorId}/students/create/`, payload, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error creating student:', error);
+    return { error: error.response?.data?.error || 'Failed to create student' };
+  }
+};
+
+/**
+ * Update a student (Institution View)
+ */
+export const updateInstitutionStudent = async (educatorId, studentId, payload) => {
+  try {
+    const token = localStorage.getItem('token');
+    // Quick client-side guard: ensure token role is manager to avoid sending wrong-role tokens
+    try {
+      if (token) {
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const body = JSON.parse(atob(parts[1]));
+          if (body.role !== 'manager') {
+            return { error: 'Forbidden: not logged in as institution manager' };
+          }
+        }
+      }
+    } catch (e) {
+      // ignore decode errors and proceed to let server validate
+    }
+    const response = await axios.put(`${API_BASE_URL}/institution/educator/${educatorId}/students/${encodeURIComponent(studentId)}/`, payload, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error updating student:', error);
+    return { error: error.response?.data?.error || 'Failed to update student' };
+  }
+};
+
+/**
+ * Delete a student (Institution View)
+ */
+export const deleteInstitutionStudent = async (educatorId, studentId) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.delete(`${API_BASE_URL}/institution/educator/${educatorId}/students/${encodeURIComponent(studentId)}/`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting student:', error);
+    return { error: error.response?.data?.error || 'Failed to delete student' };
+  }
+};

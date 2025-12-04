@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path
-from exam.views import auth_views, student_views, admin_views, upload_views, educator_views
+from exam.views import auth_views, student_views, admin_views, upload_views, educator_views, institution_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -10,6 +10,7 @@ urlpatterns = [
     path('api/admin/login/', auth_views.admin_login, name='admin_login'),
     path('api/educator/login/', auth_views.educator_login, name='educator_login'),
     path('api/student/login/', auth_views.student_login, name='student_login'),
+    path('api/institution/login/', auth_views.institution_login, name='institution_login'),
     
 
     path('api/student/details/', student_views.get_student_details, name='student_details'),
@@ -55,5 +56,16 @@ urlpatterns = [
     path('api/test-metadata/', upload_views.save_test_metadata, name='save_test_metadata'),
     path('api/test-metadata/list/<str:class_id>/', upload_views.list_test_metadata_by_class, name='list_test_metadata_by_class'),
     path('api/test-metadata/<str:class_id>/<int:test_num>/', upload_views.get_test_metadata, name='get_test_metadata'),
+
+    # Institution APIs (Manager viewing educators and their students)
+    path('api/institution/educators/', institution_views.get_institution_educators, name='get_institution_educators'),
+    path('api/institution/educator/<int:educator_id>/dashboard/', institution_views.get_institution_educator_dashboard, name='get_institution_educator_dashboard'),
+    path('api/institution/educator/<int:educator_id>/students/results/', institution_views.get_institution_educator_students_result, name='get_institution_educator_students_result'),
+    path('api/institution/educator/<int:educator_id>/swot/', institution_views.get_institution_educator_swot, name='get_institution_educator_swot'),
+    path('api/institution/educator/<int:educator_id>/swot/tests/', institution_views.list_institution_educator_swot_tests, name='list_institution_educator_swot_tests'),
+    path('api/institution/educator/<int:educator_id>/students/', institution_views.get_institution_educator_students, name='get_institution_educator_students'),
+    # IMPORTANT: More specific routes must come before generic ones
+    path('api/institution/educator/<int:educator_id>/students/create/', institution_views.create_institution_student, name='create_institution_student'),
+    path('api/institution/educator/<int:educator_id>/students/<str:student_id>/', institution_views.manage_institution_student, name='manage_institution_student'),
 
 ]

@@ -2,13 +2,33 @@ import React, { useEffect, useState } from 'react';
 import { fetchEducatorAllStudentResults, fetcheducatorstudent } from '../../../utils/api';
 import Table from '../../components/ui/table.jsx';
 
-const EStudentListMock = () => {
-    const [rawResults, setRawResults] = useState([]);
-    const [loading, setLoading] = useState(true);
+// Accept optional props so parent components (like Institution dashboard)
+// can supply `rawResults` and `studentNameMap` directly and avoid the
+// educator-scoped API calls which require an educator token.
+const EStudentListMock = ({ rawResults: propRawResults = null, studentNameMap: propStudentNameMap = null }) => {
+    const [rawResults, setRawResults] = useState(propRawResults || []);
+    const [loading, setLoading] = useState(!propRawResults);
     const [error, setError] = useState(null);
-    const [studentNameMap, setStudentNameMap] = useState({});
+    const [studentNameMap, setStudentNameMap] = useState(propStudentNameMap || {});
 
     useEffect(() => {
+        // If parent supplied results, skip fetching from educator endpoints.
+        if (propRawResults) {
+            setRawResults(propRawResults);
+            // Build a simple name map from provided results to avoid educator name API call
+            try {
+                const map = {};
+                propRawResults.forEach(r => {
+                    if (r.student_id && r.student_name) map[r.student_id] = r.student_name;
+                });
+                if (Object.keys(map).length) setStudentNameMap(map);
+            } catch (e) {
+                // ignore
+            }
+            setLoading(false);
+            return;
+        }
+
         const fetchResults = async () => {
             try {
                 const results = await fetchEducatorAllStudentResults();
@@ -25,25 +45,29 @@ const EStudentListMock = () => {
             }
         };
 
-
-        const fetchNames = async () => {
-            try {
-                const res = await fetcheducatorstudent();
-                if (res && Array.isArray(res.students)) {
-                    const map = {};
-                    res.students.forEach(s => {
-                        map[s.student_id] = s.name;
-                    });
-                    setStudentNameMap(map);
+        // If parent supplied names map, skip fetching names.
+        if (propStudentNameMap) {
+            setStudentNameMap(propStudentNameMap);
+        } else {
+            const fetchNames = async () => {
+                try {
+                    const res = await fetcheducatorstudent();
+                    if (res && Array.isArray(res.students)) {
+                        const map = {};
+                        res.students.forEach(s => {
+                            map[s.student_id] = s.name;
+                        });
+                        setStudentNameMap(map);
+                    }
+                } catch (err) {
+                    console.error("Error fetching student names:", err);
                 }
-            } catch (err) {
-                console.error("Error fetching student names:", err);
-            }
-        };
+            };
+            fetchNames();
+        }
 
         fetchResults();
-        fetchNames();
-    }, []);
+    }, [propRawResults, propStudentNameMap]);
 
     if (loading) {
         return (

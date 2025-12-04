@@ -104,3 +104,35 @@ def student_login(request):
         logger.error("❌ Student Not Found")
         #print("❌ Student Not Found")
         return Response({'error': 'Student not found'}, status=404)
+
+
+# ✅ Institution (Manager) Login API
+@api_view(['POST'])
+def institution_login(request):
+    """
+    Institution login using Manager model.
+    Manager acts as an institution representative.
+    """
+    email = request.data.get('email')
+    password = request.data.get('password')
+
+    logger.info(f"🔍 Institution Login Attempt: {email}")
+
+    try:
+        manager = Manager.objects.get(email=email)
+        if check_password(password, manager.password):
+            tokens = get_tokens_for_user(manager, "manager")
+            logger.info("✅ Institution Login Successful")
+            return Response({
+                'token': tokens['access'],
+                'role': 'manager',
+                'institution': manager.institution
+            }, status=200)
+        
+        logger.warning("❌ Institution Login Failed: Invalid credentials")
+        return Response({'error': 'Invalid credentials'}, status=401)
+
+    except ObjectDoesNotExist:
+        logger.error("❌ Institution Manager Not Found")
+        return Response({'error': 'Institution not found'}, status=404)
+

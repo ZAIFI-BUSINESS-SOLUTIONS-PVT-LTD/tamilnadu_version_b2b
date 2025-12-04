@@ -6,6 +6,7 @@ class Manager(models.Model):
     name = models.CharField(max_length=255)
     email = models.EmailField(unique=True)
     password = models.CharField(max_length=255)  # ✅ Storing hashed passwords
+    institution = models.CharField(max_length=255, blank=True, null=True)  # ✅ Institution field for manager
 
     def set_password(self, raw_password):
         """Hashes and sets the password securely."""

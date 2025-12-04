@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { fetchInstitutionEducatorAllStudentResults, fetchInstitutionEducatorStudents } from '../../utils/api';
+import { fetchInstitutionEducatorAllStudentResults, fetchInstitutionEducatorStudents, createInstitutionStudent, updateInstitutionStudent, deleteInstitutionStudent } from '../../utils/api';
 import { useNavigate } from 'react-router-dom';
 import {
   MagnifyingGlass,
@@ -25,8 +25,13 @@ function IStudentDetails() {
   const [groupedResults, setGroupedResults] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [modalStudent, setModalStudent] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ name: '', dob: '', password: '' });
   const [studentNameMap, setStudentNameMap] = useState({});
   const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [deleteSummary, setDeleteSummary] = useState(null);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [newStudent, setNewStudent] = useState({ class_id: '', student_id: '', name: '', dob: '' });
   const [sortField, setSortField] = useState('rank');
   const [sortDirection, setSortDirection] = useState('desc');
   const [scoreRange, setScoreRange] = useState([0, 100]);
@@ -59,6 +64,35 @@ function IStudentDetails() {
       setLoading(false);
     }
   }, [selectedEducatorId]);
+
+  // Show a short summary box after deletion with counts returned by backend
+  const renderDeleteSummary = () => {
+    if (!deleteSummary) return null;
+    const { message, counts } = deleteSummary;
+    return (
+      <div className="mb-4 p-4 rounded-md bg-green-50 border border-green-200">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="font-semibold">{message}</p>
+            <div className="text-sm text-gray-700 mt-2">
+              {Object.keys(counts).length === 0 ? (
+                <span>No related records were found.</span>
+              ) : (
+                <ul className="list-disc ml-5">
+                  {Object.entries(counts).map(([k, v]) => (
+                    <li key={k}>{k}: {v}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+          <div>
+            <button className="btn btn-sm btn-ghost" onClick={() => setDeleteSummary(null)}>Dismiss</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   useEffect(() => {
     if (!selectedEducatorId) return;
@@ -270,9 +304,14 @@ function IStudentDetails() {
                 <SlidersHorizontal className="w-5 h-5" weight="bold" />
                 <span>Filter</span>
               </button>
+              <button className="btn btn-primary flex items-center gap-2" onClick={() => { setCreateModalOpen(true); setNewStudent({ class_id: '', student_id: '', name: '', dob: '' }); }}>
+                <span>Create Student</span>
+              </button>
             </div>
           </div>
         </div>
+
+        {renderDeleteSummary()}
 
         <div className="overflow-x-auto">
           {sortedResults.length > 0 ? (
@@ -324,6 +363,81 @@ function IStudentDetails() {
         </div>
 
         <Modal
+          open={createModalOpen}
+          onClose={() => setCreateModalOpen(false)}
+          title={'Create Student'}
+          maxWidth="max-w-lg"
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Class ID</label>
+              <input
+                className="input input-bordered w-full"
+                value={newStudent.class_id}
+                placeholder="Optional: class id (will default to educator's class)"
+                onChange={e => setNewStudent(prev => ({ ...prev, class_id: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Student ID</label>
+              <input
+                className="input input-bordered w-full"
+                value={newStudent.student_id}
+                onChange={e => setNewStudent(prev => ({ ...prev, student_id: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Name</label>
+              <input
+                className="input input-bordered w-full"
+                value={newStudent.name}
+                onChange={e => setNewStudent(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">DOB</label>
+              <input
+                type="date"
+                className="input input-bordered w-full"
+                value={newStudent.dob}
+                onChange={e => setNewStudent(prev => ({ ...prev, dob: e.target.value }))}
+              />
+            </div>
+            <div className="modal-action mt-4 flex gap-2">
+              <button
+                className="btn btn-primary"
+                onClick={async () => {
+                  setError(null);
+                  try {
+                    // Validate required fields
+                    if (!newStudent.student_id || !newStudent.name || !newStudent.dob) {
+                      setError('student_id, name and dob are required');
+                      return;
+                    }
+                    const payload = { student_id: newStudent.student_id.trim(), name: newStudent.name.trim(), dob: newStudent.dob };
+                    if (newStudent.class_id && newStudent.class_id.trim() !== '') payload.class_id = newStudent.class_id.trim();
+                    const res = await createInstitutionStudent(selectedEducatorId, payload);
+                    if (res.error) {
+                      setError(res.error);
+                    } else {
+                      setDeleteSummary({ message: res.message || 'Student created', counts: {} });
+                      await fetchResults();
+                      setCreateModalOpen(false);
+                    }
+                  } catch (err) {
+                    console.error(err);
+                    setError('Failed to create student');
+                  }
+                }}
+              >
+                Create
+              </button>
+              <button className="btn btn-ghost" onClick={() => setCreateModalOpen(false)}>Cancel</button>
+            </div>
+          </div>
+        </Modal>
+
+        <Modal
           open={!!modalStudent}
           onClose={() => setModalStudent(null)}
           title={modalStudent ? (
@@ -336,57 +450,165 @@ function IStudentDetails() {
         >
           {modalStudent && (
             <>
-              <div className="flex flex-wrap gap-x-6 gap-y-2 mb-4">
-                <div className="flex items-center gap-2">
-                  <Exam className="text-gray-400" weight="bold" />
+              {isEditing ? (
+                <div className="space-y-4">
                   <div>
-                    <p className="text-sm text-gray-500">Tests</p>
-                    <p className="font-medium">{modalStudent.tests_taken}</p>
+                    <label className="block text-sm font-medium text-gray-700">Name</label>
+                    <input
+                      className="input input-bordered w-full"
+                      value={editForm.name}
+                      onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">DOB</label>
+                    <input
+                      type="date"
+                      className="input input-bordered w-full"
+                      value={editForm.dob}
+                      onChange={e => setEditForm(prev => ({ ...prev, dob: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Password</label>
+                    <input
+                      type="password"
+                      className="input input-bordered w-full"
+                      value={editForm.password}
+                      placeholder="Leave blank to keep current password"
+                      onChange={e => setEditForm(prev => ({ ...prev, password: e.target.value }))}
+                    />
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <ChartBar className="text-gray-400" weight="bold" />
-                  <div>
-                    <p className="text-sm text-gray-500">Average</p>
-                    <p className="font-medium">{modalStudent.average_score}</p>
+              ) : (
+                <div>
+                  <div className="flex flex-wrap gap-x-6 gap-y-2 mb-4">
+                    <div className="flex items-center gap-2">
+                      <Exam className="text-gray-400" weight="bold" />
+                      <div>
+                        <p className="text-sm text-gray-500">Tests</p>
+                        <p className="font-medium">{modalStudent.tests_taken}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <ChartBar className="text-gray-400" weight="bold" />
+                      <div>
+                        <p className="text-sm text-gray-500">Average</p>
+                        <p className="font-medium">{modalStudent.average_score}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <h4 className="text-md font-semibold text-gray-800 mb-2">Test Performance</h4>
+                  <div className="overflow-x-auto">
+                    <table className="table table-zebra table-sm">
+                      <thead>
+                        <tr>
+                          <th>Test #</th>
+                          <th>Total Score</th>
+                          <th>Physics</th>
+                          <th>Chemistry</th>
+                          <th>Biology</th>
+                          <th>Botany</th>
+                          <th>Zoology</th>
+                          <th>Accuracy</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {modalStudent.test_results.map((test, index) => (
+                          <tr key={index}>
+                            <td>{test.test_num}</td>
+                            <td className="font-medium">{test.total_score}</td>
+                            <td>{test.phy_score || "-"}</td>
+                            <td>{test.chem_score || "-"}</td>
+                            <td>{test.bio_score || "-"}</td>
+                            <td>{test.bot_score || "-"}</td>
+                            <td>{test.zoo_score || "-"}</td>
+                            <td>
+                              {test.total_attended ? Math.round((test.total_correct / test.total_attended) * 100) + '%' : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-              </div>
-              <h4 className="text-md font-semibold text-gray-800 mb-2">Test Performance</h4>
-              <div className="overflow-x-auto">
-                <table className="table table-zebra table-sm">
-                  <thead>
-                    <tr>
-                      <th>Test #</th>
-                      <th>Total Score</th>
-                      <th>Physics</th>
-                      <th>Chemistry</th>
-                      <th>Biology</th>
-                      <th>Botany</th>
-                      <th>Zoology</th>
-                      <th>Accuracy</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {modalStudent.test_results.map((test, index) => (
-                      <tr key={index}>
-                        <td>{test.test_num}</td>
-                        <td className="font-medium">{test.total_score}</td>
-                        <td>{test.phy_score || "-"}</td>
-                        <td>{test.chem_score || "-"}</td>
-                        <td>{test.bio_score || "-"}</td>
-                        <td>{test.bot_score || "-"}</td>
-                        <td>{test.zoo_score || "-"}</td>
-                        <td>
-                          {test.total_attended ? Math.round((test.total_correct / test.total_attended) * 100) + '%' : '-'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="modal-action mt-6">
-                <button className="btn" onClick={() => setModalStudent(null)}>Close</button>
+              )}
+
+              <div className="modal-action mt-6 flex gap-2">
+                        {isEditing ? (
+                  <>
+                    <button
+                      className="btn btn-primary"
+                              onClick={async () => {
+                                try {
+                                  // Build payload with only non-empty fields (all fields are optional)
+                                  const payload = {};
+                                  if (editForm.name && editForm.name.trim() !== '') payload.name = editForm.name.trim();
+                                  if (editForm.dob && editForm.dob.trim() !== '') payload.dob = editForm.dob.trim();
+                                  if (editForm.password && editForm.password.trim() !== '') payload.password = editForm.password.trim();
+                                  
+                                  // Ensure at least one field is being updated
+                                  if (Object.keys(payload).length === 0) {
+                                    setError('Please enter at least one field to update');
+                                    return;
+                                  }
+
+                                  const res = await updateInstitutionStudent(selectedEducatorId, modalStudent.student_id, payload);
+                          if (res.error) {
+                            setError(res.error);
+                          } else {
+                            // Refresh and close edit mode
+                            await fetchResults();
+                            setIsEditing(false);
+                            setModalStudent(null);
+                          }
+                        } catch (err) {
+                          console.error(err);
+                          setError('Failed to update student');
+                        }
+                      }}
+                    >
+                      Save
+                    </button>
+                    <button className="btn btn-ghost" onClick={() => setIsEditing(false)}>Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      className="btn btn-error"
+                      onClick={async () => {
+                        if (!window.confirm('Delete this student and all related data?')) return;
+                        try {
+                          const res = await deleteInstitutionStudent(selectedEducatorId, modalStudent.student_id);
+                          if (res.error) {
+                            setError(res.error);
+                          } else {
+                            // Save deletion summary to show to the user
+                            setDeleteSummary({ message: res.message || 'Deleted', counts: res.deleted_counts || {} });
+                            await fetchResults();
+                            setModalStudent(null);
+                          }
+                        } catch (err) {
+                          console.error(err);
+                          setError('Failed to delete student');
+                        }
+                      }}
+                    >
+                      Delete
+                    </button>
+                    <button
+                      className="btn"
+                      onClick={() => {
+                        setIsEditing(true);
+                        setEditForm({ name: modalStudent.student_name || '', dob: modalStudent.dob || '', password: '' });
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button className="btn" onClick={() => setModalStudent(null)}>Close</button>
+                  </>
+                )}
               </div>
             </>
           )}
