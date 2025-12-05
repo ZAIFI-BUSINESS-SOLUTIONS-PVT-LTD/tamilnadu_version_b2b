@@ -10,6 +10,7 @@ import {
   CaretRight,
   ChalkboardTeacher,
   Target,
+  ChatCircleDots,
   List
 } from "@phosphor-icons/react";
 import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
@@ -18,6 +19,7 @@ import UserDropdown from '../components/header/UserDropDown.jsx';
 import DesktopSidebar from '../components/header/DesktopSidebar.jsx';
 import TeacherReportModal from './components/e_teacherreport.jsx';
 import StudentReportModal from './components/e_studentreport.jsx';
+import FeedbackModal from '../components/feedback/FeedbackModal.jsx';
 import EducatorHeaderMobile from './e_header-mobile.jsx';
 
 /**
@@ -39,6 +41,7 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
   // States for controlling the visibility of report modals
   const [showStudentReportModal, setShowStudentReportModal] = useState(false);
   const [showTeacherReportModal, setShowTeacherReportModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   // State for controlling the collapsed state of the 'Reports' section in the sidebar
   const [isReportsCollapsed, setIsReportsCollapsed] = useState(true);
@@ -132,6 +135,11 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
       caretIcon: isReportsCollapsed ? <CaretRight size={16} /> : <CaretDown size={16} />,
       // Always provide the children for mobile dock popups. Desktop will respect `isCollapsed`.
       children: reportItems
+    },
+    {
+      icon: <ChatCircleDots weight="regular" size={20} />,
+      text: 'Feedback',
+      onClick: () => setShowFeedbackModal(true)
     }
   ];
 
@@ -194,6 +202,9 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
       )}
       {showTeacherReportModal && (
         <TeacherReportModal onClose={() => setShowTeacherReportModal(false)} />
+      )}
+      {showFeedbackModal && (
+        <FeedbackModal onClose={() => setShowFeedbackModal(false)} userType="educator" />
       )}
 
       {/* Desktop Layout (visible on medium and larger screens) */}

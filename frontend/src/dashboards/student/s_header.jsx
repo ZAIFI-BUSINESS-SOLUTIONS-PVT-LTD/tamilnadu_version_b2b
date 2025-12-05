@@ -5,6 +5,7 @@ import {
   Target,
   ChartBar,
   Files,
+  ChatCircleDots,
   TextAlignLeft
 } from "@phosphor-icons/react";
 import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
@@ -12,6 +13,7 @@ import { fetchstudentdetail } from '../../utils/api.js';
 import DesktopSidebar from '../components/header/DesktopSidebar.jsx';
 import UserDropdown from '../components/header/UserDropDown.jsx';
 import DownloadReportModal from './components/s_studentreport.jsx';
+import FeedbackModal from '../components/feedback/FeedbackModal.jsx';
 import StudentHeaderMobile from './s_header-mobile.jsx';
 
 /**
@@ -32,6 +34,7 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
 
   // State for controlling the visibility of the student report download modal
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   // React Router hooks for navigation and current location
   const navigate = useNavigate();
@@ -75,6 +78,11 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
       icon: <Files weight="regular" size={20} />,
       text: 'Download Report',
       onClick: () => setShowDownloadModal(true) // Triggers the DownloadReportModal
+    },
+    {
+      icon: <ChatCircleDots weight="regular" size={20} />,
+      text: 'Feedback',
+      onClick: () => setShowFeedbackModal(true) // Triggers the FeedbackModal
     }
   ];
 
@@ -105,6 +113,11 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
       {/* Conditional rendering of the DownloadReportModal */}
       {showDownloadModal && (
         <DownloadReportModal onClose={() => setShowDownloadModal(false)} />
+      )}
+
+      {/* Conditional rendering of the FeedbackModal */}
+      {showFeedbackModal && (
+        <FeedbackModal onClose={() => setShowFeedbackModal(false)} userType="student" />
       )}
 
       {/* Desktop Layout (hidden on small screens, visible on medium and larger) */}

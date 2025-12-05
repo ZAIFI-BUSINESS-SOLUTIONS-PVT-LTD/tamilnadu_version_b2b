@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path
-from exam.views import auth_views, student_views, admin_views, upload_views, educator_views, institution_views
+from exam.views import auth_views, student_views, admin_views, upload_views, educator_views, institution_views, feedback_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -67,5 +67,11 @@ urlpatterns = [
     # IMPORTANT: More specific routes must come before generic ones
     path('api/institution/educator/<int:educator_id>/students/create/', institution_views.create_institution_student, name='create_institution_student'),
     path('api/institution/educator/<int:educator_id>/students/<str:student_id>/', institution_views.manage_institution_student, name='manage_institution_student'),
+
+    # Feedback APIs
+    path('api/student/feedback/', feedback_views.submit_student_feedback, name='submit_student_feedback'),
+    path('api/educator/feedback/', feedback_views.submit_educator_feedback, name='submit_educator_feedback'),
+    path('api/institution/feedback/', feedback_views.submit_institution_feedback, name='submit_institution_feedback'),
+    path('api/feedback/history/', feedback_views.get_my_feedback_history, name='get_my_feedback_history'),
 
 ]

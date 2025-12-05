@@ -772,3 +772,82 @@ export const deleteInstitutionStudent = async (educatorId, studentId) => {
     return { error: error.response?.data?.error || 'Failed to delete student' };
   }
 };
+
+// =============================================================================
+// FEEDBACK APIs
+// =============================================================================
+
+/**
+ * Submit Student Feedback
+ */
+export const submitStudentFeedback = async (feedbackData) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.post(`${API_BASE_URL}/student/feedback/`, feedbackData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error submitting student feedback:', error);
+    return { error: error.response?.data?.error || 'Failed to submit feedback' };
+  }
+};
+
+/**
+ * Submit Educator Feedback
+ */
+export const submitEducatorFeedback = async (feedbackData) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.post(`${API_BASE_URL}/educator/feedback/`, feedbackData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error submitting educator feedback:', error);
+    return { error: error.response?.data?.error || 'Failed to submit feedback' };
+  }
+};
+
+/**
+ * Submit Institution Feedback
+ */
+export const submitInstitutionFeedback = async (feedbackData) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.post(`${API_BASE_URL}/institution/feedback/`, feedbackData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error submitting institution feedback:', error);
+    return { error: error.response?.data?.error || 'Failed to submit feedback' };
+  }
+};
+
+/**
+ * Get My Feedback History
+ */
+export const getMyFeedbackHistory = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_BASE_URL}/feedback/history/`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching feedback history:', error);
+    return { error: error.response?.data?.error || 'Failed to fetch feedback history' };
+  }
+};

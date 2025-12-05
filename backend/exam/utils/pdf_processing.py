@@ -207,76 +207,80 @@ def questions_extract(pdf_path: str, test_path: str, use_parallel=True, total_qu
         # Last chunk takes any remaining questions
         end = N if idx == 3 else start + chunk_size - 1
         chunks.append((start, end, idx))
-    
+
     logger.info(f"[QUESTION EXTRACTION] 📊 Chunk boundaries: {[(s, e) for s, e, _ in chunks]}")
-    
-    if use_parallel:
-        # Parallel extraction using Celery group
-        logger.info("[QUESTION EXTRACTION] 🚀 Using parallel chunk extraction")
-        
-        # Create task signatures for each chunk
-        # Note: We can't pass BytesIO objects to Celery tasks, so we pass necessary data
-        # and regenerate images in task if needed, OR we extract synchronously in a thread pool
-        # For simplicity and to avoid serialization issues, we'll use ThreadPoolExecutor
-        # with the existing extract_chunk_subtask function
-        
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-        
-        chunk_results = [None] * 4  # Preserve order
-        
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            future_to_chunk = {
-                executor.submit(extract_chunk_subtask, ocr_text, start, end, images): (start, end, idx)
-                for start, end, idx in chunks
-            }
-            
-            for future in as_completed(future_to_chunk):
-                start, end, idx = future_to_chunk[future]
-                try:
-                    questions = future.result()
-                    chunk_results[idx] = questions
-                    logger.info(f"[QUESTION EXTRACTION] ✅ Chunk {idx + 1}/4 completed (Q{start}-Q{end}): {len(questions.get('questions', []))} questions")
-                except Exception as e:
-                    logger.error(f"[QUESTION EXTRACTION] ❌ Chunk {idx + 1}/4 failed (Q{start}-Q{end}): {e}")
-                    chunk_results[idx] = None
-        
-        # Merge results in order
-        for idx, result in enumerate(chunk_results):
-            if result and 'questions' in result:
-                all_questions.extend(result['questions'])
-            else:
-                logger.error(f"[QUESTION EXTRACTION] ❌ Chunk {idx + 1}/4 returned no valid results")
-    else:
-        # Sequential extraction (original behavior)
-        logger.info("[QUESTION EXTRACTION] 🔄 Using sequential chunk extraction")
-        for start, end, idx in chunks:
-            questions = extract_chunk_subtask(ocr_text, start, end, images)
-            logger.info(f"[QUESTION EXTRACTION] ✅ Extracted questions from {start} to {end}")
-            if questions and 'questions' in questions:
-                all_questions.extend(questions["questions"])
 
-    # Deduplicate by question_number (keep first occurrence)
-    seen = set()
-    deduped_questions = []
-    for q in all_questions:
-        qnum = q.get('question_number')
-        if qnum not in seen:
-            seen.add(qnum)
-            deduped_questions.append(q)
+    # We'll attempt extraction up to `max_attempts` times if the exact question count isn't met.
+    max_attempts = 3
+    for attempt in range(1, max_attempts + 1):
+        all_questions = []
+
+        if use_parallel:
+            # Parallel extraction using ThreadPoolExecutor
+            logger.info(f"[QUESTION EXTRACTION] 🚀 Attempt {attempt}/{max_attempts} - Using parallel chunk extraction")
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+
+            chunk_results = [None] * 4  # Preserve order
+
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                future_to_chunk = {
+                    executor.submit(extract_chunk_subtask, ocr_text, start, end, images): (start, end, idx)
+                    for start, end, idx in chunks
+                }
+
+                for future in as_completed(future_to_chunk):
+                    start, end, idx = future_to_chunk[future]
+                    try:
+                        questions = future.result()
+                        chunk_results[idx] = questions
+                        logger.info(f"[QUESTION EXTRACTION] ✅ Chunk {idx + 1}/4 completed (Q{start}-Q{end}): {len(questions.get('questions', []))} questions")
+                    except Exception as e:
+                        logger.error(f"[QUESTION EXTRACTION] ❌ Chunk {idx + 1}/4 failed (Q{start}-Q{end}): {e}")
+                        chunk_results[idx] = None
+
+            # Merge results in order
+            for idx, result in enumerate(chunk_results):
+                if result and 'questions' in result:
+                    all_questions.extend(result['questions'])
+                else:
+                    logger.error(f"[QUESTION EXTRACTION] ❌ Chunk {idx + 1}/4 returned no valid results")
         else:
-            logger.warning(f"[QUESTION EXTRACTION] ⚠️ Duplicate question number {qnum} found, keeping first occurrence")
-    
-    logger.info(f"[QUESTION EXTRACTION] 📊 Total extracted: {len(all_questions)}, After dedup: {len(deduped_questions)}, Expected: {N}")
+            # Sequential extraction (original behavior)
+            logger.info(f"[QUESTION EXTRACTION] 🔄 Attempt {attempt}/{max_attempts} - Using sequential chunk extraction")
+            for start, end, idx in chunks:
+                questions = extract_chunk_subtask(ocr_text, start, end, images)
+                logger.info(f"[QUESTION EXTRACTION] ✅ Extracted questions from {start} to {end}")
+                if questions and 'questions' in questions:
+                    all_questions.extend(questions["questions"])
 
-    if abs(len(deduped_questions) - N) <= 2:  # Allow tolerance of ±2
-        question_paper_json_path = os.path.join(test_path, "qp.json")
-        json_data = json.dumps(deduped_questions, indent=4)
-        default_storage.save(question_paper_json_path, ContentFile(json_data))
-        logger.info(f"[QUESTION EXTRACTION] ✅ Saved {len(deduped_questions)} questions to {question_paper_json_path}")
-        return deduped_questions
-    else:
-        logger.error(f"[QUESTION EXTRACTION] ❌ Extraction incomplete: {len(deduped_questions)}/{N} (beyond tolerance)")
-        return None
+        # Deduplicate by question_number (keep first occurrence)
+        seen = set()
+        deduped_questions = []
+        for q in all_questions:
+            qnum = q.get('question_number')
+            if qnum not in seen:
+                seen.add(qnum)
+                deduped_questions.append(q)
+            else:
+                logger.warning(f"[QUESTION EXTRACTION] ⚠️ Duplicate question number {qnum} found, keeping first occurrence")
+
+        logger.info(f"[QUESTION EXTRACTION] 📊 Attempt {attempt}/{max_attempts} - Total extracted: {len(all_questions)}, After dedup: {len(deduped_questions)}, Expected: {N}")
+
+        # Require exact match now. If mismatch, retry up to max_attempts.
+        if len(deduped_questions) == N:
+            question_paper_json_path = os.path.join(test_path, "qp.json")
+            json_data = json.dumps(deduped_questions, indent=4)
+            default_storage.save(question_paper_json_path, ContentFile(json_data))
+            logger.info(f"[QUESTION EXTRACTION] ✅ Saved {len(deduped_questions)} questions to {question_paper_json_path}")
+            return deduped_questions
+        else:
+            logger.warning(f"[QUESTION EXTRACTION] ⚠️ Extraction count mismatch: {len(deduped_questions)}/{N} on attempt {attempt}/{max_attempts}")
+            if attempt < max_attempts:
+                logger.info(f"[QUESTION EXTRACTION] 🔄 Retrying extraction (attempt {attempt + 1}/{max_attempts})")
+                continue
+            else:
+                logger.error(f"[QUESTION EXTRACTION] ❌ Extraction incomplete after {max_attempts} attempts: {len(deduped_questions)}/{N}")
+                return None
 
 def get_subject_from_q_paper(pdf_path: str) -> Optional[str]:
     """

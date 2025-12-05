@@ -18,5 +18,6 @@ from .result import Result
 from .overview import Overview
 from .performance import Performance
 from .swot import SWOT
+from .feedback import Feedback
 
 from .gemini_api import Gemini_ApiCallLog, Gemini_ApiKeyModelMinuteStats, Gemini_ApiKeyModelDayStats

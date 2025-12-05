@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { House, Target, Student, List } from "@phosphor-icons/react";
+import { House, Target, Student, ChatCircleDots, List } from "@phosphor-icons/react";
 import { useInstitution } from './index.jsx';
 import DesktopSidebar from '../components/header/DesktopSidebar.jsx';
 import UserDropdown from '../components/header/UserDropDown.jsx';
+import FeedbackModal from '../components/feedback/FeedbackModal.jsx';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select.jsx';
 
 const InstitutionHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
   const { educators, selectedEducatorId, setSelectedEducatorId } = useInstitution();
   const navigate = useNavigate();
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   const sidebarItems = [
     {
@@ -31,6 +33,14 @@ const InstitutionHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
     },
   ];
 
+  const additionalItems = [
+    {
+      icon: <ChatCircleDots weight="regular" size={20} />,
+      text: 'Feedback',
+      onClick: () => setShowFeedbackModal(true)
+    }
+  ];
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userRole');
@@ -39,8 +49,13 @@ const InstitutionHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
 
   return (
     <>
+      {showFeedbackModal && (
+        <FeedbackModal onClose={() => setShowFeedbackModal(false)} userType="institution" />
+      )}
+      
       <DesktopSidebar
         items={sidebarItems}
+        additionalItems={additionalItems}
         isCollapsed={isSidebarCollapsed}
         onLogout={handleLogout}
         userInfo={{ name: 'Institution Admin', inst: 'Institution' }}

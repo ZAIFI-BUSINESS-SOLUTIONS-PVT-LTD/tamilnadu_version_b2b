@@ -122,6 +122,12 @@ def process_test_data(class_id, test_num):
             
             subject = get_subject(class_id, answer_key_path, question_paper_path)
             questions_list = questions_extract(question_paper_path, test_path)
+            if not questions_list:
+                logger.warning("⚠️ Automatic extraction failed: no questions returned")
+                status_obj.logs += "\n⚠️ Automatic extraction failed: no questions returned"
+                status_obj.save()
+                raise Exception("Automatic extraction returned empty questions list")
+
             for q in questions_list:
                 q['subject'] = subject
             save_questions_bulk(class_id, test_num, questions_list, answer_dict)
