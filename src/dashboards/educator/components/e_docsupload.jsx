@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { FileText, Key, File, Spinner, ArrowLeft, ArrowRight, CheckCircle } from '@phosphor-icons/react';
 import Modal from '../../components/ui/modal.jsx';
+import { validateAnswerKeyCSV, validateResponseSheetCSV, formatValidationErrors } from '../../../utils/csvValidation.js';
+import { toast } from 'react-hot-toast';
 
 // DropZone component (merged from e_dropzone.jsx)
 import DropZone from '../../components/ui/dropzone.jsx';
@@ -16,6 +18,9 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
   const [questionMode, setQuestionMode] = useState('perSubject');
   const [subjectCounts, setSubjectCounts] = useState({});
   const [metadata, setMetadata] = useState(null);
+  const [answerKeyValidation, setAnswerKeyValidation] = useState(null);
+  const [responseValidation, setResponseValidation] = useState(null);
+  const [correctedResponseFile, setCorrectedResponseFile] = useState(null);
 
   const patterns = {
     PHY_CHEM_BOT_ZOO: {
@@ -95,6 +100,109 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
     setQuestionMode('perSubject');
     setSubjectCounts({});
   };
+
+  // Validate answer key CSV (called on submit, not on file selection)
+  const validateAnswerKey = async () => {
+    console.log('validateAnswerKey() start, files.answerKey=', files.answerKey);
+    if (!files.answerKey) {
+      console.log('No answer key file provided');
+      return true;
+    }
+    
+    try {
+      const expectedQuestionCount = metadata?.total_questions;
+      const validation = await validateAnswerKeyCSV(files.answerKey, { expectedQuestionCount });
+      console.log('Answer key validation result:', validation);
+      setAnswerKeyValidation(validation);
+      
+      if (!validation.valid) {
+        const errorMessage = formatValidationErrors(validation.errors);
+        toast.error(errorMessage, {
+          duration: 8000,
+          style: {
+            maxWidth: '600px',
+            whiteSpace: 'pre-line'
+          }
+        });
+        return false;
+      }
+      
+      // Show success with summary
+      const { summary } = validation;
+      toast.success(
+        `✅ Answer key validated successfully!\n` +
+        `Total questions: ${summary.totalRows}\n` +
+        `Unique questions: ${summary.uniqueQuestions}`,
+        {
+          duration: 4000,
+          style: { whiteSpace: 'pre-line' }
+        }
+      );
+      return true;
+    } catch (error) {
+      toast.error(`Validation error: ${error.message}`);
+      return false;
+    }
+  };
+
+  // Validate and auto-correct response sheet CSV
+  const validateResponseSheet = async () => {
+    console.log('validateResponseSheet() start, files.responseSheets=', files.responseSheets, 'files.answerKey=', files.answerKey);
+    if (!files.responseSheets) {
+      console.log('No response sheet file provided');
+      return { valid: true };
+    }
+    
+    try {
+      const expectedQuestionCount = metadata?.total_questions;
+      console.log('METADATA CHECK:', { metadata, expectedQuestionCount });
+      const validation = await validateResponseSheetCSV(
+        files.responseSheets, 
+        files.answerKey, 
+        { expectedQuestionCount }
+      );
+      setResponseValidation(validation);
+      console.log('Response CSV validation result:', validation);
+      
+      if (!validation.valid) {
+        const errorMessage = formatValidationErrors(validation.errors);
+        toast.error(errorMessage, {
+          duration: 8000,
+          style: {
+            maxWidth: '600px',
+            whiteSpace: 'pre-line'
+          }
+        });
+        setResponseValidation(validation);
+        return validation;
+      }
+      
+      // Store corrected file to upload instead of original
+      if (validation.correctedFile) {
+        setCorrectedResponseFile(validation.correctedFile);
+      }
+      
+      // Show success with corrections summary
+      const { summary, warnings } = validation;
+      let message = `✅ Response sheet validated!\n` + `Total students: ${summary.totalRows}\n`;
+
+      if (warnings.length > 0) {
+        message += `\n⚠️ Warnings: ${warnings.length}`;
+      }
+      
+      toast.success(message, {
+        duration: 5000,
+        style: { whiteSpace: 'pre-line' }
+      });
+      
+      return validation;
+    } catch (error) {
+      console.error('Response validation exception:', error);
+      toast.error(`Response validation error: ${error.message}`);
+      return { valid: false, errors: [{ type: 'parse', message: error.message }], warnings: [], summary: {} };
+    }
+  };
+
   // File upload steps (kept separate so we can merge with config steps)
   const fileSteps = useMemo(
     () => [
@@ -104,7 +212,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
         label: 'Question Paper',
         icon: FileText,
         file: files.questionPaper,
-        setFile: (file) => setFiles({ ...files, questionPaper: file }),
+        setFile: (file) => { console.log('questionPaper selected', file); setFiles({ ...files, questionPaper: file }); },
         accept: '.pdf',
         actionText: 'Upload Question Paper',
         description: 'Upload your examination question paper in PDF format',
@@ -115,7 +223,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
         label: 'Answer Key',
         icon: Key,
         file: files.answerKey,
-        setFile: (file) => setFiles({ ...files, answerKey: file }),
+        setFile: (file) => { console.log('answerKey selected', file); setFiles({ ...files, answerKey: file }); setAnswerKeyValidation(null); },
         accept: '.csv',
         actionText: 'Upload Answer Key',
         description: 'Upload the answer key in CSV format with correct answers',
@@ -126,13 +234,13 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
         label: 'Response Sheets',
         icon: File,
         file: files.responseSheets,
-        setFile: (file) => setFiles({ ...files, responseSheets: file }),
+        setFile: (file) => { console.log('responseSheets selected', file); setFiles({ ...files, responseSheets: file }); setResponseValidation(null); setCorrectedResponseFile(null); },
         accept: '.csv',
         actionText: 'Upload Response Sheets',
         description: 'Upload student response sheets in CSV format',
       },
     ],
-    [files]
+    [files, metadata]
   );
 
   // Combined steps: two config steps followed by three file steps
@@ -211,7 +319,33 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
           ) : (
             <button
               className={`btn btn-success btn-sm px-6 ${!canProceed || isUploading ? 'btn-disabled opacity-50' : ''}`}
-              onClick={() => onSubmit(metadata)}
+              onClick={async () => {
+                console.log('Submit All clicked', { files, metadata });
+
+                // Validate both answer key and response sheet independently
+                const answerValid = await validateAnswerKey();
+                console.log('validateAnswerKey returned:', answerValid, 'answerKeyValidation=', answerKeyValidation);
+                
+                const responseResult = await validateResponseSheet();
+                console.log('validateResponseSheet returned:', responseResult);
+                
+                // Only proceed if both are valid
+                if (!answerValid || !responseResult || !responseResult.valid) {
+                  console.log('Validation failed - answer key valid:', answerValid, 'response valid:', responseResult?.valid);
+                  return;
+                }
+
+                // Use corrected file from validation result if available (avoid state race)
+                const filesToSubmit = {
+                  ...files,
+                  responseSheets: responseResult.correctedFile || files.responseSheets
+                };
+
+                console.log('Submitting files:', filesToSubmit);
+
+                // Pass corrected files to onSubmit
+                onSubmit(metadata, filesToSubmit);
+              }}
               disabled={!canProceed || isUploading}
             >
               {isUploading ? (
@@ -351,6 +485,46 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
             accept={currentStep?.accept}
             disabled={isUploading}
           />
+
+          {currentStep?.key === 'answerKey' && answerKeyValidation && !answerKeyValidation.valid && (
+            <div className="mt-4 p-3 border border-error rounded bg-error/5 text-error text-sm" style={{whiteSpace: 'pre-wrap'}}>
+              {formatValidationErrors(answerKeyValidation.errors)}
+            </div>
+          )}
+
+          {currentStep?.key === 'responseSheets' && responseValidation && (
+            <>
+              {!responseValidation.valid && (
+                <div className="mt-4 p-3 border border-error rounded bg-error/5 text-error text-sm" style={{whiteSpace: 'pre-wrap'}}>
+                  <div className="font-semibold mb-2">❌ Validation Failed</div>
+                  {formatValidationErrors(responseValidation.errors)}
+                </div>
+              )}
+
+              {(responseValidation.warnings?.length > 0) && (
+                <div className="mt-4 p-3 border border-warning rounded bg-warning/5 text-sm">
+                  <div className="font-semibold mb-2 text-warning">⚠️ Response Sheet Issues Detected</div>
+
+                  <div className="text-xs max-h-40 overflow-y-auto text-gray-700">
+                    {responseValidation.warnings.slice(0, 10).map((w, idx) => (
+                      <div key={idx} className="mb-1">
+                        • {w.message}
+                      </div>
+                    ))}
+                    {responseValidation.warnings.length > 10 && (
+                      <div className="mt-2 text-xs opacity-70">
+                        ... and {responseValidation.warnings.length - 10} more warnings
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-2 text-xs text-gray-600 italic">
+                    ℹ️ Original file will be uploaded to backend (no auto-corrections applied)
+                  </div>
+                </div>
+              )}
+            </>
+          )}
 
           {!canProceed && (
             <p className="text-error text-sm text-center mt-3">
