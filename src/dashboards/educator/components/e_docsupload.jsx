@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { FileText, Key, File, Spinner, ArrowLeft, ArrowRight, CheckCircle } from '@phosphor-icons/react';
+import { FileText, Key, File, Spinner, ArrowLeft, ArrowRight, CheckCircle, DownloadSimple } from '@phosphor-icons/react';
 import Modal from '../../components/ui/modal.jsx';
 import { validateAnswerKeyCSV, validateResponseSheetCSV, formatValidationErrors } from '../../../utils/csvValidation.js';
 import { toast } from 'react-hot-toast';
@@ -108,13 +108,13 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
       console.log('No answer key file provided');
       return true;
     }
-    
+
     try {
       const expectedQuestionCount = metadata?.total_questions;
       const validation = await validateAnswerKeyCSV(files.answerKey, { expectedQuestionCount });
       console.log('Answer key validation result:', validation);
       setAnswerKeyValidation(validation);
-      
+
       if (!validation.valid) {
         const errorMessage = formatValidationErrors(validation.errors);
         toast.error(errorMessage, {
@@ -126,7 +126,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
         });
         return false;
       }
-      
+
       // Show success with summary
       const { summary } = validation;
       toast.success(
@@ -152,18 +152,18 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
       console.log('No response sheet file provided');
       return { valid: true };
     }
-    
+
     try {
       const expectedQuestionCount = metadata?.total_questions;
       console.log('METADATA CHECK:', { metadata, expectedQuestionCount });
       const validation = await validateResponseSheetCSV(
-        files.responseSheets, 
-        files.answerKey, 
+        files.responseSheets,
+        files.answerKey,
         { expectedQuestionCount }
       );
       setResponseValidation(validation);
       console.log('Response CSV validation result:', validation);
-      
+
       if (!validation.valid) {
         const errorMessage = formatValidationErrors(validation.errors);
         toast.error(errorMessage, {
@@ -176,12 +176,12 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
         setResponseValidation(validation);
         return validation;
       }
-      
+
       // Store corrected file to upload instead of original
       if (validation.correctedFile) {
         setCorrectedResponseFile(validation.correctedFile);
       }
-      
+
       // Show success with corrections summary
       const { summary, warnings } = validation;
       let message = `✅ Response sheet validated!\n` + `Total students: ${summary.totalRows}\n`;
@@ -189,12 +189,12 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
       if (warnings.length > 0) {
         message += `\n⚠️ Warnings: ${warnings.length}`;
       }
-      
+
       toast.success(message, {
         duration: 5000,
         style: { whiteSpace: 'pre-line' }
       });
-      
+
       return validation;
     } catch (error) {
       console.error('Response validation exception:', error);
@@ -285,80 +285,108 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
       maxWidth="max-w-xl"
       className="p-0"
       footer={
-        <>
-          <button
-            className={`btn btn-sm ${step > 0 ? '' : 'invisible'}`}
-            onClick={() => step > 0 && setStep(step - 1)}
-            disabled={isUploading}
-          >
-            <ArrowLeft size={16} className="mr-1" /> Back
-          </button>
-          {!isLastStep ? (
+        <div className="flex justify-between items-center w-full">
+          <div className="flex items-center gap-2">
+            {currentStep.type === 'file' && currentStep.key === 'answerKey' && (
+              <a
+                href="https://github.com/ZAIFI-BUSINESS-SOLUTIONS-PVT-LTD/inzighted-public-files/raw/main/sample%20answer%20key.csv"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-sm btn-ghost flex items-center gap-1"
+                aria-label="Download sample answer key"
+              >
+                <DownloadSimple size={14} />
+                <span className="text-xs hidden sm:inline">Sample answer key</span>
+              </a>
+            )}
+            {currentStep.type === 'file' && currentStep.key === 'responseSheets' && (
+              <a
+                href="https://github.com/ZAIFI-BUSINESS-SOLUTIONS-PVT-LTD/inzighted-public-files/raw/main/sample%20response%20sheet.csv"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-base btn-ghost flex items-center gap-1"
+                aria-label="Download sample response sheet"
+              >
+                <DownloadSimple size={14} />
+                <span className="text-sm hidden sm:inline">Sample response sheet</span>
+              </a>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
             <button
-              className={`btn btn-secondary btn-sm ${!canProceed || isUploading ? 'btn-disabled opacity-50' : ''}`}
-              onClick={() => {
-                if (!canProceed) return;
-                if (currentStep.key === 'counts') {
-                  handleSaveConfig();
-                  setStep(step + 1);
-                  return;
-                }
-                if (currentStep.key === 'syllabus') {
-                  // If user selected Auto-detect, skip counts and go to first file step
-                  if (pattern === 'AUTO_DETECT') {
-                    setStep(2);
+              className={`btn btn-sm ${step > 0 ? '' : 'invisible'}`}
+              onClick={() => step > 0 && setStep(step - 1)}
+              disabled={isUploading}
+            >
+              <ArrowLeft size={16} className="mr-1" /> Back
+            </button>
+            {!isLastStep ? (
+              <button
+                className={`btn btn-secondary btn-sm ${!canProceed || isUploading ? 'btn-disabled opacity-50' : ''}`}
+                onClick={() => {
+                  if (!canProceed) return;
+                  if (currentStep.key === 'counts') {
+                    handleSaveConfig();
+                    setStep(step + 1);
                     return;
                   }
-                }
-                setStep(step + 1);
-              }}
-              disabled={!canProceed || isUploading}
-            >
-              Next <ArrowRight size={16} className="ml-1" />
-            </button>
-          ) : (
-            <button
-              className={`btn btn-success btn-sm px-6 ${!canProceed || isUploading ? 'btn-disabled opacity-50' : ''}`}
-              onClick={async () => {
-                console.log('Submit All clicked', { files, metadata });
+                  if (currentStep.key === 'syllabus') {
+                    // If user selected Auto-detect, skip counts and go to first file step
+                    if (pattern === 'AUTO_DETECT') {
+                      setStep(2);
+                      return;
+                    }
+                  }
+                  setStep(step + 1);
+                }}
+                disabled={!canProceed || isUploading}
+              >
+                Next <ArrowRight size={16} className="ml-1" />
+              </button>
+            ) : (
+              <button
+                className={`btn btn-success btn-sm px-6 ${!canProceed || isUploading ? 'btn-disabled opacity-50' : ''}`}
+                onClick={async () => {
+                  console.log('Submit All clicked', { files, metadata });
 
-                // Validate both answer key and response sheet independently
-                const answerValid = await validateAnswerKey();
-                console.log('validateAnswerKey returned:', answerValid, 'answerKeyValidation=', answerKeyValidation);
-                
-                const responseResult = await validateResponseSheet();
-                console.log('validateResponseSheet returned:', responseResult);
-                
-                // Only proceed if both are valid
-                if (!answerValid || !responseResult || !responseResult.valid) {
-                  console.log('Validation failed - answer key valid:', answerValid, 'response valid:', responseResult?.valid);
-                  return;
-                }
+                  // Validate both answer key and response sheet independently
+                  const answerValid = await validateAnswerKey();
+                  console.log('validateAnswerKey returned:', answerValid, 'answerKeyValidation=', answerKeyValidation);
 
-                // Use corrected file from validation result if available (avoid state race)
-                const filesToSubmit = {
-                  ...files,
-                  responseSheets: responseResult.correctedFile || files.responseSheets
-                };
+                  const responseResult = await validateResponseSheet();
+                  console.log('validateResponseSheet returned:', responseResult);
 
-                console.log('Submitting files:', filesToSubmit);
+                  // Only proceed if both are valid
+                  if (!answerValid || !responseResult || !responseResult.valid) {
+                    console.log('Validation failed - answer key valid:', answerValid, 'response valid:', responseResult?.valid);
+                    return;
+                  }
 
-                // Pass corrected files to onSubmit
-                onSubmit(metadata, filesToSubmit);
-              }}
-              disabled={!canProceed || isUploading}
-            >
-              {isUploading ? (
-                <>
-                  <Spinner size={16} className="animate-spin mr-2" />
-                  Processing...
-                </>
-              ) : (
-                'Submit All'
-              )}
-            </button>
-          )}
-        </>
+                  // Use corrected file from validation result if available (avoid state race)
+                  const filesToSubmit = {
+                    ...files,
+                    responseSheets: responseResult.correctedFile || files.responseSheets
+                  };
+
+                  console.log('Submitting files:', filesToSubmit);
+
+                  // Pass corrected files to onSubmit
+                  onSubmit(metadata, filesToSubmit);
+                }}
+                disabled={!canProceed || isUploading}
+              >
+                {isUploading ? (
+                  <>
+                    <Spinner size={16} className="animate-spin mr-2" />
+                    Processing...
+                  </>
+                ) : (
+                  'Submit All'
+                )}
+              </button>
+            )}
+          </div>
+        </div>
       }
     >
       {/* Step indicators (render immediately under header for consistent positioning) */}
@@ -415,20 +443,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
                     </button>
                   );
                 })}
-                {/* Auto-detect / Skip option as the third card (selectable) */}
-                <button
-                  key="AUTO_DETECT"
-                  onClick={() => { handleClearConfig(); setPattern('AUTO_DETECT'); }}
-                  className={`card relative p-4 text-left border flex flex-col justify-between min-h-[80px] ${pattern === 'AUTO_DETECT' ? 'border-primary ring-2 ring-primary/20' : 'hover:border-primary'}`}>
-                  <div className="flex items-start justify-between">
-                    <div className="text-sm font-medium flex items-center gap-2">
-                      {pattern === 'AUTO_DETECT' && <CheckCircle size={16} className="text-primary" />}
-                      <span>Auto-detect subjects (Skip)</span>
-                    </div>
-                    <div className="text-xs text-gray-500">🤖</div>
-                  </div>
-                  <div className="text-xs text-gray-500 mt-2">Let the system detect subjects automatically</div>
-                </button>
+
               </div>
             </div>
           ) : (
@@ -470,7 +485,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
           )}
         </div>
       ) : (
-        <div className="mb-6 px-4 pt-2">
+        <div className="mb-4 px-4 pt-2">
           <p className="text-gray-600 text-sm">{currentStep?.description}</p>
         </div>
       )}
@@ -487,7 +502,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
           />
 
           {currentStep?.key === 'answerKey' && answerKeyValidation && !answerKeyValidation.valid && (
-            <div className="mt-4 p-3 border border-error rounded bg-error/5 text-error text-sm" style={{whiteSpace: 'pre-wrap'}}>
+            <div className="mt-4 p-3 border border-error rounded bg-error/5 text-error text-sm" style={{ whiteSpace: 'pre-wrap' }}>
               {formatValidationErrors(answerKeyValidation.errors)}
             </div>
           )}
@@ -495,7 +510,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
           {currentStep?.key === 'responseSheets' && responseValidation && (
             <>
               {!responseValidation.valid && (
-                <div className="mt-4 p-3 border border-error rounded bg-error/5 text-error text-sm" style={{whiteSpace: 'pre-wrap'}}>
+                <div className="mt-4 p-3 border border-error rounded bg-error/5 text-error text-sm" style={{ whiteSpace: 'pre-wrap' }}>
                   <div className="font-semibold mb-2">❌ Validation Failed</div>
                   {formatValidationErrors(responseValidation.errors)}
                 </div>
