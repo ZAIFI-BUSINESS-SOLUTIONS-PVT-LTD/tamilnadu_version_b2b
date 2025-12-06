@@ -15,18 +15,18 @@ const UploadModal = lazy(() => import('../educator/components/e_docsupload.jsx')
 
 const IUpload = () => {
   const { selectedEducatorId } = useInstitution();
-  
+
   // State to control the visibility of the upload modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   // State to manage the current step in the upload modal
   const [step, setStep] = useState(0);
-  
+
   // Custom hook to fetch and manage uploaded tests data - passing selectedEducatorId
   const { tests, loadTests } = useTests(selectedEducatorId, { enabled: !!selectedEducatorId });
-  
+
   // Custom hook to manage file uploads
   const { files, setFiles, isUploading, handleUpload } = useFileUpload();
-  
+
   // State for sorting the table
   const [sortField, setSortField] = useState('test_num');
   const [sortDirection, setSortDirection] = useState('desc');
@@ -49,9 +49,9 @@ const IUpload = () => {
     };
 
     if (selectedEducatorId) {
-        loadData();
+      loadData();
     } else {
-        setHasInitialLoadCompleted(true); // No educator selected, just show empty state
+      setHasInitialLoadCompleted(true); // No educator selected, just show empty state
     }
   }, [loadTests, selectedEducatorId]);
 
@@ -102,8 +102,8 @@ const IUpload = () => {
 
   const handleStartUpload = () => {
     if (!selectedEducatorId) {
-        toast.error("Please select an educator first");
-        return;
+      toast.error("Please select an educator first");
+      return;
     }
     setIsModalOpen(true);
   };
@@ -115,7 +115,7 @@ const IUpload = () => {
     if (success) {
       setIsModalOpen(false);
       setStep(0);
-      loadTests(); 
+      loadTests();
     }
   };
 
@@ -183,19 +183,19 @@ const IUpload = () => {
   };
 
   if (!selectedEducatorId) {
-      return (
-          <div className="w-full h-[50vh] flex items-center justify-center">
-              <div className="text-center">
-                  <h3 className="text-lg font-medium text-gray-900">No Educator Selected</h3>
-                  <p className="text-gray-500">Please select an educator from the top bar to manage tests.</p>
-              </div>
-          </div>
-      );
+    return (
+      <div className="w-full h-[50vh] flex items-center justify-center">
+        <div className="text-center">
+          <h3 className="text-lg font-medium text-gray-900">No Educator Selected</h3>
+          <p className="text-gray-500">Please select an educator from the top bar to manage tests.</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="w-full mx-auto">
-      <div className="hidden sm:block card rounded-2xl border border-gray-250 bg-white w-full mt-20 p-8">
+      <div className="hidden sm:block card rounded-2xl border border-gray-250 bg-white w-full mt-12 p-8">
         <div>
           <div className="flex flex-col sm:flex-row justify-between items-center sm:pb-8 sm:border-b sm:border-gray-200 gap-4">
             <h2 className="hidden sm:block text-2xl font-bold text-gray-800 w-full sm:w-auto text-left">Upload Tests</h2>
@@ -268,7 +268,7 @@ const IUpload = () => {
           )}
         </div>
       </div>
-      
+
       {/* Mobile View */}
       <div className="sm:hidden mt-4 px-3">
         <div className="card bg-transparent w-full pt-2">

@@ -267,7 +267,7 @@ function IStudentDetails() {
   );
 
   return (
-    <div className="sm:pt-4 w-full mx-auto md:mt-12">
+    <div className="sm:pt-4 w-full mx-auto">
       <div className="card rounded-2xl border border-gray-250 bg-white w-full mt-8 p-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4  pb-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
