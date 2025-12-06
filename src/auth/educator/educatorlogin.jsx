@@ -170,6 +170,12 @@ const EducatorLogin = () => {
                 </div>
               </div>
 
+              <div className="flex justify-end">
+                <button type="button" onClick={() => navigate('/auth/forgot-password?role=educator')} className="text-sm text-blue-600 hover:underline">
+                  Forgot password?
+                </button>
+              </div>
+
               <motion.button
                 type="submit"
                 className="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500 transition-colors text-sm font-medium"
