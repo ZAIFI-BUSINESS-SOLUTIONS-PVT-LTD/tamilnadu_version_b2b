@@ -6,6 +6,7 @@ import re
 from exam.llm_call.prompts import performance_prompt as base_prompt
 import logging
 import sentry_sdk
+from exam.llm_call.decorators import traceable
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,7 @@ def parse_questions(text):
     return parsed_json
 
 
+@traceable()
 def generate_perfomance_data(db_name):
 
     performance_graph, performance_data = get_overview_data(db_name)

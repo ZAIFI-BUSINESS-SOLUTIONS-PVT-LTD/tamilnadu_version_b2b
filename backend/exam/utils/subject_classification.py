@@ -1,8 +1,10 @@
 from exam.llm_call.gemini_api import call_gemini_api_with_rotation
 import logging
+from exam.llm_call.decorators import traceable
 
 logger = logging.getLogger(__name__)
 
+@traceable()
 def classify_biology_questions(questions_list: list) -> list:
     """
     Classifies a list of biology questions as 'Botany' or 'Zoology' using an LLM.

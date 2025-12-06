@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.urls import path
 from exam.views import auth_views, student_views, admin_views, upload_views, educator_views, institution_views, feedback_views
+from exam.views import password_reset_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -11,6 +12,9 @@ urlpatterns = [
     path('api/educator/login/', auth_views.educator_login, name='educator_login'),
     path('api/student/login/', auth_views.student_login, name='student_login'),
     path('api/institution/login/', auth_views.institution_login, name='institution_login'),
+    # Password reset endpoints
+    path('api/auth/forgot-password/', password_reset_views.forgot_password, name='forgot_password'),
+    path('api/auth/reset-password/', password_reset_views.reset_password, name='reset_password'),
     
 
     path('api/student/details/', student_views.get_student_details, name='student_details'),

@@ -11,11 +11,13 @@ import re
 from exam.graph_utils.knowledge_graph_manager import KnowledgeGraphManager
 import logging
 import sentry_sdk
+from exam.llm_call.decorators import traceable
 
 
 logger = logging.getLogger(__name__)
 
 # --------------------- API Call Helper ---------------------
+@traceable()
 def extract_insights(data, prompt, max_retries=5):
     """
     Extract insights from metric data using LLM.
@@ -68,6 +70,7 @@ output format (JSON):
 
 
 # --------------------- Main Execution ---------------------
+@traceable()
 def generate_all_test_swot_with_AI(db_name):
     from exam.graph_utils.retrieve_swot_data_cumulative import (
     best_topics, improvement_over_time, strongest_question_type, most_challenging_topics,
@@ -110,6 +113,7 @@ def generate_all_test_swot_with_AI(db_name):
     finally:
         kg_manager.close()
 
+@traceable()
 def generate_swot_data_with_AI(db_name, test_num):
     from exam.graph_utils.retrieve_swot_data import (best_topic_analysis, improvement_over_time_analysis,
     inconsistent_performance_analysis, weakness_on_high_impact_analysis,low_retention_rate_analysis,

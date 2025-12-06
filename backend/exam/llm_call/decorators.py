@@ -7,10 +7,50 @@ from exam.llm_call.gemini_prices import pricing
 from django.db import transaction
 from exam.models.gemini_api import Gemini_ApiCallLog, Gemini_ApiKeyModelMinuteStats, Gemini_ApiKeyModelDayStats
 from django.utils import timezone
+from django.core.exceptions import FieldDoesNotExist
 
 
 # Global dict for RPM tracking
 key_rpm = {}
+
+# Thread-local context for explicit trace labels
+from threading import local
+
+_trace_context = local()
+
+def get_trace_context():
+    return getattr(_trace_context, "current", None)
+
+def set_trace_context(value: str):
+    _trace_context.current = value
+
+def clear_trace_context():
+    if hasattr(_trace_context, "current"):
+        delattr(_trace_context, "current")
+
+def traceable(tag: str = None):
+    """Decorator to mark a function as traceable.
+
+    When applied, `trace_api_call` will prefer this explicit tag (or the
+    function's module and name) as the `function_name` stored in traces.
+    Usage: @traceable() or @traceable("my_label").
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            prev = get_trace_context()
+            label = tag or f"{func.__module__}.{func.__name__}"
+            try:
+                set_trace_context(label)
+                return func(*args, **kwargs)
+            finally:
+                # restore previous context
+                if prev is None:
+                    clear_trace_context()
+                else:
+                    set_trace_context(prev)
+        return wrapper
+    return decorator
 
 def trace_api_call(user_type=None, user_id=None):
     def decorator(func):
@@ -26,15 +66,18 @@ def trace_api_call(user_type=None, user_id=None):
 
 
 
-            def get_caller_function_name():
-                stack = inspect.stack()
-                current_file = os.path.abspath(__file__)
-                caller_file = os.path.abspath(stack[2].filename)
-                common_root = os.path.commonpath([current_file, caller_file])
-                relative_path = os.path.relpath(caller_file, common_root)
-                return relative_path + "/" + stack[2].function
+            # Prefer an explicitly set trace context if present
+            caller_function_name = get_trace_context()
+            if not caller_function_name:
+                def get_caller_function_name():
+                    stack = inspect.stack()
+                    current_file = os.path.abspath(__file__)
+                    caller_file = os.path.abspath(stack[2].filename)
+                    common_root = os.path.commonpath([current_file, caller_file])
+                    relative_path = os.path.relpath(caller_file, common_root)
+                    return relative_path + "/" + stack[2].function
 
-            caller_function_name = get_caller_function_name() or "unknown"
+                caller_function_name = get_caller_function_name() or "unknown"
 
             trace_data = {
                 "timestamp": datetime.utcnow(),
@@ -81,7 +124,18 @@ def trace_api_call(user_type=None, user_id=None):
                 result = ""
                 current_model_name = model_name
                 try:
-                    result, usage = original_call_gemini_api(prompt=prompt, model_name=model_name, images=images)
+                    returned = original_call_gemini_api(prompt=prompt, model_name=model_name, images=images)
+                    # Support both (text, usage) and (text, usage, langsmith_run_id)
+                    if isinstance(returned, tuple) and len(returned) == 3:
+                        result, usage, langsmith_run_id = returned
+                    elif isinstance(returned, tuple) and len(returned) == 2:
+                        result, usage = returned
+                        langsmith_run_id = None
+                    else:
+                        # fallback: single string return
+                        result = returned
+                        usage = None
+                        langsmith_run_id = None
                     if result == "":
                         raise ValueError("Empty response received")
 
@@ -103,6 +157,7 @@ def trace_api_call(user_type=None, user_id=None):
                         "request_price": estimate_cost(getattr(usage, "prompt_token_count", 0), getattr(usage, "output_token_count", 0), current_model_name),
                         "input_content": prompt,
                         "output_content": result,
+                        "langsmith_run_id": langsmith_run_id,
                     })
                     return result, usage
                 except Exception as e:
@@ -134,6 +189,12 @@ def trace_api_call(user_type=None, user_id=None):
                     "request_price", "status", "duration_s", "error_message",
                     "input_content", "output_content", "api_key", "user_type", "user_id"
                 }
+                # Include langsmith_run_id if the model supports it (avoids DB errors)
+                try:
+                    Gemini_ApiCallLog._meta.get_field('langsmith_run_id')
+                    allowed_fields.add('langsmith_run_id')
+                except FieldDoesNotExist:
+                    pass
                 return {k: v for k, v in trace_data.items() if k in allowed_fields}
 
             try:

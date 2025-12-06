@@ -5,6 +5,21 @@ import base64
 from requests.exceptions import RequestException
 import logging
 from exam.llm_call.decorators import trace_api_call
+from exam.llm_call.decorators import get_trace_context
+
+# Modern LangSmith tracing via @traceable decorator.
+# LangSmith tracing is auto-enabled when LANGCHAIN_TRACING_V2=true is set.
+# No manual tracer instantiation needed — langsmith package handles it.
+try:
+    from langsmith import traceable
+    LANGSMITH_AVAILABLE = True
+except ImportError:
+    LANGSMITH_AVAILABLE = False
+    # Provide a no-op decorator fallback so @traceable() doesn't break code
+    def traceable(*args, **kwargs):
+        def decorator(func):
+            return func
+        return decorator if not args else decorator(args[0])
 
 logger = logging.getLogger(__name__)
 
@@ -56,10 +71,15 @@ def configure_genai_for_key(api_key: str):
     """Configure the Google Gemini library with the provided API key."""
     genai.configure(api_key=api_key)
 
+@traceable(name="call_gemini_api")
 def call_gemini_api(prompt: str,
                     model_name: str = "gemini-2.5-flash", images = None) -> str:
-    """Calls the Gemini API with a given prompt and returns the raw text response."""
-
+    """Calls the Gemini API with a given prompt and returns the raw text response.
+    
+    LangSmith tracing is automatically enabled when LANGCHAIN_TRACING_V2=true env var is set.
+    The @traceable decorator will capture this function's execution and send traces to LangSmith.
+    """
+    # Direct call to google.generativeai (LangSmith auto-traces via @traceable decorator)
     model = genai.GenerativeModel(model_name)
     if not images:
         response = model.generate_content(prompt)

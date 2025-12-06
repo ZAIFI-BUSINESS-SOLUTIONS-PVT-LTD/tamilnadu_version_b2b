@@ -4,6 +4,7 @@ from exam.llm_call.NEET_data import chapter_list
 import logging
 import threading
 from celery import shared_task, group, current_task
+from exam.llm_call.decorators import traceable
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,7 @@ def parse_metadata(response,subject):
 
 
 
+@traceable()
 def infer_subject_with_gemini(questions, excluded_subjects=None):
     """
     Infers the subject (Physics, Chemistry, Botany, Zoology) from a batch of NEET questions.
@@ -105,6 +107,7 @@ im_desp: {q['im_desp']}
 
 
 
+@traceable()
 def recursive_metadata_generation(batch, excluded_subjects=None, subject=None):
     """
     Detects subject, then generates structured metadata for each question.
@@ -195,6 +198,7 @@ im_desp: {q['im_desp']}
     
     return metadata_list
 
+@traceable()
 def generate_feedback_with_gemini_batch(questions):
     """
     Generates feedback for 50 questions in a single request for all options.
@@ -262,6 +266,7 @@ im_desp: {q['im_desp']}
 
     return feedback_list
 
+@traceable()
 def generate_errors_with_gemini_batch(questions):
     """
     Generates possible misconceptions for all options except the correct answer.
@@ -374,6 +379,7 @@ def chunk_questions(q_list, chunk_size):
         yield current_chunk
 
 
+@traceable()
 def process_question_batch(batch, excluded_subjects=None, known_subject=None):
     """
     Core logic: Processes a batch of 45 questions with ThreadPool for 3 LLM tasks.

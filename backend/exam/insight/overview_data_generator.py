@@ -10,9 +10,11 @@ from exam.models.test import Test
 from exam.llm_call.prompts import overview_prompts as prompts
 import logging
 import sentry_sdk
+from exam.llm_call.decorators import traceable
 
 logger = logging.getLogger(__name__)
 
+@traceable()
 def extract_insights(data, prompt):
     full_prompt = prompt + """
 output format:
@@ -36,6 +38,7 @@ output format:
     return insights[:3]  # Return top 3 insights only
 
 
+@traceable()
 def Generate_overview_data(db_name):
     # Fetch base metrics
     op, tt, ir, cv = calculate_metrics(db_name)
@@ -81,6 +84,7 @@ def clean_gemini_json_block(response):
     return []
 
 
+@traceable()
 def Generate_overview_data_educator(class_id):
     """
     Generates overview data for educators based on class ID.

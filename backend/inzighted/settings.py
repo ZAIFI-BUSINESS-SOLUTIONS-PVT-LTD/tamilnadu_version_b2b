@@ -44,19 +44,26 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 SECURE_SSL_REDIRECT = False  # ALB handles HTTPS redirect
 
-# === Email Configuration (Zoho SMTP) ===
+# === Email Configuration (from environment) ===
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST', '')
+EMAIL_PORT = os.getenv('EMAIL_PORT', '587')
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # Use SMTP backend for sending emails
 
-EMAIL_HOST = 'smtp.zoho.in'  # SMTP server for Zoho Mail
-EMAIL_PORT = 587             # Port for TLS
-EMAIL_USE_TLS = True         # Use TLS for secure connection
+# TLS/SSL flags (allow env values like 'true', '1', 'yes')
+def _env_bool(name, default=False):
+    val = os.getenv(name)
+    if val is None:
+        return default
+    return str(val).strip().lower() in ('1', 'true', 'yes', 'y')
 
-EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")       # SMTP username from environment variable
-EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")   # SMTP password from environment variable
-EMAIL_USE_TLS = True
+EMAIL_USE_TLS = _env_bool('EMAIL_USE_TLS', True)
+EMAIL_USE_SSL = _env_bool('EMAIL_USE_SSL', False)
 
-DEFAULT_FROM_EMAIL = 'no-reply@inzighted.com'  # Default sender address for emails sent by Django
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'no-reply@inzighted.com')
+FRONTEND_RESET_URL = os.getenv('FRONTEND_RESET_URL', '')
 
 # === Installed Applications ===
 INSTALLED_APPS = [

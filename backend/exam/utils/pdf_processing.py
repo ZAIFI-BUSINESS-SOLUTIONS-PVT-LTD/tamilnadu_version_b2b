@@ -13,6 +13,7 @@ import logging
 # LLM API and prompts as per your setup:
 from exam.llm_call.prompts import ocr_image_prompt as ocr_prompt
 from exam.llm_call.gemini_api import call_gemini_api_with_rotation
+from exam.llm_call.decorators import traceable
 from exam.llm_call.mistral_api import call_mistrall_ocr_api_with_rotation
 
 logger = logging.getLogger(__name__)
@@ -80,6 +81,7 @@ def parse_questions_or_raise(text: str) -> Dict[str, List[Dict[str, Any]]]:
 
 # --- LLM Wrappers ---
 
+@traceable()
 def get_total_questions(images: List[BytesIO]) -> int:
     prompt = (
         "Count the total number of questions (every question with a question number, mostly 180/200). "
@@ -94,14 +96,17 @@ def get_total_questions(images: List[BytesIO]) -> int:
         logger.error(f"Failed to extract question count from response: {response} ({e})")
         raise
 
+@traceable()
 def extract_text_from_images(images: List[BytesIO], start: int, end: int) -> str:
     prompt = f"extract from question number {start} till {end}" + ocr_prompt
     return call_gemini_api_with_rotation(prompt, "gemini-2.5-flash", images)
 
+@traceable()
 def extract_text_from_content(ocr: str, start: int, end: int) -> str:
     prompt = f"extract from question number {start} till {end}" + str(ocr_prompt) + ocr
     return call_gemini_api_with_rotation(prompt, "gemini-2.0-flash")
 
+@traceable()
 def extract_text(ocr: str, start: int, end: int, images: List[BytesIO]) -> str:
     r1 = extract_text_from_images(images, start, end)
     r2 = extract_text_from_content(ocr, start, end)
@@ -128,6 +133,7 @@ def extract_text(ocr: str, start: int, end: int, images: List[BytesIO]) -> str:
     )
     return call_gemini_api_with_rotation(prompt, "gemini-2.5-flash", images)
 
+@traceable()
 def retry_extract_text(response: str, error: Exception) -> str:
     prompt = (
         f"Error parsing JSON: {error}\n"
@@ -139,6 +145,7 @@ def retry_extract_text(response: str, error: Exception) -> str:
     return call_gemini_api_with_rotation(prompt, "gemini-2.5-flash")
 
 # --- Chunk extraction (synchronous) ---
+@traceable()
 def extract_chunk_subtask(ocr_text, start, end, images):
     """
     Synchronous chunk extraction with retry logic.
@@ -170,6 +177,7 @@ def extract_chunk_subtask(ocr_text, start, end, images):
 
 # --- Main orchestrator (not a Celery task) ---
 
+@traceable()
 def questions_extract(pdf_path: str, test_path: str, use_parallel=True, total_questions: Optional[int] = None) -> Optional[List[Dict[str, Any]]]:
     """
     Extracts questions from PDF using parallel chunk processing.
@@ -282,6 +290,7 @@ def questions_extract(pdf_path: str, test_path: str, use_parallel=True, total_qu
                 logger.error(f"[QUESTION EXTRACTION] ❌ Extraction incomplete after {max_attempts} attempts: {len(deduped_questions)}/{N}")
                 return None
 
+@traceable()
 def get_subject_from_q_paper(pdf_path: str) -> Optional[str]:
     """
     Extracts the subject from the first page of a question paper using an LLM.
@@ -305,6 +314,7 @@ def get_subject_from_q_paper(pdf_path: str) -> Optional[str]:
         return None
 
 
+@traceable()
 def questions_extract_with_metadata(pdf_path: str, test_path: str, subject_ranges: list, total_questions: int) -> Optional[List[Dict[str, Any]]]:
     """
     Extract questions using admin-provided subject ranges.

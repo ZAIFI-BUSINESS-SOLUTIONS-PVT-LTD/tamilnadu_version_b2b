@@ -78,3 +78,6 @@ django-storages
 mistralai
 python-magic
 gunicorn
+langchain-google-genai
+langchain
+langsmith

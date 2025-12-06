@@ -121,6 +121,12 @@ const InstitutionLogin = () => {
                 </div>
               </div>
 
+                <div className="flex justify-end">
+                  <button type="button" onClick={() => navigate('/auth/forgot-password?role=manager')} className="text-sm text-blue-600 hover:underline">
+                    Forgot password?
+                  </button>
+                </div>
+
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1">
                   Password
