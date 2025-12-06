@@ -1,0 +1,51 @@
+{
+  "name": "inzighted-pdf-service",
+  "version": "1.0.0",
+  "description": "PDF generation service for InzightEd reports",
+  "private": true,
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "scripts": {
+    "dev": "cross-env NODE_ENV=development node src/server.js",
+    "start": "cross-env NODE_ENV=production node src/server.js",
+    "start:dev": "npm run dev",
+    "start:prod": "npm run start",
+    "test": "node scripts/test-pdf.js",
+    "test:new": "node scripts/test-new-pdf.js",
+    "health": "curl http://localhost:8080/health || echo 'Server not running'",
+    "build": "echo 'No build step required for Node.js'",
+    "lint": "echo 'Add ESLint when needed'",
+    "docker:build": "docker build -f docker/Dockerfile -t inzighted-pdf-service .",
+    "docker:run": "docker run -p 8080:8080 inzighted-pdf-service",
+    "docker:dev": "docker-compose -f docker/docker-compose.dev.yml up",
+    "docker:prod": "docker-compose -f docker/docker-compose.prod.yml up -d"
+  },
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "axios": "^1.10.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^5.1.0",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0",
+    "puppeteer": "^24.10.1",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "nodemon": "^3.0.2"
+  },
+  "keywords": [
+    "pdf",
+    "puppeteer",
+    "express",
+    "inzighted",
+    "report-generation"
+  ],
+  "author": "InzightEd Team",
+  "license": "PRIVATE"
+}

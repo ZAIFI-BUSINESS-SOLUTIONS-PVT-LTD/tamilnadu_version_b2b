@@ -66,9 +66,39 @@ services:
     ports:
       - "6379:6379"
 
+  pdf_service:
+    build:
+      context: ./pdf_service
+      dockerfile: Dockerfile
+    image: tamilnadu_pdf_service:latest
+    container_name: tamilnadu_pdf_service
+    env_file:
+      - ./pdf_service/.env.docker
+    # Expose port only on the Docker network via `expose`.
+    # We do not publish the PDF service port to the host because nginx
+    # will proxy requests to it under the same backend domain and SSL.
+    expose:
+      - "8080"
+    volumes:
+      - pdf_temp:/usr/src/pdf_service/temp
+      - pdf_logs:/usr/src/pdf_service/logs
+    networks:
+      - backend_network
+    restart: unless-stopped
+    depends_on:
+      - app
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)}).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
 volumes:
   static_data:
   redis_data:
+  pdf_temp:
+  pdf_logs:
 
 networks:
   backend_network:

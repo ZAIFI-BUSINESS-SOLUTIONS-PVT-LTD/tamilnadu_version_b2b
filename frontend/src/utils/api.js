@@ -3,8 +3,27 @@ import axios from 'axios';
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL;
 
-// Helper to get PDF service URL with fallback
-const PDF_SERVICE_URL = import.meta.env.VITE_PDF_SERVICE_URL || 'http://localhost:8080';
+// Helper to get PDF service URL with fallback.
+// Prefer an explicit `VITE_PDF_SERVICE_URL` (useful for local dev).
+// In production we expect the PDF service to be reachable via the
+// backend domain under the `/pdf` proxy path (same SSL certificate).
+const computePdfServiceUrl = () => {
+  const explicit = import.meta.env.VITE_PDF_SERVICE_URL;
+  if (explicit) return explicit;
+  // If API_BASE_URL exists and ends with '/api' strip it and add '/pdf'
+  try {
+    const api = API_BASE_URL || '';
+    if (api.match(/\/api\/?$/)) {
+      return api.replace(/\/api\/?$/, '') + '/pdf';
+    }
+    // Fallback to localhost for dev
+    return 'http://localhost:8080';
+  } catch (e) {
+    return 'http://localhost:8080';
+  }
+};
+
+const PDF_SERVICE_URL = computePdfServiceUrl();
 
 /**
  * Admin Login
