@@ -59,3 +59,4 @@ export const ILayout = () => {
 export { default as IDashboard } from './i_dashboard.jsx';
 export { default as IAnalysis } from './i_analysis.jsx';
 export { default as IStudentDetails } from './i_studentdetails.jsx';
+export { default as IUpload } from './i_upload.jsx';

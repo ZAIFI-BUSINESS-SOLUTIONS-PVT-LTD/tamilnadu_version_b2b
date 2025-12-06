@@ -1,7 +1,7 @@
 from django.contrib.auth.hashers import make_password
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from exam.models import Educator, Student, Test, Overview, Result
+from exam.models import Educator, Student, Test, Overview, Result, Manager
 from django.core.files.storage import default_storage  # ✅ Ensure transactions commit properly
 
 from django.http import JsonResponse
@@ -136,11 +136,21 @@ def educator_register(request):
 def get_educator_tests(request):
     """Fetch all tests for a given educator with status from TestProcessingStatus."""
     try:
-        educator_email = request.user.email
-        educator = Educator.objects.filter(email=educator_email).first()
-
-        if not educator:
-            return JsonResponse({'error': 'Educator not found'}, status=404)
+        educator = None
+        if isinstance(request.user, Educator):
+            educator = request.user
+        elif isinstance(request.user, Manager):
+            educator_id = request.GET.get('educator_id') # GET request, so use query params
+            if not educator_id:
+                return JsonResponse({'error': 'Educator ID is required for institution view'}, status=400)
+            educator = Educator.objects.filter(id=educator_id).first()
+            if not educator:
+                return JsonResponse({'error': 'Educator not found'}, status=404)
+            
+            if request.user.institution != educator.institution:
+                 return JsonResponse({'error': 'Unauthorized: Educator does not belong to your institution'}, status=403)
+        else:
+             return JsonResponse({'error': 'Unauthorized user type'}, status=403)
 
         class_id = educator.class_id
         tests = Test.objects.filter(class_id=class_id).order_by('test_num')

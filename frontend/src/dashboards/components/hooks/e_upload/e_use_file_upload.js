@@ -14,7 +14,7 @@ export const useFileUpload = () => {
   const [isUploading, setIsUploading] = useState(false);
 
   // useCallback hook to handle the file upload process
-  const handleUpload = useCallback(async (metadata = null, filesToUpload = null) => {
+  const handleUpload = useCallback(async (metadata = null, filesToUpload = null, educatorId = null) => {
     // Prevent multiple uploads if already uploading
     if (isUploading) {
       return false;
@@ -31,7 +31,8 @@ export const useFileUpload = () => {
         uploadFiles.questionPaper,
         uploadFiles.answerKey,
         uploadFiles.responseSheets,
-        metadata
+        metadata,
+        educatorId
       );
 
       // Handle API response for errors

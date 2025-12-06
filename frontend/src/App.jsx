@@ -16,6 +16,8 @@ import PageLoader from './components/ui/PageLoader';
 import Report from './dashboards/educator/Report.jsx';
 import TeacherReport from './dashboards/educator/TeacherReport.jsx';
 import StudentReport from './dashboards/student/StudentReport.jsx';
+import ForgotPassword from './auth/ForgotPassword';
+import ResetPassword from './auth/ResetPassword';
 
 // Import educator layout and nested pages
 import {
@@ -40,7 +42,8 @@ import {
   ILayout,
   IDashboard,
   IAnalysis,
-  IStudentDetails
+  IStudentDetails,
+  IUpload
 } from './dashboards/institution';
 
 
@@ -70,6 +73,9 @@ function App() {
         <Route path="/auth/student/login" element={<StudentLogin />} />
         <Route path="/auth/educator/login" element={<EducatorLogin />} />
         <Route path="/auth/institution/login" element={<InstitutionLogin />} />
+        <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+        <Route path="/auth/reset-password" element={<ResetPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/auth/admin/login" element={<AdminLogin />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="/register" element={<EducatorRegister />} />
@@ -96,6 +102,7 @@ function App() {
           <Route path="dashboard" element={<IDashboard />} />
           <Route path="analysis" element={<IAnalysis />} />
           <Route path="students" element={<IStudentDetails />} />
+          <Route path="upload" element={<IUpload />} />
         </Route>
       </Routes>
     </>

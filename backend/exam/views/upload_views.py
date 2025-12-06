@@ -4,6 +4,7 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework.permissions import IsAuthenticated
 from exam.authentication import UniversalJWTAuthentication
 from exam.models.educator import Educator
+from exam.models.manager import Manager
 from exam.models.test import Test
 from exam.models.test_metadata import TestMetadata
 from exam.services.process_test_data import process_test_data
@@ -23,11 +24,23 @@ UPLOAD_DIR = "uploads/"
 @permission_classes([IsAuthenticated])
 def upload_test(request):
     try:
-        educator_email = request.user.email
-        educator = Educator.objects.filter(email=educator_email).first()
-
-        if not educator:
-            return JsonResponse({'error': 'Educator not found'}, status=404)
+        educator = None
+        if isinstance(request.user, Educator):
+            educator = request.user
+        elif isinstance(request.user, Manager):
+            educator_id = request.data.get('educator_id')
+            if not educator_id:
+                return JsonResponse({'error': 'Educator ID is required for institution upload'}, status=400)
+            educator = Educator.objects.filter(id=educator_id).first()
+            if not educator:
+                return JsonResponse({'error': 'Educator not found'}, status=404)
+            
+            # Verify institution match
+            if request.user.institution != educator.institution:
+                 return JsonResponse({'error': 'Unauthorized: Educator does not belong to your institution'}, status=403)
+        else:
+             # Fallback/Safety
+             return JsonResponse({'error': 'Unauthorized user type'}, status=403)
 
         class_id = educator.class_id
         if not class_id:
