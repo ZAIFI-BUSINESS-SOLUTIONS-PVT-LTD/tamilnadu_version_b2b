@@ -2,19 +2,27 @@ import { useState, useEffect, useCallback } from 'react';
 import { fetchTests } from '../../../../utils/api';
 import { toast } from 'react-hot-toast';
 
-export const useTests = () => {
+export const useTests = (educatorId = null, { enabled = true } = {}) => {
   // State to hold the list of tests
   const [tests, setTests] = useState([]);
 
   // useCallback hook to load tests from the API
   const loadTests = useCallback(async () => {
+    if (!enabled && educatorId === null) return; // Don't fetch if disabled, unless it's the default educator case (where enabled is true by default)
+    // Actually, if enabled is false, we should probably not fetch at all.
+    
     try {
       // Fetch tests from the API
-      const fetched = await fetchTests();
+      const fetched = await fetchTests(educatorId);
 
       // Handle cases where the fetch failed or the data is invalid
       if (!fetched || fetched.error || !Array.isArray(fetched.tests)) {
-        toast.error('Failed to fetch tests');
+        // Only show error if it's not just "no tests found" but an actual error, 
+        // but here we assume empty array is success.
+        // If fetched.error exists, it's an error.
+        if (fetched?.error) {
+             toast.error(`Failed to fetch tests: ${fetched.error}`);
+        }
         setTests([]);
         return;
       }
@@ -33,10 +41,12 @@ export const useTests = () => {
       toast.error('Error loading tests');
       console.error('Error fetching tests:', error);
     }
-  }, []); // The loadTests function depends on nothing, so the dependency array is empty
+  }, [educatorId]); // Re-run if educatorId changes
 
   // useEffect hook to load tests on component mount and set up a polling interval
   useEffect(() => {
+    if (!enabled) return;
+
     // Load tests when the component mounts
     loadTests();
 
@@ -45,7 +55,7 @@ export const useTests = () => {
 
     // Clean up the interval when the component unmounts to prevent memory leaks
     return () => clearInterval(interval);
-  }, [loadTests]); // Re-run the effect if the loadTests function reference changes
+  }, [loadTests, enabled]); // Re-run the effect if the loadTests function reference changes
 
   // Return the tests state and the loadTests function
   return { tests, loadTests };

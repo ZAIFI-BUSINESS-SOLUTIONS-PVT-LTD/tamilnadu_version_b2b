@@ -392,14 +392,15 @@ export const registerEducator = async (formData) => {
  * @param {File} answerKey - Answer key CSV file
  * @param {File} answerSheet - Answer sheet CSV file
  * @param {Object} metadata - Optional metadata object with pattern, subject_order, total_questions, section_counts
+ * @param {string|number} educatorId - Optional educator ID for institution uploads
  */
-export const uploadTest = async (questionPaper, answerKey, answerSheet, metadata = null) => {
+export const uploadTest = async (questionPaper, answerKey, answerSheet, metadata = null, educatorId = null) => {
   try {
     const token = localStorage.getItem('token'); // ✅ Get Token from Storage
     if (!token) return { error: 'Unauthorized: No Token Found' };
     // DEBUG: log metadata being sent (no files)
     try {
-      console.debug('uploadTest metadata:', metadata);
+      console.debug('uploadTest metadata:', metadata, 'educatorId:', educatorId);
     } catch (e) {
       // ignore logging errors
     }
@@ -408,6 +409,10 @@ export const uploadTest = async (questionPaper, answerKey, answerSheet, metadata
     formData.append('question_paper', questionPaper);
     formData.append('answer_key', answerKey);
     formData.append('answer_sheet', answerSheet);
+
+    if (educatorId) {
+      formData.append('educator_id', educatorId);
+    }
 
     // Add metadata fields if provided (only append if value is defined and not null)
     if (metadata) {
@@ -440,11 +445,16 @@ export const uploadTest = async (questionPaper, answerKey, answerSheet, metadata
 
 /**
  * Fetch Tests for an Educator
+ * @param {string|number} educatorId - Optional educator ID for institution view
  */
-export const fetchTests = async () => {
+export const fetchTests = async (educatorId = null) => {
   try {
     const token = localStorage.getItem('token');
-    const response = await axios.get(`${API_BASE_URL}/educator/tests/`, {
+    let url = `${API_BASE_URL}/educator/tests/`;
+    if (educatorId) {
+      url += `?educator_id=${educatorId}`;
+    }
+    const response = await axios.get(url, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return { tests: response.data.tests }; // 👈 return wrapped object
@@ -849,5 +859,38 @@ export const getMyFeedbackHistory = async () => {
   } catch (error) {
     console.error('Error fetching feedback history:', error);
     return { error: error.response?.data?.error || 'Failed to fetch feedback history' };
+  }
+};
+
+
+/**
+ * Forgot Password - request reset email
+ */
+export const forgotPassword = async (email) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/forgot-password/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    return await response.json();
+  } catch (error) {
+    return { error: 'Network error, please try again' };
+  }
+};
+ 
+/**
+ * Reset Password - consume token and set new password
+ */
+export const resetPassword = async (email, token, new_password, role) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/reset-password/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, token, new_password, role }),
+    });
+    return await response.json();
+  } catch (error) {
+    return { error: 'Network error, please try again' };
   }
 };

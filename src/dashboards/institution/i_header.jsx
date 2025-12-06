@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { House, Target, Student, ChatCircleDots, List } from "@phosphor-icons/react";
+import { House, Target, Student, ChatCircleDots, List, UploadSimple } from "@phosphor-icons/react";
 import { useInstitution } from './index.jsx';
 import DesktopSidebar from '../components/header/DesktopSidebar.jsx';
 import UserDropdown from '../components/header/UserDropDown.jsx';
@@ -30,6 +30,12 @@ const InstitutionHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
       icon: <Student weight="regular" size={20} />,
       text: 'Students',
       activePattern: /^\/institution\/students/
+    },
+    {
+      to: '/institution/upload',
+      icon: <UploadSimple weight="regular" size={20} />,
+      text: 'Upload',
+      activePattern: /^\/institution\/upload/
     },
   ];
 
