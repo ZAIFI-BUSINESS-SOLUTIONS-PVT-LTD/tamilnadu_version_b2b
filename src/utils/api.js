@@ -4,23 +4,24 @@ import axios from 'axios';
 export const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 // Helper to get PDF service URL with fallback.
-// Prefer an explicit `VITE_PDF_SERVICE_URL` (useful for local dev).
-// In production we expect the PDF service to be reachable via the
-// backend domain under the `/pdf` proxy path (same SSL certificate).
+// Priority order:
+// 1. `VITE_PDF_SERVICE_URL` if explicitly provided (useful for staging/testing)
+// 2. In development: `http://localhost:8080` (local pdf_service container)
+// 3. In production: use the nginx proxy path `/pdf` so requests are
+//    same-origin and forwarded to the `pdf_service` container by nginx.
 const computePdfServiceUrl = () => {
   const explicit = import.meta.env.VITE_PDF_SERVICE_URL;
   if (explicit) return explicit;
-  // If API_BASE_URL exists and ends with '/api' strip it and add '/pdf'
-  try {
-    const api = API_BASE_URL || '';
-    if (api.match(/\/api\/?$/)) {
-      return api.replace(/\/api\/?$/, '') + '/pdf';
-    }
-    // Fallback to localhost for dev
-    return 'http://localhost:8080';
-  } catch (e) {
+
+  // Vite exposes flags for the current mode
+  if (import.meta.env.DEV) {
     return 'http://localhost:8080';
   }
+
+  // Production default: rely on backend/nginx proxy at `/pdf`.
+  // Using a relative path keeps requests same-origin and routes
+  // them through the existing `nginx` proxy (`location /pdf/`).
+  return '/pdf';
 };
 
 const PDF_SERVICE_URL = computePdfServiceUrl();
@@ -289,14 +290,19 @@ export const fetchEducatorAllStudentResults = async () => {
 /**
  * Generate PDF Report for Student (Teacher View)
  */
-export const generatePdfReport = async (studentId, testId) => {
+export const generatePdfReport = async (studentId, testId, classId = null) => {
   try {
     const token = localStorage.getItem('token');
     if (!token) {
       throw new Error('Authentication token not found');
     }
+    let url = `${PDF_SERVICE_URL}/generate-pdf?studentId=${encodeURIComponent(studentId)}&testId=${encodeURIComponent(testId)}`;
+    if (classId) {
+      url += `&classId=${encodeURIComponent(classId)}`;
+    }
+    console.log('generatePdfReport called with:', { studentId, testId, classId, finalUrl: url });
     const response = await fetch(
-      `${PDF_SERVICE_URL}/generate-pdf?studentId=${encodeURIComponent(studentId)}&testId=${encodeURIComponent(testId)}`,
+      url,
       {
         method: 'GET',
         headers: {
@@ -311,6 +317,7 @@ export const generatePdfReport = async (studentId, testId) => {
     const blob = await response.blob();
     return blob;
   } catch (error) {
+    console.error('generatePdfReport error:', error);
     throw error;
   }
 };
@@ -318,12 +325,17 @@ export const generatePdfReport = async (studentId, testId) => {
 /**
  * Generate Bulk PDF Reports as a Zip File for Multiple Students
  */
-export const generateBulkPdfReportsZip = async (studentIds, testId) => {
+export const generateBulkPdfReportsZip = async (studentIds, testId, classId = null) => {
   try {
     const token = localStorage.getItem('token');
     if (!token) {
       throw new Error('Authentication token not found');
     }
+    const body = { studentIds, testId };
+    if (classId) {
+      body.classId = classId;
+    }
+    console.log('generateBulkPdfReportsZip called with:', { studentIds, testId, classId, body });
     const response = await fetch(
       `${PDF_SERVICE_URL}/generate-bulk-pdf`,
       {
@@ -332,7 +344,7 @@ export const generateBulkPdfReportsZip = async (studentIds, testId) => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ studentIds, testId })
+        body: JSON.stringify(body)
       }
     );
     if (!response.ok) {
@@ -342,6 +354,7 @@ export const generateBulkPdfReportsZip = async (studentIds, testId) => {
     const blob = await response.blob();
     return blob;
   } catch (error) {
+    console.error('generateBulkPdfReportsZip error:', error);
     throw error;
   }
 };
@@ -588,14 +601,18 @@ export const fetcheducatorstudent = async () => {
 /**
  * Generate PDF Report for Teacher Self-Download
  */
-export const generateTeacherSelfPdfReport = async (testId) => {
+export const generateTeacherSelfPdfReport = async (testId, classId = null) => {
   try {
     const token = localStorage.getItem('token');
     if (!token) {
       throw new Error('Authentication token not found');
     }
+    let url = `${PDF_SERVICE_URL}/generate-teacher-pdf?testId=${encodeURIComponent(testId)}`;
+    if (classId) {
+      url += `&classId=${encodeURIComponent(classId)}`;
+    }
     const response = await fetch(
-      `${PDF_SERVICE_URL}/generate-teacher-pdf?testId=${encodeURIComponent(testId)}`,
+      url,
       {
         method: 'GET',
         headers: {
@@ -911,5 +928,22 @@ export const resetPassword = async (email, token, new_password, role) => {
     return await response.json();
   } catch (error) {
     return { error: 'Network error, please try again' };
+  }
+};
+
+/**
+ * Fetch Educator Details (includes class_id)
+ */
+export const getEducatorDetails = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_BASE_URL}/educator/details/`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    return response.data || {};
+  } catch (error) {
+    console.error('Error fetching educator details:', error);
+    return { error: 'Failed to fetch educator details' };
   }
 };
