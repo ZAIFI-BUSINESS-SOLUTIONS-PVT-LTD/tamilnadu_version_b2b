@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Download, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { generateTeacherSelfPdfReport, fetchAvailableSwotTests_Educator } from '../../../utils/api.js';
+import { generateTeacherSelfPdfReport, fetchAvailableSwotTests_Educator, getEducatorDetails } from '../../../utils/api.js';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select.jsx';
 import { Button } from '../../../components/ui/button.jsx';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card.jsx';
@@ -12,6 +12,22 @@ export const TeacherReportModal = ({ onClose }) => {
   const [error, setError] = useState(null);
   const [availableTests, setAvailableTests] = useState([]);
   const [selectedTest, setSelectedTest] = useState('');
+  const [classId, setClassId] = useState(null);
+
+  // Fetch educator's class_id on mount
+  useEffect(() => {
+    const fetchClassId = async () => {
+      try {
+        const data = await getEducatorDetails();
+        if (data && data.class_id) {
+          setClassId(data.class_id);
+        }
+      } catch (err) {
+        console.warn('Could not fetch class_id for S3 upload:', err);
+      }
+    };
+    fetchClassId();
+  }, []);
 
   // Fetch available tests for the teacher on mount
   useEffect(() => {
@@ -64,7 +80,7 @@ export const TeacherReportModal = ({ onClose }) => {
         setError('Invalid test selection.');
         return;
       }
-      const blob = await generateTeacherSelfPdfReport(testNum);
+      const blob = await generateTeacherSelfPdfReport(testNum, classId);
       if (blob && blob.size > 0) {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');

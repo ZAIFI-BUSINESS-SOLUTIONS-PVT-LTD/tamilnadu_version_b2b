@@ -11,7 +11,7 @@
   },
   "scripts": {
     "dev": "cross-env NODE_ENV=development node src/server.js",
-    "start": "cross-env NODE_ENV=production node src/server.js",
+    "start": "NODE_ENV=production node src/server.js",
     "start:dev": "npm run dev",
     "start:prod": "npm run start",
     "test": "node scripts/test-pdf.js",
@@ -25,6 +25,7 @@
     "docker:prod": "docker-compose -f docker/docker-compose.prod.yml up -d"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.682.0",
     "archiver": "^7.0.1",
     "axios": "^1.10.0",
     "cors": "^2.8.5",
@@ -32,6 +33,7 @@
     "express": "^5.1.0",
     "express-rate-limit": "^7.1.5",
     "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.3",
     "puppeteer": "^24.10.1",
     "winston": "^3.11.0"
   },

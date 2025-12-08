@@ -1,7 +1,7 @@
 # Dockerfile for PDF Service
 FROM node:20-slim
 
-# Install Chrome dependencies
+# Install Chrome and dependencies
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
@@ -40,6 +40,10 @@ RUN apt-get update && apt-get install -y \
     libxtst6 \
     lsb-release \
     xdg-utils \
+    && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
+    && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list \
+    && apt-get update \
+    && apt-get install -y google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -58,12 +62,13 @@ COPY . .
 RUN mkdir -p temp logs && \
     chmod -R 755 temp logs
 
-# Create non-root user
-RUN groupadd -r pdfuser && useradd -r -g pdfuser pdfuser && \
-    chown -R pdfuser:pdfuser /usr/src/pdf_service
+# Create non-root user with home directory
+RUN groupadd -r pdfuser && useradd -r -g pdfuser -m -d /home/pdfuser pdfuser && \
+    mkdir -p /home/pdfuser/.local/share/applications && \
+    chown -R pdfuser:pdfuser /usr/src/pdf_service /home/pdfuser
 
 # Set environment variables for Puppeteer
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false \
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
 
 # Switch to non-root user

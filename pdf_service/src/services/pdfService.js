@@ -6,6 +6,8 @@ import { fileURLToPath } from 'url';
 import config from '../config/index.js';
 import logger from '../utils/logger.js';
 import archiver from 'archiver';
+import jwt from 'jsonwebtoken';
+import { S3Client, PutObjectCommand, HeadObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,6 +34,7 @@ class PdfService {
   constructor() {
     this.browser = null;
     this.isInitialized = false;
+    this.s3Client = null;
   }
 
   async initialize() {
@@ -51,6 +54,37 @@ class PdfService {
         executablePath: config.puppeteer.executablePath
       });
 
+      // Initialize S3 client if credentials are provided
+      if (config.aws.s3Enabled && config.aws.accessKeyId && config.aws.secretAccessKey) {
+        // Build client config and optionally include custom endpoint and path-style addressing
+        const s3ClientConfig = {
+          region: config.aws.region,
+          credentials: {
+            accessKeyId: config.aws.accessKeyId,
+            secretAccessKey: config.aws.secretAccessKey
+          }
+        };
+
+        if (config.aws.endpoint) {
+          s3ClientConfig.endpoint = config.aws.endpoint;
+        }
+
+        if (config.aws.forcePathStyle) {
+          // forcePathStyle is supported by the AWS SDK v3 S3 client and is useful for custom endpoints
+          s3ClientConfig.forcePathStyle = true;
+        }
+
+        this.s3Client = new S3Client(s3ClientConfig);
+        logger.info('S3 client initialized', { 
+          bucket: config.aws.bucketName,
+          region: config.aws.region,
+          endpoint: config.aws.endpoint || null,
+          forcePathStyle: !!config.aws.forcePathStyle
+        });
+      } else {
+        logger.warn('S3 upload disabled - missing credentials or disabled in config');
+      }
+
       this.isInitialized = true;
       logger.info('PDF service initialized successfully');
     } catch (error) {
@@ -59,9 +93,203 @@ class PdfService {
     }
   }
 
-  async generatePdf(studentId, testId, jwtToken, origin) {
+  /**
+   * Generate deterministic S3 key based on report type
+   * @param {string} classId - Class ID
+   * @param {string} testId - Test ID 
+   * @param {string} reportType - 'student', 'teacher', or 'overall'
+   * @param {string} userId - Student ID or Teacher ID
+   * @returns {string} S3 key path
+   */
+  generateDeterministicS3Key(classId, testId, reportType, userId = null) {
+    const sanitizedClassId = String(classId || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const sanitizedTestId = String(testId || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const sanitizedUserId = userId ? String(userId).replace(/[^a-zA-Z0-9_-]/g, '_') : null;
+    
+    if (reportType === 'student') {
+      return `reports/${sanitizedClassId}/${sanitizedTestId}/students/${sanitizedUserId}.pdf`;
+    } else if (reportType === 'teacher') {
+      if (sanitizedTestId === '0' || sanitizedTestId.toLowerCase() === 'overall') {
+        return `reports/${sanitizedClassId}/overall/teacher_${sanitizedUserId}.pdf`;
+      }
+      return `reports/${sanitizedClassId}/${sanitizedTestId}/teacher_${sanitizedUserId}.pdf`;
+    } else if (reportType === 'overall') {
+      return `reports/${sanitizedClassId}/${sanitizedTestId}/overall.pdf`;
+    }
+    
+    // Fallback to old format
+    return `reports/${sanitizedClassId}/${sanitizedTestId}/${filename || 'report.pdf'}`;
+  }
+
+  /**
+   * Check if PDF exists in S3
+   * @param {string} s3Key - S3 key to check
+   * @returns {Promise<boolean>} true if exists
+   */
+  async checkS3Exists(s3Key) {
+    if (!this.s3Client || !config.aws.s3Enabled) {
+      return false;
+    }
+
+    try {
+      await this.s3Client.send(new HeadObjectCommand({
+        Bucket: config.aws.bucketName,
+        Key: s3Key
+      }));
+      return true;
+    } catch (error) {
+      if (error.name === 'NotFound' || error.$metadata?.httpStatusCode === 404) {
+        return false;
+      }
+      logger.warn('S3 existence check failed', { s3Key, error: error.message });
+      return false;
+    }
+  }
+
+  /**
+   * Stream PDF from S3
+   * @param {string} s3Key - S3 key to stream
+   * @param {Object} res - Express response object
+   * @returns {Promise<void>}
+   */
+  async streamFromS3(s3Key, res) {
+    if (!this.s3Client || !config.aws.s3Enabled) {
+      throw new Error('S3 client not available');
+    }
+
+    try {
+      const getObjectResponse = await this.s3Client.send(new GetObjectCommand({
+        Bucket: config.aws.bucketName,
+        Key: s3Key
+      }));
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${path.basename(s3Key)}"`);
+      if (getObjectResponse.ContentLength) {
+        res.setHeader('Content-Length', getObjectResponse.ContentLength);
+      }
+
+      // Stream the S3 object body to response
+      getObjectResponse.Body.pipe(res);
+      logger.info('PDF streamed from S3', { s3Key });
+    } catch (error) {
+      logger.error('Failed to stream PDF from S3', { s3Key, error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Decode JWT token to extract user information
+   * @param {string} token - JWT token
+   * @returns {Object|null} Decoded token payload or null if invalid
+   */
+  decodeJWT(token) {
+    try {
+      // Decode without verification (we trust the token came from our backend)
+      const decoded = jwt.decode(token);
+      return decoded;
+    } catch (error) {
+      logger.warn('Failed to decode JWT token', { error: error.message });
+      return null;
+    }
+  }
+
+  /**
+   * Upload PDF buffer to S3 with deterministic naming
+   * @param {Buffer} buffer - PDF buffer
+   * @param {string} classId - Class ID for folder structure
+   * @param {string} testId - Test ID for folder structure
+   * @param {string} filename - PDF filename (legacy, will be ignored for deterministic naming)
+   * @param {string} reportType - Report type: 'student', 'teacher', 'overall'
+   * @param {string} userId - User ID (student or teacher)
+   * @returns {Promise<string|null>} S3 key path or null if upload disabled/failed
+   */
+  async uploadToS3(buffer, classId, testId, filename, reportType = 'student', userId = null) {
+    if (!this.s3Client || !config.aws.s3Enabled) {
+      logger.debug('S3 upload skipped - S3 client not initialized or disabled');
+      return null;
+    }
+
+    try {
+      // Generate deterministic S3 key
+      const s3Key = this.generateDeterministicS3Key(classId, testId, reportType, userId);
+
+      const uploadParams = {
+        Bucket: config.aws.bucketName,
+        Key: s3Key,
+        Body: buffer,
+        ContentType: 'application/pdf',
+        // Optional: add metadata
+        Metadata: {
+          'class-id': String(classId || 'unknown'),
+          'test-id': String(testId || 'unknown'),
+          'report-type': reportType,
+          'user-id': String(userId || 'unknown'),
+          'generated-at': new Date().toISOString()
+        }
+      };
+
+      logger.debug('Uploading PDF to S3', { 
+        bucket: config.aws.bucketName, 
+        key: s3Key,
+        size: `${(buffer.length / 1024).toFixed(2)}KB`
+      });
+
+      await this.s3Client.send(new PutObjectCommand(uploadParams));
+
+      const s3Url = `s3://${config.aws.bucketName}/${s3Key}`;
+      logger.info('PDF uploaded to S3 successfully', { 
+        s3Url,
+        key: s3Key,
+        size: `${(buffer.length / 1024).toFixed(2)}KB`
+      });
+
+      return s3Key;
+    } catch (error) {
+      // Capture richer error details from AWS SDK to help troubleshooting endpoint/region issues
+      const errDetails = {
+        message: error?.message || String(error),
+        name: error?.name || null,
+        $metadata: error?.$metadata || null
+      };
+      logger.error('Failed to upload PDF to S3', {
+        error: errDetails,
+        classId,
+        testId,
+        reportType,
+        userId,
+        s3Key
+      });
+      // Don't throw - allow PDF streaming to continue even if S3 upload fails
+      return null;
+    }
+  }
+
+  async generatePdf(studentId, testId, jwtToken, origin, classId = null) {
     if (!this.isInitialized) {
       await this.initialize();
+    }
+
+    // Check if PDF already exists in S3 first
+    if (classId) {
+      const deterministicKey = this.generateDeterministicS3Key(classId, testId, 'student', studentId);
+      const exists = await this.checkS3Exists(deterministicKey);
+      if (exists) {
+        logger.info('PDF found in S3, skipping generation', { 
+          studentId, 
+          testId, 
+          classId, 
+          s3Key: deterministicKey 
+        });
+        // Return the S3 path info so controller can stream it
+        return { 
+          filePath: null, 
+          filename: path.basename(deterministicKey), 
+          buffer: null,
+          s3Key: deterministicKey,
+          fromS3: true 
+        };
+      }
     }
 
     const startTime = Date.now();
@@ -109,24 +337,9 @@ class PdfService {
       // Set viewport for consistent rendering
       await page.setViewport({ width: 1200, height: 800 });
 
-      // Build report URL using tenant-specific frontend URL.
-      // If `FRONTEND_INTERNAL_URL` is set (e.g. 'http://nginx'), use it as
-      // the network address but preserve the original Host header so nginx
-      // routes correctly (this allows Puppeteer to reach the frontend via
-      // the internal nginx container while preserving the public hostname).
-      const publicFrontend = tenantUrls.frontend;
-      const internalFrontendBase = process.env.FRONTEND_INTERNAL_URL || publicFrontend;
-      const targetHost = new URL(publicFrontend).host;
-      const reportURL = `${internalFrontendBase.replace(/\/$/, '')}/report?studentId=${encodeURIComponent(studentId)}&testId=${encodeURIComponent(testId)}`;
-      logger.debug('Navigating to report URL', { url: reportURL, origin, targetHost });
-
-      // When using an internal frontend base different from the public host,
-      // set the Host header so the proxy (nginx) can route the request.
-      try {
-        await page.setExtraHTTPHeaders({ Host: targetHost });
-      } catch (e) {
-        logger.debug('Could not set extra HTTP headers', { error: e.message });
-      }
+      // Build report URL using tenant-specific frontend URL
+      const reportURL = `${tenantUrls.frontend}/report?studentId=${encodeURIComponent(studentId)}&testId=${encodeURIComponent(testId)}`;
+      logger.debug('Navigating to report URL', { url: reportURL, origin });
 
       // Navigate to the page
       await page.goto(reportURL, {
@@ -158,7 +371,7 @@ class PdfService {
       });
 
       // Save to temp file
-      const filename = `inzighted_report_${studentId}_${testId}_${Date.now()}.pdf`;
+      const filename = `inzighted_report_${studentId}_${testId}.pdf`;
       const filePath = path.join(config.pdf.tempDir, filename);
 
       fs.writeFileSync(filePath, pdfBuffer);
@@ -171,6 +384,15 @@ class PdfService {
         filename,
         size: `${(pdfBuffer.length / 1024).toFixed(2)}KB`
       });
+
+      // Upload to S3 asynchronously (non-blocking) with deterministic naming
+      if (classId) {
+        this.uploadToS3(pdfBuffer, classId, testId, filename, 'student', studentId).catch(err => {
+          logger.error('S3 upload failed but continuing', { error: err.message });
+        });
+      } else {
+        logger.debug('Skipping S3 upload - no classId provided');
+      }
 
       return { filePath, filename, buffer: pdfBuffer };
 
@@ -195,9 +417,11 @@ class PdfService {
    * @param {Array<string>} studentIds - Array of student IDs
    * @param {string} testId - Test ID
    * @param {string} jwtToken - JWT token for authentication
+   * @param {string} origin - Origin for tenant-specific URLs
+   * @param {string} classId - Optional class ID for S3 upload
    * @returns {Promise<string>} - Path to the generated zip file
    */
-  async generateBulkPdfZip(studentIds, testId, jwtToken, origin) {
+  async generateBulkPdfZip(studentIds, testId, jwtToken, origin, classId = null) {
     if (!this.isInitialized) {
       await this.initialize();
     }
@@ -219,7 +443,7 @@ class PdfService {
 
       for (const studentId of studentIds) {
         try {
-          const { filePath, filename } = await this.generatePdf(studentId, testId, jwtToken, origin);
+          const { filePath, filename } = await this.generatePdf(studentId, testId, jwtToken, origin, classId);
           archive.file(filePath, { name: filename });
         } catch (err) {
           logger.warn('Failed to generate PDF for student', { studentId, error: err.message });
@@ -324,10 +548,40 @@ class PdfService {
    * Generate PDF for student self-report (student login)
    * @param {string} testId
    * @param {string} jwtToken
+   * @param {string} origin
+   * @param {string} classId - Optional class ID for S3 upload
    */
-  async generateStudentSelfPdf(testId, jwtToken, origin) {
+  async generateStudentSelfPdf(testId, jwtToken, origin, classId = null) {
     if (!this.isInitialized) {
       await this.initialize();
+    }
+
+    // Extract student ID from JWT token
+    let studentId = null;
+    if (jwtToken) {
+      const decoded = this.decodeJWT(jwtToken);
+      studentId = decoded?.student_id || decoded?.user_id || decoded?.sub;
+    }
+
+    // Check if PDF already exists in S3 first
+    if (classId && studentId) {
+      const deterministicKey = this.generateDeterministicS3Key(classId, testId, 'student', studentId);
+      const exists = await this.checkS3Exists(deterministicKey);
+      if (exists) {
+        logger.info('Student PDF found in S3, skipping generation', { 
+          studentId, 
+          testId, 
+          classId, 
+          s3Key: deterministicKey 
+        });
+        return { 
+          filePath: null, 
+          filename: path.basename(deterministicKey), 
+          buffer: null,
+          s3Key: deterministicKey,
+          fromS3: true 
+        };
+      }
     }
     
     // Get tenant-specific URLs
@@ -360,12 +614,8 @@ class PdfService {
         });
       }
       await page.setViewport({ width: 1200, height: 800 });
-      const publicFrontend = tenantUrls.frontend;
-      const internalFrontendBase = process.env.FRONTEND_INTERNAL_URL || publicFrontend;
-      const targetHost = new URL(publicFrontend).host;
-      const reportURL = `${internalFrontendBase.replace(/\/$/, '')}/student-report?testId=${encodeURIComponent(sanitizedTestId)}`;
-      logger.debug('Navigating to student self-report URL', { url: reportURL, targetHost });
-      try { await page.setExtraHTTPHeaders({ Host: targetHost }); } catch (e) {}
+      const reportURL = `${tenantUrls.frontend}/student-report?testId=${encodeURIComponent(sanitizedTestId)}`;
+      logger.debug('Navigating to student self-report URL', { url: reportURL });
       await page.goto(reportURL, {
         waitUntil: 'networkidle0',
         timeout: config.pdf.timeout
@@ -378,10 +628,20 @@ class PdfService {
         format: 'A4', printBackground: true,
         margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
       });
-      const filename = `inzighted_student_report_${sanitizedTestId}_${Date.now()}.pdf`;
+      const filename = `inzighted_student_report_${sanitizedTestId}.pdf`;
       const filePath = path.join(config.pdf.tempDir, filename);
       fs.writeFileSync(filePath, pdfBuffer);
       logger.info('Student self-report PDF generated', { testId: sanitizedTestId, filename });
+      
+      // Upload to S3 asynchronously (non-blocking) with deterministic naming
+      if (classId && studentId) {
+        this.uploadToS3(pdfBuffer, classId, sanitizedTestId, filename, 'student', studentId).catch(err => {
+          logger.error('S3 upload failed but continuing', { error: err.message });
+        });
+      } else {
+        logger.debug('Skipping S3 upload - no classId or studentId provided for student self-report');
+      }
+      
       return { filePath, filename, buffer: pdfBuffer };
     } catch (error) {
       logger.error('Student self-report PDF generation failed', { testId: sanitizedTestId, error: error.message });
@@ -395,10 +655,40 @@ class PdfService {
    * Generate PDF for teacher self-report (teacher login)
    * @param {string} testId
    * @param {string} jwtToken
+   * @param {string} origin
+   * @param {string} classId - Optional class ID for S3 upload
    */
-  async generateTeacherSelfPdf(testId, jwtToken, origin) {
+  async generateTeacherSelfPdf(testId, jwtToken, origin, classId = null) {
     if (!this.isInitialized) {
       await this.initialize();
+    }
+
+    // Extract teacher ID from JWT token
+    let teacherId = null;
+    if (jwtToken) {
+      const decoded = this.decodeJWT(jwtToken);
+      teacherId = decoded?.teacher_id || decoded?.educator_id || decoded?.user_id || decoded?.sub;
+    }
+
+    // Check if PDF already exists in S3 first
+    if (classId && teacherId) {
+      const deterministicKey = this.generateDeterministicS3Key(classId, testId, 'teacher', teacherId);
+      const exists = await this.checkS3Exists(deterministicKey);
+      if (exists) {
+        logger.info('Teacher PDF found in S3, skipping generation', { 
+          teacherId, 
+          testId, 
+          classId, 
+          s3Key: deterministicKey 
+        });
+        return { 
+          filePath: null, 
+          filename: path.basename(deterministicKey), 
+          buffer: null,
+          s3Key: deterministicKey,
+          fromS3: true 
+        };
+      }
     }
     
     // Get tenant-specific URLs
@@ -431,12 +721,8 @@ class PdfService {
         });
       }
       await page.setViewport({ width: 1200, height: 800 });
-      const publicFrontend = tenantUrls.frontend;
-      const internalFrontendBase = process.env.FRONTEND_INTERNAL_URL || publicFrontend;
-      const targetHost = new URL(publicFrontend).host;
-      const reportURL = `${internalFrontendBase.replace(/\/$/, '')}/teacher-report?testId=${encodeURIComponent(sanitizedTestId)}`;
-      logger.debug('Navigating to teacher self-report URL', { url: reportURL, targetHost });
-      try { await page.setExtraHTTPHeaders({ Host: targetHost }); } catch (e) {}
+      const reportURL = `${tenantUrls.frontend}/teacher-report?testId=${encodeURIComponent(sanitizedTestId)}`;
+      logger.debug('Navigating to teacher self-report URL', { url: reportURL });
       await page.goto(reportURL, {
         waitUntil: 'networkidle0',
         timeout: config.pdf.timeout
@@ -449,10 +735,20 @@ class PdfService {
         format: 'A4', printBackground: true,
         margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
       });
-      const filename = `inzighted_teacher_report_${sanitizedTestId}_${Date.now()}.pdf`;
+      const filename = `inzighted_teacher_report_${sanitizedTestId}.pdf`;
       const filePath = path.join(config.pdf.tempDir, filename);
       fs.writeFileSync(filePath, pdfBuffer);
       logger.info('Teacher self-report PDF generated', { testId: sanitizedTestId, filename });
+      
+      // Upload to S3 asynchronously (non-blocking) with deterministic naming
+      if (classId && teacherId) {
+        this.uploadToS3(pdfBuffer, classId, sanitizedTestId, filename, 'teacher', teacherId).catch(err => {
+          logger.error('S3 upload failed but continuing', { error: err.message });
+        });
+      } else {
+        logger.debug('Skipping S3 upload - no classId or teacherId provided for teacher self-report');
+      }
+      
       return { filePath, filename, buffer: pdfBuffer };
     } catch (error) {
       logger.error('Teacher self-report PDF generation failed', { testId: sanitizedTestId, error: error.message });

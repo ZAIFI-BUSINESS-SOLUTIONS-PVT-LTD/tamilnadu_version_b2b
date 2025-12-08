@@ -4,31 +4,14 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Tenant configuration for different products
-// When running inside Docker the PDF service should use the internal
-// backend URL (http://app:8000/api) so requests to the Django API stay
-// on the Docker network. Frontend URLs remain the public frontend domain
-// which Puppeteer will load to render pages.
 const tenantConfig = {
   'https://inzighted.com': {
     frontend: 'https://inzighted.com',
-    backend: process.env.BACKEND_API_URL || 'https://api.inzighted.com/api'
+    backend: 'https://api.inzighted.com/api'
   },
-  // Public Tamil Nadu tenant (external)
   'https://tamilnadu.inzighted.com': {
     frontend: 'https://tamilnadu.inzighted.com',
-    // Prefer internal Docker backend when available
-    backend: process.env.BACKEND_API_URL || 'http://app:8000/api'
-  },
-  // API host (backend domain) - when requests come via nginx using the
-  // backend domain, still call internal app service for data.
-  'https://tamilnaduapi.inzighted.com': {
-    frontend: 'https://tamilnadu.inzighted.com',
-    backend: process.env.BACKEND_API_URL || 'http://app:8000/api'
-  },
-  // Local dev (proxy through nginx on host) - resolve backend to internal app
-  'http://localhost:80': {
-    frontend: 'https://tamilnadu.inzighted.com',
-    backend: process.env.BACKEND_API_URL || 'http://app:8000/api'
+    backend: 'https://tamilnaduapi.inzighted.com/api'
   }
 };
 
@@ -81,10 +64,7 @@ const config = {
         '--no-zygote',
         '--disable-gpu'
       ],
-    // Support both `CHROME_PATH` (used by some configs) and
-    // `PUPPETEER_EXECUTABLE_PATH` (used in Docker env). If neither is set,
-    // leave undefined so Puppeteer uses the bundled Chromium.
-    executablePath: process.env.CHROME_PATH || process.env.PUPPETEER_EXECUTABLE_PATH || undefined
+    executablePath: process.env.CHROME_PATH || undefined
   },
 
   // Logging Configuration
@@ -110,6 +90,24 @@ const config = {
   tenants: {
     config: tenantConfig,
     defaultOrigin: 'https://inzighted.com'
+  },
+
+  // AWS S3 Configuration
+  aws: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+    region: process.env.AWS_REGION || 'ap-southeast-1',
+    bucketName: process.env.AWS_STORAGE_BUCKET_NAME || 'inzighted-django-files',
+    // Optional: custom S3 endpoint (useful for region-specific endpoints or S3-compatible providers)
+    endpoint: process.env.AWS_S3_ENDPOINT || '',
+    // Optional: force path style addressing (use true for many S3-compatible providers / custom endpoints)
+    forcePathStyle: (process.env.AWS_S3_FORCE_PATH_STYLE || 'false') === 'true',
+    s3Enabled: process.env.AWS_S3_UPLOAD_ENABLED !== 'false' // default true
+  },
+
+  // Internal Service Configuration
+  internal: {
+    authToken: process.env.PDF_SERVICE_INTERNAL_TOKEN || 'changeme-internal-token'
   }
 };
 

@@ -6,7 +6,7 @@ import config from './config/index.js';
 import logger from './utils/logger.js';
 import { requestLogger, errorHandler, notFound } from './middleware/logging.js';
 import { validatePdfRequest } from './middleware/validation.js';
-import { generatePdf, healthCheck, generateBulkPdfZip, generateStudentSelfPdf, generateTeacherSelfPdf } from './controllers/pdfController.js';
+import { generatePdf, healthCheck, generateBulkPdfZip, generateStudentSelfPdf, generateTeacherSelfPdf, triggerPdfGeneration, validateInternalAuth } from './controllers/pdfController.js';
 import pdfService from './services/pdfService.js';
 
 const app = express();
@@ -52,6 +52,9 @@ app.get('/generate-pdf', validatePdfRequest, generatePdf);
 app.post('/generate-bulk-pdf', generateBulkPdfZip);
 app.get('/generate-student-pdf', generateStudentSelfPdf);
 app.get('/generate-teacher-pdf', generateTeacherSelfPdf);
+
+// Internal routes (for backend triggers)
+app.post('/internal/trigger-generate-pdf', validateInternalAuth, triggerPdfGeneration);
 
 // Error handling
 app.use(notFound);

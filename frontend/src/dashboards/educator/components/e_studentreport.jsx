@@ -1,16 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Download, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from '../../../components/ui/select.jsx';
 import { Button } from '../../../components/ui/button.jsx';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card.jsx';
-import { generatePdfReport, generateBulkPdfReportsZip } from '../../../utils/api.js';
+import { generatePdfReport, generateBulkPdfReportsZip, getEducatorDetails } from '../../../utils/api.js';
 
 export const StudentPDFReportModal = ({ onClose, students = [], availableTests = [] }) => {
   const [selectedStudent, setSelectedStudent] = useState('ALL');
   const [selectedTest, setSelectedTest] = useState('Overall');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [classId, setClassId] = useState(null);
+
+  // Fetch educator's class_id on mount
+  useEffect(() => {
+    const fetchClassId = async () => {
+      try {
+        const data = await getEducatorDetails();
+        if (data && data.class_id) {
+          setClassId(data.class_id);
+        }
+      } catch (err) {
+        console.warn('Could not fetch class_id for S3 upload:', err);
+      }
+    };
+    fetchClassId();
+  }, []);
 
   const handleDownload = async () => {
     if (!selectedStudent || !selectedTest) {
@@ -24,7 +40,7 @@ export const StudentPDFReportModal = ({ onClose, students = [], availableTests =
       if (selectedStudent === 'ALL') {
         // Download all students as zip
         const allStudentIds = students.map(s => s.student_id);
-        blob = await generateBulkPdfReportsZip(allStudentIds, selectedTest);
+        blob = await generateBulkPdfReportsZip(allStudentIds, selectedTest, classId);
         if (blob && blob.size > 0) {
           const url = window.URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -43,7 +59,7 @@ export const StudentPDFReportModal = ({ onClose, students = [], availableTests =
           setError('Failed to generate or download ZIP.');
         }
       } else {
-        blob = await generatePdfReport(selectedStudent, selectedTest);
+        blob = await generatePdfReport(selectedStudent, selectedTest, classId);
         if (blob && blob.size > 0) {
           const url = window.URL.createObjectURL(blob);
           const a = document.createElement('a');
