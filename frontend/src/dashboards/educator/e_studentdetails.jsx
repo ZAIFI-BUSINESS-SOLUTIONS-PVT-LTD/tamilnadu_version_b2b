@@ -2,17 +2,17 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { fetchEducatorAllStudentResults, fetcheducatorstudent } from '../../utils/api';
 import { useNavigate } from 'react-router-dom';
 import {
-  MagnifyingGlass,
-  Spinner,
-  WarningCircle,
-  SmileySad,
+  Search,
+  Loader2,
+  AlertCircle,
+  Frown,
   X,
-  ChartBar,
-  Exam,
+  BarChart,
+  FileText,
   SlidersHorizontal,
-  CaretUp,
-  CaretDown
-} from '@phosphor-icons/react';
+  ChevronUp,
+  ChevronDown
+} from 'lucide-react';
 import Table from '../components/ui/table.jsx';
 import Modal from '../components/ui/modal.jsx';
 import LoadingPage from '../components/LoadingPage.jsx';
@@ -186,10 +186,10 @@ function EResults() {
 
   // Sort icon component
   const SortIcon = ({ field }) => {
-    if (sortField !== field) return <CaretDown size={14} className="text-gray-400" />;
+    if (sortField !== field) return <ChevronDown size={14} className="text-gray-400" />;
     return sortDirection === 'asc'
-      ? <CaretUp size={14} className="text-primary" />
-      : <CaretDown size={14} className="text-primary" />;
+      ? <ChevronUp size={14} className="text-primary" />
+      : <ChevronDown size={14} className="text-primary" />;
   };
 
   if (loading) {
@@ -204,7 +204,7 @@ function EResults() {
     return (
       <div className="flex flex-col items-center justify-center h-screen p-4">
         <div className="alert alert-error max-w-md shadow-lg">
-          <WarningCircle className="stroke-current shrink-0 h-6 w-6" weight="bold" />
+          <AlertCircle className="stroke-current shrink-0 h-6 w-6" />
           <div>
             <h3 className="font-bold">Error!</h3>
             <div className="text-xs">{error}</div>
@@ -265,9 +265,8 @@ function EResults() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                <MagnifyingGlass
+                <Search
                   className="h-5 w-5 absolute left-3 top-3 opacity-50"
-                  weight="bold"
                 />
                 {searchTerm && (
                   <button
@@ -280,7 +279,7 @@ function EResults() {
                 )}
               </div>
               <button className="btn btn-ghost border-gray-300 flex items-center gap-2" onClick={() => setFilterModalOpen(true)}>
-                <SlidersHorizontal className="w-5 h-5" weight="bold" />
+                <SlidersHorizontal className="w-5 h-5" />
                 <span>Filter</span>
               </button>
             </div>
@@ -303,7 +302,7 @@ function EResults() {
               renderRow={renderRow}
               emptyState={
                 <div className="p-8 text-center">
-                  <SmileySad className="h-12 w-12 mx-auto text-gray-400" weight="duotone" />
+                  <Frown className="h-12 w-12 mx-auto text-gray-400" />
                   <h3 className="mt-2 text-lg font-medium text-gray-900">No results found</h3>
                   <p className="mt-1 text-sm text-gray-500">
                     {searchTerm ? 'Try a different search term' : 'No student results available'}
@@ -321,7 +320,7 @@ function EResults() {
             />
           ) : (
             <div className="p-8 text-center">
-              <SmileySad className="h-12 w-12 mx-auto text-gray-400" weight="duotone" />
+              <Frown className="h-12 w-12 mx-auto text-gray-400" />
               <h3 className="mt-2 text-lg font-medium text-gray-900">No results found</h3>
               <p className="mt-1 text-sm text-gray-500">
                 {searchTerm ? 'Try a different search term' : 'No student results available'}
@@ -354,14 +353,14 @@ function EResults() {
             <>
               <div className="flex flex-wrap gap-x-6 gap-y-2 mb-4">
                 <div className="flex items-center gap-2">
-                  <Exam className="text-gray-400" weight="bold" />
+                  <FileText className="text-gray-400" />
                   <div>
                     <p className="text-sm text-gray-500">Tests</p>
                     <p className="font-medium">{modalStudent.tests_taken}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <ChartBar className="text-gray-400" weight="bold" />
+                  <BarChart className="text-gray-400" />
                   <div>
                     <p className="text-sm text-gray-500">Average</p>
                     <p className="font-medium">{modalStudent.average_score}</p>
@@ -464,7 +463,7 @@ function EResults() {
         )}
 
         <div className="mt-6 text-sm text-gray-500 flex items-center gap-2">
-          <ChartBar className="w-4 h-4" />
+          <BarChart className="w-4 h-4" />
           <p>Results are sorted by average score (highest to lowest)</p>
         </div>
       </div>

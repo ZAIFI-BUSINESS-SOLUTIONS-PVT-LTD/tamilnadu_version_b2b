@@ -2,18 +2,23 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { fetchInstitutionEducatorAllStudentResults, fetchInstitutionEducatorStudents, createInstitutionStudent, updateInstitutionStudent, deleteInstitutionStudent } from '../../utils/api';
 import { useNavigate } from 'react-router-dom';
 import {
-  MagnifyingGlass,
-  Spinner,
-  WarningCircle,
-  SmileySad,
+  Search,
+  Loader,
+  AlertCircle,
+  Frown,
   X,
-  ChartBar,
-  Exam,
-  SlidersHorizontal,
-  CaretUp,
-  CaretDown
-} from '@phosphor-icons/react';
+  BarChart2,
+  FileText,
+  Sliders,
+  ArrowUp,
+  ArrowDown,
+  CheckCircle,
+  Trash2,
+  Edit
+} from 'lucide-react';
 import Table from '../components/ui/table.jsx';
+import { Button } from '../../components/ui/button.jsx';
+import { Input } from '../../components/ui/input.jsx';
 import Modal from '../components/ui/modal.jsx';
 import LoadingPage from '../components/LoadingPage.jsx';
 import { useInstitution } from './index.jsx';
@@ -28,13 +33,12 @@ function IStudentDetails() {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({ name: '', dob: '', password: '' });
   const [studentNameMap, setStudentNameMap] = useState({});
-  const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [sortModalOpen, setSortModalOpen] = useState(false);
   const [deleteSummary, setDeleteSummary] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [newStudent, setNewStudent] = useState({ class_id: '', student_id: '', name: '', dob: '' });
   const [sortField, setSortField] = useState('rank');
   const [sortDirection, setSortDirection] = useState('desc');
-  const [scoreRange, setScoreRange] = useState([0, 100]);
   const navigate = useNavigate();
 
   const fetchResults = useCallback(async () => {
@@ -87,7 +91,7 @@ function IStudentDetails() {
             </div>
           </div>
           <div>
-            <button className="btn btn-sm btn-ghost" onClick={() => setDeleteSummary(null)}>Dismiss</button>
+            <Button variant="ghost" onClick={() => setDeleteSummary(null)}>Dismiss</Button>
           </div>
         </div>
       </div>
@@ -116,15 +120,6 @@ function IStudentDetails() {
   useEffect(() => {
     fetchResults();
   }, [fetchResults]);
-
-  const minAvg = groupedResults.length ? Math.min(...groupedResults.map(s => s.average_score)) : 0;
-  const maxAvg = groupedResults.length ? Math.max(...groupedResults.map(s => s.average_score)) : 100;
-
-  useEffect(() => {
-    if (groupedResults.length) {
-      setScoreRange([minAvg, maxAvg]);
-    }
-  }, [groupedResults.length]);
 
   const groupResultsByStudent = (results) => {
     const grouped = {};
@@ -169,10 +164,8 @@ function IStudentDetails() {
   };
   const sortedResults = [...groupedResults]
     .filter(student =>
-      student.average_score >= scoreRange[0] &&
-      student.average_score <= scoreRange[1] &&
-      (student.student_id.toString().includes(searchTerm) ||
-        (studentNameMap[student.student_id] || student.student_name).toLowerCase().includes(searchTerm.toLowerCase()))
+      student.student_id.toString().includes(searchTerm) ||
+      (studentNameMap[student.student_id] || student.student_name).toLowerCase().includes(searchTerm.toLowerCase())
     )
     .sort((a, b) => {
       if (sortField === 'rank') {
@@ -199,10 +192,8 @@ function IStudentDetails() {
   const rankMap = (() => {
     const sortedByAvg = [...groupedResults]
       .filter(student =>
-        student.average_score >= scoreRange[0] &&
-        student.average_score <= scoreRange[1] &&
-        (student.student_id.toString().includes(searchTerm) ||
-          (studentNameMap[student.student_id] || student.student_name).toLowerCase().includes(searchTerm.toLowerCase()))
+        student.student_id.toString().includes(searchTerm) ||
+        (studentNameMap[student.student_id] || student.student_name).toLowerCase().includes(searchTerm.toLowerCase())
       )
       .sort((a, b) => b.average_score - a.average_score);
     const map = {};
@@ -213,7 +204,7 @@ function IStudentDetails() {
   })();
 
   if (!selectedEducatorId) {
-      return <div className="text-center py-8 mt-20">Please select an educator to view their students.</div>;
+    return <div className="text-center py-8 mt-20">Please select an educator to view their students.</div>;
   }
 
   if (loading) {
@@ -228,18 +219,19 @@ function IStudentDetails() {
     return (
       <div className="flex flex-col items-center justify-center h-screen p-4">
         <div className="alert alert-error max-w-md shadow-lg">
-          <WarningCircle className="stroke-current shrink-0 h-6 w-6" weight="bold" />
+          <AlertCircle className="stroke-current shrink-0 h-6 w-6" />
           <div>
             <h3 className="font-bold">Error!</h3>
             <div className="text-xs">{error}</div>
           </div>
         </div>
-        <button
+        <Button
           onClick={fetchResults}
-          className="mt-4 btn btn-primary"
+          className="mt-4"
+          variant="default"
         >
           Retry
-        </button>
+        </Button>
       </div>
     );
   }
@@ -279,34 +271,31 @@ function IStudentDetails() {
           <div className="flex gap-2 w-full sm:w-auto">
             <div className="w-full sm:w-96 flex gap-2">
               <div className="relative flex-1">
-                <input
+                <Input
                   type="text"
                   placeholder="Search by ID or name..."
                   className="input input-bordered w-full pl-10 pr-8"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                <MagnifyingGlass
-                  className="h-5 w-5 absolute left-3 top-3 opacity-50"
-                  weight="bold"
-                />
+                <Search className="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 opacity-50" />
                 {searchTerm && (
                   <button
                     onClick={clearSearch}
-                    className="absolute right-3 top-3 opacity-70 hover:opacity-100"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 opacity-70 hover:opacity-100"
                     aria-label="Clear search"
                   >
                     <X className="h-4 w-4" />
                   </button>
                 )}
               </div>
-              <button className="btn btn-ghost border-gray-300 flex items-center gap-2" onClick={() => setFilterModalOpen(true)}>
-                <SlidersHorizontal className="w-5 h-5" weight="bold" />
-                <span>Filter</span>
-              </button>
-              <button className="btn btn-primary flex items-center gap-2" onClick={() => { setCreateModalOpen(true); setNewStudent({ class_id: '', student_id: '', name: '', dob: '' }); }}>
-                <span>Create Student</span>
-              </button>
+              <Button variant="outline" className="flex items-center gap-2" onClick={() => setSortModalOpen(true)}>
+                <Sliders className="w-5 h-5" />
+                <span>Sort</span>
+              </Button>
+              <Button className="flex items-center gap-2" onClick={() => { setCreateModalOpen(true); setNewStudent({ class_id: '', student_id: '', name: '', dob: '' }); }}>
+                <span>Add Student</span>
+              </Button>
             </div>
           </div>
         </div>
@@ -327,36 +316,38 @@ function IStudentDetails() {
               renderRow={renderRow}
               emptyState={
                 <div className="p-8 text-center">
-                  <SmileySad className="h-12 w-12 mx-auto text-gray-400" weight="duotone" />
+                  <Frown className="h-12 w-12 mx-auto text-gray-400" />
                   <h3 className="mt-2 text-lg font-medium text-gray-900">No results found</h3>
                   <p className="mt-1 text-sm text-gray-500">
                     {searchTerm ? 'Try a different search term' : 'No student results available'}
                   </p>
                   {searchTerm && (
-                    <button
+                    <Button
                       onClick={clearSearch}
-                      className="mt-4 btn btn-sm btn-ghost"
+                      className="mt-4"
+                      variant="ghost"
                     >
                       Clear search
-                    </button>
+                    </Button>
                   )}
                 </div>
               }
             />
           ) : (
             <div className="p-8 text-center">
-              <SmileySad className="h-12 w-12 mx-auto text-gray-400" weight="duotone" />
+              <Frown className="h-12 w-12 mx-auto text-gray-400" />
               <h3 className="mt-2 text-lg font-medium text-gray-900">No results found</h3>
               <p className="mt-1 text-sm text-gray-500">
                 {searchTerm ? 'Try a different search term' : 'No student results available'}
               </p>
               {searchTerm && (
-                <button
+                <Button
                   onClick={clearSearch}
-                  className="mt-4 btn btn-sm btn-ghost"
+                  className="mt-4"
+                  variant="ghost"
                 >
                   Clear search
-                </button>
+                </Button>
               )}
             </div>
           )}
@@ -371,7 +362,7 @@ function IStudentDetails() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">Class ID</label>
-              <input
+              <Input
                 className="input input-bordered w-full"
                 value={newStudent.class_id}
                 placeholder="Optional: class id (will default to educator's class)"
@@ -380,7 +371,7 @@ function IStudentDetails() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Student ID</label>
-              <input
+              <Input
                 className="input input-bordered w-full"
                 value={newStudent.student_id}
                 onChange={e => setNewStudent(prev => ({ ...prev, student_id: e.target.value }))}
@@ -388,7 +379,7 @@ function IStudentDetails() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Name</label>
-              <input
+              <Input
                 className="input input-bordered w-full"
                 value={newStudent.name}
                 onChange={e => setNewStudent(prev => ({ ...prev, name: e.target.value }))}
@@ -396,7 +387,7 @@ function IStudentDetails() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">DOB</label>
-              <input
+              <Input
                 type="date"
                 className="input input-bordered w-full"
                 value={newStudent.dob}
@@ -404,8 +395,8 @@ function IStudentDetails() {
               />
             </div>
             <div className="modal-action mt-4 flex gap-2">
-              <button
-                className="btn btn-primary"
+              <Button
+                variant="default"
                 onClick={async () => {
                   setError(null);
                   try {
@@ -431,8 +422,8 @@ function IStudentDetails() {
                 }}
               >
                 Create
-              </button>
-              <button className="btn btn-ghost" onClick={() => setCreateModalOpen(false)}>Cancel</button>
+              </Button>
+              <Button variant="ghost" onClick={() => setCreateModalOpen(false)}>Cancel</Button>
             </div>
           </div>
         </Modal>
@@ -454,7 +445,7 @@ function IStudentDetails() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Name</label>
-                    <input
+                    <Input
                       className="input input-bordered w-full"
                       value={editForm.name}
                       onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
@@ -462,7 +453,7 @@ function IStudentDetails() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">DOB</label>
-                    <input
+                    <Input
                       type="date"
                       className="input input-bordered w-full"
                       value={editForm.dob}
@@ -471,7 +462,7 @@ function IStudentDetails() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Password</label>
-                    <input
+                    <Input
                       type="password"
                       className="input input-bordered w-full"
                       value={editForm.password}
@@ -484,14 +475,14 @@ function IStudentDetails() {
                 <div>
                   <div className="flex flex-wrap gap-x-6 gap-y-2 mb-4">
                     <div className="flex items-center gap-2">
-                      <Exam className="text-gray-400" weight="bold" />
+                      <FileText className="text-gray-400" />
                       <div>
                         <p className="text-sm text-gray-500">Tests</p>
                         <p className="font-medium">{modalStudent.tests_taken}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <ChartBar className="text-gray-400" weight="bold" />
+                      <BarChart2 className="text-gray-400" />
                       <div>
                         <p className="text-sm text-gray-500">Average</p>
                         <p className="font-medium">{modalStudent.average_score}</p>
@@ -535,78 +526,89 @@ function IStudentDetails() {
                 </div>
               )}
 
-              <div className="modal-action mt-6 flex gap-2">
-                        {isEditing ? (
+              <div className="modal-action mt-6 flex justify-between">
+                {isEditing ? (
                   <>
-                    <button
-                      className="btn btn-primary"
-                              onClick={async () => {
-                                try {
-                                  // Build payload with only non-empty fields (all fields are optional)
-                                  const payload = {};
-                                  if (editForm.name && editForm.name.trim() !== '') payload.name = editForm.name.trim();
-                                  if (editForm.dob && editForm.dob.trim() !== '') payload.dob = editForm.dob.trim();
-                                  if (editForm.password && editForm.password.trim() !== '') payload.password = editForm.password.trim();
-                                  
-                                  // Ensure at least one field is being updated
-                                  if (Object.keys(payload).length === 0) {
-                                    setError('Please enter at least one field to update');
-                                    return;
-                                  }
+                    <div className="flex gap-2">
+                      <Button
+                        variant="default"
+                        onClick={async () => {
+                          try {
+                            // Build payload with only non-empty fields (all fields are optional)
+                            const payload = {};
+                            if (editForm.name && editForm.name.trim() !== '') payload.name = editForm.name.trim();
+                            if (editForm.dob && editForm.dob.trim() !== '') payload.dob = editForm.dob.trim();
+                            if (editForm.password && editForm.password.trim() !== '') payload.password = editForm.password.trim();
 
-                                  const res = await updateInstitutionStudent(selectedEducatorId, modalStudent.student_id, payload);
-                          if (res.error) {
-                            setError(res.error);
-                          } else {
-                            // Refresh and close edit mode
-                            await fetchResults();
-                            setIsEditing(false);
-                            setModalStudent(null);
+                            // Ensure at least one field is being updated
+                            if (Object.keys(payload).length === 0) {
+                              setError('Please enter at least one field to update');
+                              return;
+                            }
+
+                            const res = await updateInstitutionStudent(selectedEducatorId, modalStudent.student_id, payload);
+                            if (res.error) {
+                              setError(res.error);
+                            } else {
+                              // Refresh and close edit mode
+                              await fetchResults();
+                              setIsEditing(false);
+                              setModalStudent(null);
+                            }
+                          } catch (err) {
+                            console.error(err);
+                            setError('Failed to update student');
                           }
-                        } catch (err) {
-                          console.error(err);
-                          setError('Failed to update student');
-                        }
-                      }}
-                    >
-                      Save
-                    </button>
-                    <button className="btn btn-ghost" onClick={() => setIsEditing(false)}>Cancel</button>
+                        }}
+                      >
+                        Save
+                      </Button>
+                      <Button variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
+                    </div>
+                    <Button variant="ghost" onClick={() => setModalStudent(null)}>Close</Button>
                   </>
                 ) : (
                   <>
-                    <button
-                      className="btn btn-error"
-                      onClick={async () => {
-                        if (!window.confirm('Delete this student and all related data?')) return;
-                        try {
-                          const res = await deleteInstitutionStudent(selectedEducatorId, modalStudent.student_id);
-                          if (res.error) {
-                            setError(res.error);
-                          } else {
-                            // Save deletion summary to show to the user
-                            setDeleteSummary({ message: res.message || 'Deleted', counts: res.deleted_counts || {} });
-                            await fetchResults();
-                            setModalStudent(null);
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-red-600 rounded-full hover:bg-red-100 hover:text-red-700"
+                        onClick={async () => {
+                          if (!window.confirm('Delete this student and all related data?')) return;
+                          try {
+                            const res = await deleteInstitutionStudent(selectedEducatorId, modalStudent.student_id);
+                            if (res.error) {
+                              setError(res.error);
+                            } else {
+                              // Save deletion summary to show to the user
+                              setDeleteSummary({ message: res.message || 'Deleted', counts: res.deleted_counts || {} });
+                              await fetchResults();
+                              setModalStudent(null);
+                            }
+                          } catch (err) {
+                            console.error(err);
+                            setError('Failed to delete student');
                           }
-                        } catch (err) {
-                          console.error(err);
-                          setError('Failed to delete student');
-                        }
-                      }}
-                    >
-                      Delete
-                    </button>
-                    <button
-                      className="btn"
-                      onClick={() => {
-                        setIsEditing(true);
-                        setEditForm({ name: modalStudent.student_name || '', dob: modalStudent.dob || '', password: '' });
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button className="btn" onClick={() => setModalStudent(null)}>Close</button>
+                        }}
+                        aria-label="Delete student"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full"
+                        onClick={() => {
+                          setIsEditing(true);
+                          setEditForm({ name: modalStudent.student_name || '', dob: modalStudent.dob || '', password: '' });
+                        }}
+                        aria-label="Edit student"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <Button variant="ghost" onClick={() => setModalStudent(null)}>Close</Button>
                   </>
                 )}
               </div>
@@ -614,64 +616,95 @@ function IStudentDetails() {
           )}
         </Modal>
 
-        {filterModalOpen && (
-          <div className="modal modal-open">
-            <div className="modal-box max-w-md">
-              <h3 className="font-bold text-lg mb-4">Filter by Average Score</h3>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Average Score Range</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={minAvg}
-                    max={scoreRange[1]}
-                    value={scoreRange[0]}
-                    onChange={e => setScoreRange([Number(e.target.value), scoreRange[1]])}
-                    className="input input-bordered w-20"
-                  />
-                  <span>-</span>
-                  <input
-                    type="number"
-                    min={scoreRange[0]}
-                    max={maxAvg}
-                    value={scoreRange[1]}
-                    onChange={e => setScoreRange([scoreRange[0], Number(e.target.value)])}
-                    className="input input-bordered w-20"
-                  />
-                </div>
-                <input
-                  type="range"
-                  min={minAvg}
-                  max={maxAvg}
-                  value={scoreRange[0]}
-                  onChange={e => setScoreRange([Number(e.target.value), scoreRange[1]])}
-                  className="range range-xs mt-2"
-                />
-                <input
-                  type="range"
-                  min={minAvg}
-                  max={maxAvg}
-                  value={scoreRange[1]}
-                  onChange={e => setScoreRange([scoreRange[0], Number(e.target.value)])}
-                  className="range range-xs mt-2"
-                />
-                <div className="flex justify-between text-xs text-gray-400 mt-1">
-                  <span>{minAvg}</span>
-                  <span>{maxAvg}</span>
-                </div>
-              </div>
-              <div className="modal-action">
-                <button className="btn" onClick={() => setFilterModalOpen(false)}>Apply</button>
+        {sortModalOpen && (
+          <Modal
+            open={sortModalOpen}
+            onClose={() => setSortModalOpen(false)}
+            title={'Sort'}
+            maxWidth="max-w-md"
+          >
+            <p className="text-sm text-gray-500 mb-4">Choose how the student list should be ordered.</p>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Sort Options</label>
+              <div className="flex flex-col gap-2">
+                {/* 1. Rank - Top to Least */}
+                <Button
+                  variant={(sortField === 'rank' && sortDirection === 'desc') ? 'outline' : 'ghost'}
+                  className="justify-between"
+                  onClick={() => { setSortField('rank'); setSortDirection('desc'); }}
+                >
+                  <span className="flex items-center gap-2"><ArrowDown className="w-4 h-4" />Rank — Highest to Lowest</span>
+                  {(sortField === 'rank' && sortDirection === 'desc') ? <CheckCircle className="w-5 h-5 text-blue-600" /> : <CheckCircle className="w-5 h-5 opacity-20" />}
+                </Button>
+
+                {/* 2. Rank - Least to top */}
+                <Button
+                  variant={(sortField === 'rank' && sortDirection === 'asc') ? 'outline' : 'ghost'}
+                  className="justify-between"
+                  onClick={() => { setSortField('rank'); setSortDirection('asc'); }}
+                >
+                  <span className="flex items-center gap-2"><ArrowUp className="w-4 h-4" />Rank — Lowest to Highest</span>
+                  {(sortField === 'rank' && sortDirection === 'asc') ? <CheckCircle className="w-5 h-5 text-blue-600" /> : <CheckCircle className="w-5 h-5 opacity-20" />}
+                </Button>
+
+                {/* 3. Student ID - Ascending */}
+                <Button
+                  variant={(sortField === 'student_id' && sortDirection === 'asc') ? 'outline' : 'ghost'}
+                  className="justify-between"
+                  onClick={() => { setSortField('student_id'); setSortDirection('asc'); }}
+                >
+                  <span className="flex items-center gap-2"><ArrowUp className="w-4 h-4" />Student ID — Low to High</span>
+                  {(sortField === 'student_id' && sortDirection === 'asc') ? <CheckCircle className="w-5 h-5 text-blue-600" /> : <CheckCircle className="w-5 h-5 opacity-20" />}
+                </Button>
+
+                {/* 4. Student ID - Descending */}
+                <Button
+                  variant={(sortField === 'student_id' && sortDirection === 'desc') ? 'outline' : 'ghost'}
+                  className="justify-between"
+                  onClick={() => { setSortField('student_id'); setSortDirection('desc'); }}
+                >
+                  <span className="flex items-center gap-2"><ArrowDown className="w-4 h-4" />Student ID — High to Low</span>
+                  {(sortField === 'student_id' && sortDirection === 'desc') ? <CheckCircle className="w-5 h-5 text-blue-600" /> : <CheckCircle className="w-5 h-5 opacity-20" />}
+                </Button>
+
+                {/* 5. Name - Ascending */}
+                <Button
+                  variant={(sortField === 'student_name' && sortDirection === 'asc') ? 'outline' : 'ghost'}
+                  className="justify-between"
+                  onClick={() => { setSortField('student_name'); setSortDirection('asc'); }}
+                >
+                  <span className="flex items-center gap-2"><ArrowUp className="w-4 h-4" />Name — A to Z</span>
+                  {(sortField === 'student_name' && sortDirection === 'asc') ? <CheckCircle className="w-5 h-5 text-blue-600" /> : <CheckCircle className="w-5 h-5 opacity-20" />}
+                </Button>
+
+                {/* 6. Name - Descending */}
+                <Button
+                  variant={(sortField === 'student_name' && sortDirection === 'desc') ? 'outline' : 'ghost'}
+                  className="justify-between"
+                  onClick={() => { setSortField('student_name'); setSortDirection('desc'); }}
+                >
+                  <span className="flex items-center gap-2"><ArrowDown className="w-4 h-4" />Name — Z to A</span>
+                  {(sortField === 'student_name' && sortDirection === 'desc') ? <CheckCircle className="w-5 h-5 text-blue-600" /> : <CheckCircle className="w-5 h-5 opacity-20" />}
+                </Button>
               </div>
             </div>
-            <div className="modal-backdrop" onClick={() => setFilterModalOpen(false)}></div>
-          </div>
-        )}
 
-        <div className="mt-6 text-sm text-gray-500 flex items-center gap-2">
-          <ChartBar className="w-4 h-4" />
-          <p>Results are sorted by average score (highest to lowest)</p>
-        </div>
+            <div className="modal-action mt-4 flex gap-2">
+              <Button variant="default" onClick={() => setSortModalOpen(false)}>Apply</Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setSortField('rank');
+                  setSortDirection('desc');
+                  setSortModalOpen(false);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </Modal>
+        )}
       </div>
     </div>
   );
