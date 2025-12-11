@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  TextAlignLeft,
-  House,
-  UploadSimple,
-  Student,
-  Files,
-  CaretDown,
-  CaretRight,
-  ChalkboardTeacher,
+  AlignLeft,
+  Home,
+  User,
+  FileText,
+  ChevronDown,
+  ChevronRight,
+  GraduationCap,
   Target,
-  ChatCircleDots,
+  MessageCircle,
   List
-} from "@phosphor-icons/react";
+} from "lucide-react";
 import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
 import { fetcheducatordetail, fetchAvailableSwotTests_Educator, fetcheducatorstudent } from '../../utils/api.js';
 import UserDropdown from '../components/header/UserDropDown.jsx';
@@ -66,25 +65,19 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
   const sidebarItems = [
     {
       to: '/educator/dashboard',
-      icon: <House weight="regular" size={20} />,
+      icon: <Home size={20} />,
       text: 'Home',
       activePattern: /^\/educator\/dashboard/
     },
     {
-      to: '/educator/upload',
-      icon: <UploadSimple weight="regular" size={20} />,
-      text: 'Upload',
-      activePattern: /^\/educator\/upload/
-    },
-    {
       to: '/educator/swot',
-      icon: <Target weight="regular" size={20} />,
+      icon: <Target size={20} />,
       text: 'Analysis',
       activePattern: /^\/educator\/swot/
     },
     {
       to: '/educator/students',
-      icon: <Student weight="regular" size={20} />,
+      icon: <User size={20} />,
       text: 'Students',
       activePattern: /^\/educator\/students/
     },
@@ -103,12 +96,12 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
    */
   const reportItems = [
     {
-      icon: <Student size={20} />,
+      icon: <User size={20} />,
       text: 'Student Report',
       onClick: () => setShowStudentReportModal(true)
     },
     {
-      icon: <ChalkboardTeacher size={20} />,
+      icon: <GraduationCap size={20} />,
       text: 'Teacher Report',
       onClick: () => setShowTeacherReportModal(true)
     }
@@ -120,7 +113,7 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
    */
   const additionalItems = [
     {
-      icon: <Files size={20} weight={isReportsCollapsed ? 'regular' : 'fill'} />,
+      icon: <FileText size={20} />,
       text: 'Reports',
       isParent: true,
       isCollapsed: isReportsCollapsed,
@@ -132,12 +125,12 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
           setIsReportsCollapsed(!isReportsCollapsed);
         }
       },
-      caretIcon: isReportsCollapsed ? <CaretRight size={16} /> : <CaretDown size={16} />,
+      caretIcon: isReportsCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />,
       // Always provide the children for mobile dock popups. Desktop will respect `isCollapsed`.
       children: reportItems
     },
     {
-      icon: <ChatCircleDots weight="regular" size={20} />,
+      icon: <MessageCircle size={20} />,
       text: 'Feedback',
       onClick: () => setShowFeedbackModal(true)
     }
@@ -232,7 +225,7 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
               className="btn btn-sm h-10 w-10 btn-square bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 flex items-center justify-center transition-colors"
               aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
-              <TextAlignLeft size={20} />
+              <AlignLeft size={20} />
             </button>
 
             {/* Greeting and Current Date */}
