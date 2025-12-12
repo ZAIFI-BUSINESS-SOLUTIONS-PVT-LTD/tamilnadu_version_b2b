@@ -88,7 +88,16 @@ def get_total_questions(images: List[BytesIO]) -> int:
         "Return just a single integer, nothing else."
     )
     model = "gemini-2.0-flash"
-    response = call_gemini_api_with_rotation(prompt, model, images)
+    result = call_gemini_api_with_rotation(prompt, model, images, return_structured=True)
+    if isinstance(result, dict):
+        if result.get("ok"):
+            response = result.get("response", "") or ""
+        else:
+            logger.warning(f"Gemini structured error (get_total_questions): code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+            response = ""
+    else:
+        response = result or ""
+
     try:
         N = int(re.search(r"\d+", response).group())
         return N
@@ -99,12 +108,24 @@ def get_total_questions(images: List[BytesIO]) -> int:
 @traceable()
 def extract_text_from_images(images: List[BytesIO], start: int, end: int) -> str:
     prompt = f"extract from question number {start} till {end}" + ocr_prompt
-    return call_gemini_api_with_rotation(prompt, "gemini-2.5-flash", images)
+    result = call_gemini_api_with_rotation(prompt, "gemini-2.5-flash", images, return_structured=True)
+    if isinstance(result, dict):
+        if result.get("ok"):
+            return result.get("response", "") or ""
+        logger.warning(f"Gemini structured error (extract_text_from_images): code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+        return ""
+    return result or ""
 
 @traceable()
 def extract_text_from_content(ocr: str, start: int, end: int) -> str:
     prompt = f"extract from question number {start} till {end}" + str(ocr_prompt) + ocr
-    return call_gemini_api_with_rotation(prompt, "gemini-2.0-flash")
+    result = call_gemini_api_with_rotation(prompt, "gemini-2.0-flash", return_structured=True)
+    if isinstance(result, dict):
+        if result.get("ok"):
+            return result.get("response", "") or ""
+        logger.warning(f"Gemini structured error (extract_text_from_content): code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+        return ""
+    return result or ""
 
 @traceable()
 def extract_text(ocr: str, start: int, end: int, images: List[BytesIO]) -> str:
@@ -131,7 +152,13 @@ def extract_text(ocr: str, start: int, end: int, images: List[BytesIO]) -> str:
         "}\n"
         + r1 + "\n" + r2
     )
-    return call_gemini_api_with_rotation(prompt, "gemini-2.5-flash", images)
+    result = call_gemini_api_with_rotation(prompt, "gemini-2.5-flash", images, return_structured=True)
+    if isinstance(result, dict):
+        if result.get("ok"):
+            return result.get("response", "") or ""
+        logger.warning(f"Gemini structured error (extract_text): code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+        return ""
+    return result or ""
 
 @traceable()
 def retry_extract_text(response: str, error: Exception) -> str:
@@ -142,7 +169,13 @@ def retry_extract_text(response: str, error: Exception) -> str:
         "Expected JSON format:\n"
         "{ \"questions\": [ { \"question_number\": int, \"question\": \"\", \"options\": {\"1\": \"\", \"2\": \"\", \"3\": \"\", \"4\": \"\"}, \"im_desp\": \"...\" } ] }"
     )
-    return call_gemini_api_with_rotation(prompt, "gemini-2.5-flash")
+    result = call_gemini_api_with_rotation(prompt, "gemini-2.5-flash", return_structured=True)
+    if isinstance(result, dict):
+        if result.get("ok"):
+            return result.get("response", "") or ""
+        logger.warning(f"Gemini structured error (retry_extract_text): code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+        return ""
+    return result or ""
 
 # --- Chunk extraction (synchronous) ---
 @traceable()
@@ -303,9 +336,15 @@ def get_subject_from_q_paper(pdf_path: str) -> Optional[str]:
         first_page_image = images[0]
         prompt = "Analyze the provided image of a question paper's first page and identify the subject. The subject is likely to be Physics, Chemistry, Botany, Zoology, or Biology. Return only the subject name as a single word."
         model = "gemini-2.0-flash-lite"
-        subject = call_gemini_api_with_rotation(prompt, model, [first_page_image])
-
-        subject = subject.strip().title()
+        result = call_gemini_api_with_rotation(prompt, model, [first_page_image], return_structured=True)
+        if isinstance(result, dict):
+            if result.get("ok"):
+                subject = (result.get("response", "") or "").strip().title()
+            else:
+                logger.warning(f"Gemini structured error (get_subject_from_q_paper): code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+                subject = ""
+        else:
+            subject = (result or "").strip().title()
         if subject in ["Physics", "Chemistry", "Botany", "Zoology", "Biology"]:
             return subject
         return None

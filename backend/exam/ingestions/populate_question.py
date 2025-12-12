@@ -107,8 +107,8 @@ def save_questions_bulk(class_id, test_num, questions, answer_dict):
             raise ValueError(error_msg)
         
         QuestionPaper.objects.bulk_create(question_objects, batch_size=500, ignore_conflicts=True)
-        status_obj.status = "Successful"
-        
+
+        # Keep status as PROCESSING here — final success will be set by the educator dashboard update
         summary = f"✅ Bulk inserted {len(question_objects)} questions for Class `{class_id}`, Test `{test_num}`"
         if skipped_count > 0:
             summary += f" ({skipped_count} questions skipped due to missing answers)"

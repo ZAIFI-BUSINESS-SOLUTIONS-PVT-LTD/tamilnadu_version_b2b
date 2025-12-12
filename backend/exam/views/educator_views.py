@@ -74,6 +74,7 @@ def educator_register(request):
         dob = request.data.get("dob")
         institution = request.data.get("institution")
         password = request.data.get("password")
+        phone_number = request.data.get("phone_number")  # Optional for WhatsApp notifications
         student_csv = request.FILES.get("file")
 
         # ✅ Validate required fields
@@ -98,11 +99,16 @@ def educator_register(request):
         
 
 
-        # ✅ Save Educator Password
+        # ✅ Save Educator Password and details
         educator.name = full_name  
         educator.dob = dob
         educator.institution = institution
         educator.password = make_password(password)
+        
+        # ✅ Save phone number if provided (for WhatsApp notifications)
+        if phone_number:
+            educator.phone_number = phone_number
+        
         educator.save()
 
         # ✅ Retrieve class_id

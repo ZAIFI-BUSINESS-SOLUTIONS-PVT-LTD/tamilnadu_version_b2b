@@ -73,7 +73,7 @@ def configure_genai_for_key(api_key: str):
 
 @traceable(name="call_gemini_api")
 def call_gemini_api(prompt: str,
-                    model_name: str = "gemini-2.5-flash", images = None) -> str:
+                    model_name: str = "gemini-2.5-flash", images = None) -> tuple:
     """Calls the Gemini API with a given prompt and returns the raw text response.
     
     LangSmith tracing is automatically enabled when LANGCHAIN_TRACING_V2=true env var is set.
@@ -87,10 +87,11 @@ def call_gemini_api(prompt: str,
         encoded_images = [{"data": encode_image(img), "mime_type": "image/png"} for img in images]
         response = model.generate_content([*encoded_images, prompt])
     if hasattr(response, 'text'):
-        return response.text.strip(), response.usage_metadata
+        return response.text.strip(), getattr(response, 'usage_metadata', None)
     elif hasattr(response, 'candidates') and response.candidates:
-        return response.candidates[0].content.parts[0].text.strip()
-    return ""
+        # Some response shapes have candidates but no usage metadata
+        return response.candidates[0].content.parts[0].text.strip(), None
+    return "", None
 # Import semaphore from analysis_generator to enforce global LLM concurrency limit
 try:
     from exam.utils.analysis_generator import _llm_semaphore
@@ -102,7 +103,8 @@ except ImportError:
 def call_gemini_api_with_rotation(prompt: str,
                     model_name: str = "gemini-2.5-flash", 
                     images = None,
-                    fallback_models: list = None) -> str:
+                    fallback_models: list = None,
+                    return_structured: bool = False) -> object:
     """
     Attempts up to RETRIES * len(API_KEYS) calls with API key rotation and model fallback.
     
@@ -120,9 +122,9 @@ def call_gemini_api_with_rotation(prompt: str,
     """
     # Acquire semaphore to limit global LLM concurrency
     with _llm_semaphore:
-        return _call_gemini_api_with_rotation_impl(prompt, model_name, images, fallback_models)
+        return _call_gemini_api_with_rotation_impl(prompt, model_name, images, fallback_models, return_structured)
 
-def _call_gemini_api_with_rotation_impl(prompt: str, model_name: str, images, fallback_models: list) -> str:
+def _call_gemini_api_with_rotation_impl(prompt: str, model_name: str, images, fallback_models: list, return_structured: bool) -> object:
     """Internal implementation of call_gemini_api_with_rotation (wrapped by semaphore)"""
     if fallback_models is None:
         fallback_models = DEFAULT_FALLBACK_MODELS.copy()
@@ -150,10 +152,20 @@ def _call_gemini_api_with_rotation_impl(prompt: str, model_name: str, images, fa
         try:
             configure_genai_for_key(api_key)
             response, usage = call_gemini_api(prompt, current_model, images)
-            
+
             # Success - reset failure counter for this model
             model_failures[current_model] = 0
             logger.info(f"✅ Successfully called model '{current_model}' with key index {current_key_index}")
+            if return_structured:
+                return {
+                    "ok": True,
+                    "code": "SUCCESS",
+                    "reason": "",
+                    "model": current_model,
+                    "attempt": attempt_count + 1,
+                    "response": response,
+                    "usage": usage,
+                }
             return response
 
         except RequestException as e:  # Network-related errors
@@ -210,7 +222,15 @@ def _call_gemini_api_with_rotation_impl(prompt: str, model_name: str, images, fa
                 logger.warning(f"⏳ Encountered an error. Retrying after {delay}s...")
                 time.sleep(delay)
     
-    logger.warning("[call_gemini_api_with_rotation] ❌ All attempts exhausted. Returning empty string.")
-    print("[call_gemini_api_with_rotation] ❌ All attempts exhausted. Returning empty string.")
-    return ""  # Return empty response if all attempts fail
+    logger.warning("[call_gemini_api_with_rotation] ❌ All attempts exhausted.")
+    print("[call_gemini_api_with_rotation] ❌ All attempts exhausted.")
+    if return_structured:
+        return {
+            "ok": False,
+            "code": "ALL_ATTEMPTS_EXHAUSTED",
+            "reason": "All API key/model attempts exhausted without success",
+            "model": current_model,
+            "attempt": attempt_count,
+        }
+    return ""  # Return empty response (backwards compatible)
 

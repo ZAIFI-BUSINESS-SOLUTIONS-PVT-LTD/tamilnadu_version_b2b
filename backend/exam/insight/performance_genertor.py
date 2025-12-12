@@ -38,8 +38,19 @@ def generate_perfomance_data(db_name):
         try:
             subject_prompt = base_prompt + "\n\n" + json.dumps(data, indent=2)
 
-            for _ in range(10):  # Retry max 3 times
-                response = call_gemini_api_with_rotation(subject_prompt)
+            for _ in range(10):  # Retry max 10 times
+                result = call_gemini_api_with_rotation(subject_prompt, return_structured=True)
+
+                # Normalize result to plain text
+                if isinstance(result, dict):
+                    if result.get("ok"):
+                        response = result.get("response", "") or ""
+                    else:
+                        logger.warning(f"Gemini structured error: code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+                        response = ""
+                else:
+                    response = result or ""
+
                 try:
                     insights = parse_questions(response)
                     return subject, insights

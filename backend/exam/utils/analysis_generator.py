@@ -93,7 +93,17 @@ im_desp: {q['im_desp']}
     subject = None
 
     while not subject:
-        response = call_gemini_api_with_rotation(prompt, model_name="gemini-2.5-flash")
+        result = call_gemini_api_with_rotation(prompt, model_name="gemini-2.5-flash", return_structured=True)
+
+        # Normalize structured result to plain text for backward compatibility
+        if isinstance(result, dict):
+            if result.get("ok"):
+                response = (result.get("response") or "").strip()
+            else:
+                logger.warning(f"Gemini structured error (subject inference): code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+                response = ""
+        else:
+            response = (result or "").strip()
 
         if response:
             subject = response
@@ -188,13 +198,31 @@ im_desp: {q['im_desp']}
 """
 
 
-    response = call_gemini_api_with_rotation(prompt,"gemini-2.0-flash")
+    result = call_gemini_api_with_rotation(prompt, "gemini-2.0-flash", return_structured=True)
+
+    # Normalize structured result to plain text
+    if isinstance(result, dict):
+        if result.get("ok"):
+            response = result.get("response", "") or ""
+        else:
+            logger.warning(f"Gemini structured error (metadata generation): code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+            response = ""
+    else:
+        response = result or ""
 
     while not response:
-        response = call_gemini_api_with_rotation(prompt,"gemini-2.0-flash")
+        result = call_gemini_api_with_rotation(prompt, "gemini-2.0-flash", return_structured=True)
+        if isinstance(result, dict):
+            if result.get("ok"):
+                response = result.get("response", "") or ""
+            else:
+                logger.warning(f"Gemini structured error (metadata generation retry): code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+                response = ""
+        else:
+            response = result or ""
 
     # Parse structured text output
-    metadata_list = parse_metadata(response,subject)
+    metadata_list = parse_metadata(response, subject)
     
     return metadata_list
 
@@ -241,10 +269,27 @@ Correct Answer: {q['correct_answer']}
 im_desp: {q['im_desp']}
 """
 
-    response = call_gemini_api_with_rotation(batched_prompt)
+    result = call_gemini_api_with_rotation(batched_prompt, return_structured=True)
+
+    if isinstance(result, dict):
+        if result.get("ok"):
+            response = result.get("response", "") or ""
+        else:
+            logger.warning(f"Gemini structured error (feedback batch): code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+            response = ""
+    else:
+        response = result or ""
 
     while not response:
-        response = call_gemini_api_with_rotation(batched_prompt)
+        result = call_gemini_api_with_rotation(batched_prompt, return_structured=True)
+        if isinstance(result, dict):
+            if result.get("ok"):
+                response = result.get("response", "") or ""
+            else:
+                logger.warning(f"Gemini structured error (feedback batch retry): code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+                response = ""
+        else:
+            response = result or ""
 
     feedback_list = []
     response_blocks = response.strip().split("\n\n")
@@ -328,10 +373,27 @@ Correct Answer: {q['correct_answer']}
 im_desp: {q['im_desp']}
 """
 
-    response = call_gemini_api_with_rotation(batched_prompt)
+    result = call_gemini_api_with_rotation(batched_prompt, return_structured=True)
+
+    if isinstance(result, dict):
+        if result.get("ok"):
+            response = result.get("response", "") or ""
+        else:
+            logger.warning(f"Gemini structured error (errors batch): code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+            response = ""
+    else:
+        response = result or ""
 
     while not response:
-        response = call_gemini_api_with_rotation(batched_prompt)
+        result = call_gemini_api_with_rotation(batched_prompt, return_structured=True)
+        if isinstance(result, dict):
+            if result.get("ok"):
+                response = result.get("response", "") or ""
+            else:
+                logger.warning(f"Gemini structured error (errors batch retry): code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+                response = ""
+        else:
+            response = result or ""
 
     error_list = []
     response_blocks = response.strip().split("\n\n")
@@ -466,7 +528,7 @@ def process_question_batch_task(batch, excluded_subjects=None, known_subject=Non
     return process_question_batch(batch, excluded_subjects, known_subject)
 
 
-def analyze_questions_in_batches(questions_list, chunk_size, known_subject=None, max_batch_workers=3):
+def analyze_questions_in_batches(questions_list, chunk_size, known_subject=None, max_batch_workers=2):
     """
     Takes a full list of questions (e.g., 180), splits into 45-question chunks,
     and processes each using Celery workers with subject detection, metadata, feedback, and error analysis.
@@ -476,7 +538,7 @@ def analyze_questions_in_batches(questions_list, chunk_size, known_subject=None,
         chunk_size: Number of questions per batch (e.g., 45)
         known_subject: If provided (from admin metadata), batches run in PARALLEL via Celery.
                       If None, batches run SEQUENTIALLY with subject inference.
-        max_batch_workers: Max parallel Celery tasks when known_subject is provided (default: 3)
+        max_batch_workers: Max parallel Celery tasks when known_subject is provided (default: 2)
     
     Returns:
         List of processed question results with metadata, feedback, and errors

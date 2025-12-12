@@ -20,8 +20,15 @@ def classify_biology_questions(questions_list: list) -> list:
             Options: {question['options']}
             """
             model = "gemini-2.0-flash"
-            subject = call_gemini_api_with_rotation(prompt, model)
-            subject = subject.strip().title()
+            result = call_gemini_api_with_rotation(prompt, model, return_structured=True)
+            if isinstance(result, dict):
+                if result.get("ok"):
+                    subject = (result.get("response", "") or "").strip().title()
+                else:
+                    logger.warning(f"Gemini structured error (classify_biology_questions): code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+                    subject = ""
+            else:
+                subject = (result or "").strip().title()
 
             if subject in ["Botany", "Zoology"]:
                 question['subject'] = subject

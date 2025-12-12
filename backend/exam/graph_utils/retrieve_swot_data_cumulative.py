@@ -1,6 +1,12 @@
 import pandas as pd
 import math
 
+# --------------------- Threshold Constants ---------------------
+# Minimum WeightedScore threshold for strength metrics (60% accuracy baseline)
+STRENGTH_WEIGHTED_THRESHOLD = 0.6
+# Maximum WeightedScore threshold for weakness metrics (90% accuracy ceiling)
+WEAKNESS_WEIGHTED_THRESHOLD = 0.9
+
 
 def calculate_weighted_score(total, correct):
     if total == 0:
@@ -160,11 +166,18 @@ def best_topics(kg_manager):
     df_topic_metrics = pd.DataFrame(topic_metrics)
     best_topics_df = df_topic_metrics.sort_values(by=["WeightedScore", "ImprovementRate"], ascending=False)\
                                      .groupby("Subject").head(10)
+    
+    # Filter: keep only topics with WeightedScore >= threshold (genuine strengths)
+    best_topics_df = best_topics_df[best_topics_df["WeightedScore"] >= STRENGTH_WEIGHTED_THRESHOLD]
+    
     subject_data = {}
     for subject, group in best_topics_df.groupby("Subject"):
         topics = group["Topic"].tolist()
-        df = fetch_correct_questions(kg_manager, subject, topics)
-        subject_data[subject] = df.to_dict(orient='records')
+        if topics:  # Only fetch if topics exist after filtering
+            df = fetch_correct_questions(kg_manager, subject, topics)
+            subject_data[subject] = df.to_dict(orient='records')
+        else:
+            subject_data[subject] = []  # Empty list for subjects with no qualifying topics
     return subject_data
 
 def improvement_over_time(kg_manager):
@@ -223,11 +236,18 @@ def most_challenging_topics(kg_manager):
     df_topic_metrics = pd.DataFrame(topic_metrics)
     challenging_df = df_topic_metrics.sort_values(by=["WeightedScore", "ImprovementRate"], ascending=True)\
                                      .groupby("Subject").head(10)
+    
+    # Filter: keep only topics with WeightedScore < threshold (genuine weaknesses)
+    challenging_df = challenging_df[challenging_df["WeightedScore"] < WEAKNESS_WEIGHTED_THRESHOLD]
+    
     subject_data = {}
     for subject, group in challenging_df.groupby("Subject"):
         topics = group["Topic"].tolist()
-        df = fetch_wrong_questions(kg_manager, subject, topics)
-        subject_data[subject] = df.to_dict(orient='records')
+        if topics:  # Only fetch if topics exist after filtering
+            df = fetch_wrong_questions(kg_manager, subject, topics)
+            subject_data[subject] = df.to_dict(orient='records')
+        else:
+            subject_data[subject] = []  # Empty list for subjects with no qualifying topics
     return subject_data
 
 def weakness_over_time(kg_manager):

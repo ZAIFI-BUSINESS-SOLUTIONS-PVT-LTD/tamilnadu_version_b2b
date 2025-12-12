@@ -139,12 +139,11 @@ def process_test_data(class_id, test_num):
         # update_educator_dashboard will be triggered automatically after update_student_dashboard completes
         logger.info(f"📊 Student & educator dashboards will be updated after all student analysis tasks complete.")
         
-        status_obj.status = "Successful"
-        status_obj.logs += "\n✅ Processing completed"
-        status_obj.ended_at = now()
+        # Do NOT mark final success here; final success will be set by the educator dashboard
+        status_obj.logs += "\n✅ Processing completed (analysis & scheduling finished)"
         status_obj.save()
 
-        logger.info(f"✅ Test {test_num} processed successfully for class {class_id}")
+        logger.info(f"✅ Test {test_num} processed and analysis scheduled for class {class_id}")
 
     except Exception as e:
         logger.exception(f"❌ Error processing test {test_num} for class {class_id}: {e}")

@@ -16,6 +16,31 @@ from exam.llm_call.decorators import traceable
 
 logger = logging.getLogger(__name__)
 
+# --------------------- Fallback Messages ---------------------
+def get_fallback_message(metric_key):
+    """
+    Returns motivational fallback message when no topics qualify for a metric.
+    """
+    strength_metrics = ["TS_BPT", "SS_BPT"]
+    weakness_metrics = ["TW_MCT", "SW_MCT"]
+    
+    # Return exactly two insight strings (each insight can be one or two short sentences)
+    if metric_key in strength_metrics:
+        return [
+            "You currently do not have a clearly dominant strength area. Keep practicing regularly to let strengths emerge naturally.",
+            "Focus on small daily revisions and mixed-practice to consolidate learning; strengths will appear with steady effort."
+        ]
+    elif metric_key in weakness_metrics:
+        return [
+            "No clear weak areas detected across topics right now. Your performance is consistently good—well done.",
+            "Maintain current study habits and target small refinement tasks to keep improving further."
+        ]
+    else:
+        return [
+            "No specific insights available for this metric at the moment.",
+            "Keep practicing and collect more data so the system can generate stronger diagnostic insights."
+        ]
+
 # --------------------- API Call Helper ---------------------
 @traceable()
 def extract_insights(data, prompt, max_retries=5):
@@ -47,8 +72,19 @@ output format (JSON):
 - Each Insights word count should be strictly between 8 to 12.
 """ + str(data)
     for attempt in range(1, max_retries + 1):
-        response = call_gemini_api_with_rotation(full_prompt, "gemini-2.0-flash")
-        
+        result = call_gemini_api_with_rotation(full_prompt, "gemini-2.0-flash", return_structured=True)
+
+        # Normalize to response text for backward compatibility
+        if isinstance(result, dict):
+            if result.get("ok"):
+                response = result.get("response", "") or ""
+            else:
+                # Structured error - log and treat as empty response to trigger retry
+                logger.warning(f"Gemini structured error: code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+                response = ""
+        else:
+            response = result or ""
+
         stripped_response = response.strip()
 
         # Try extracting JSON part if extra content exists
@@ -97,10 +133,19 @@ def generate_all_test_swot_with_AI(db_name):
         
         insights_by_metric = {}
         with ThreadPoolExecutor() as executor:
-            future_to_metric = {
-                executor.submit(extract_insights, metric_data, prompts[metric_key]): metric_key
-                for metric_key, metric_data in all_metric_results.items()
-            }
+            future_to_metric = {}
+            for metric_key, metric_data in all_metric_results.items():
+                # Check if metric_data is empty or all subjects have empty data
+                if not metric_data or all(not v or (isinstance(v, list) and len(v) == 0) for v in metric_data.values()):
+                    # Use fallback message for empty data
+                    logger.info(f"📭 No qualifying topics for {metric_key} - using fallback message")
+                    insights_by_metric[metric_key] = {}
+                    for subject in metric_data.keys() if metric_data else []:
+                        insights_by_metric[metric_key][subject] = get_fallback_message(metric_key)
+                else:
+                    # Submit LLM task for non-empty data
+                    future_to_metric[executor.submit(extract_insights, metric_data, prompts[metric_key])] = metric_key
+            
             for future in as_completed(future_to_metric):
                 metric_key = future_to_metric[future]
                 try:
@@ -159,10 +204,20 @@ def generate_swot_data_with_AI(db_name, test_num):
         insights_by_metric = {}
         insights_by_metric = {}
         with ThreadPoolExecutor() as executor:
-            future_to_metric = {
-                executor.submit(extract_insights, results[analysis_key], prompt): metric_key
-                for metric_key, (analysis_key, prompt) in metric_prompt_mapping.items()
-            }
+            future_to_metric = {}
+            for metric_key, (analysis_key, prompt) in metric_prompt_mapping.items():
+                metric_data = results[analysis_key]
+                # Check if metric_data is empty or all subjects have empty data
+                if not metric_data or all(not v or (isinstance(v, list) and len(v) == 0) for v in metric_data.values()):
+                    # Use fallback message for empty data
+                    logger.info(f"📭 No qualifying topics for {metric_key} (test {test_num}) - using fallback message")
+                    insights_by_metric[metric_key] = {}
+                    for subject in metric_data.keys() if metric_data else []:
+                        insights_by_metric[metric_key][subject] = get_fallback_message(metric_key)
+                else:
+                    # Submit LLM task for non-empty data
+                    future_to_metric[executor.submit(extract_insights, metric_data, prompt)] = metric_key
+            
             for future in as_completed(future_to_metric):
                 metric_key = future_to_metric[future]
                 try:
@@ -307,12 +362,36 @@ Based on the following insights under "{label}", generate exactly 2 clear, teach
 Insights:
 {json.dumps(insight_list, indent=2)}
 """
-            response = call_gemini_api_with_rotation(prompt, "gemini-2.0-flash")
+            result = call_gemini_api_with_rotation(prompt, "gemini-2.0-flash", return_structured=True)
+
+            # Normalize structured result
+            if isinstance(result, dict):
+                if result.get("ok"):
+                    response = result.get("response", "") or ""
+                else:
+                    logger.warning(f"Gemini structured error (swot gemini_aggregate): code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+                    response = ""
+            else:
+                response = result or ""
+
             while not response:
-                response = call_gemini_api_with_rotation(prompt, "gemini-2.0-flash")
+                result = call_gemini_api_with_rotation(prompt, "gemini-2.0-flash", return_structured=True)
+                if isinstance(result, dict):
+                    if result.get("ok"):
+                        response = result.get("response", "") or ""
+                    else:
+                        logger.warning(f"Gemini structured error (swot gemini_aggregate retry): code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+                        response = ""
+                else:
+                    response = result or ""
+
             cleaned = clean_gemini_json_block(response)
             if not cleaned or not isinstance(cleaned, list):
-                retry_response = call_gemini_api_with_rotation(prompt, "gemini-2.0-flash")
+                result = call_gemini_api_with_rotation(prompt, "gemini-2.0-flash", return_structured=True)
+                if isinstance(result, dict) and result.get("ok"):
+                    retry_response = result.get("response", "") or ""
+                else:
+                    retry_response = result if not isinstance(result, dict) else ""
                 cleaned = clean_gemini_json_block(retry_response)
 
             return cleaned[:2] if isinstance(cleaned, list) else []

@@ -73,8 +73,11 @@ def get_student_dashboard(request):
             "yetToDecide": json.loads(metric_dict.get('CV', '[]')),
         }
 
+        # Get Action Plan, Checklist, and Study Tips
+        action_plan = json.loads(metric_dict.get('AP', '[]'))
+        checklist = json.loads(metric_dict.get('CL', '[]'))
+        study_tips = json.loads(metric_dict.get('ST', '[]'))
         
-
         performanceTrendDataMapping = json.loads(metric_dict.get('PT', '[]'))
         subjectWiseDataMapping = json.loads(metric_dict.get('SA', '[]'))
 
@@ -91,6 +94,9 @@ def get_student_dashboard(request):
             "performanceTrendDataMapping": performanceTrendDataMapping,
             "subjectWiseDataMapping": subjectWiseDataMapping,
             "keyInsightsData": keyInsightsData,
+            "actionPlan": action_plan,
+            "checklist": checklist,
+            "studyTips": study_tips,
             "testMetadata": test_metadata_map
         })
     except Exception as e:

@@ -7,6 +7,7 @@ from exam.ingestions.populate_swot import save_swot_metric
 from exam.insight.swot_generator import generate_all_test_swot_with_AI, generate_swot_data_with_AI, Generate_SWOT_educator
 from exam.utils.student_analysis import fetch_student_responses
 from exam.models.test_status import TestProcessingStatus
+from exam.services.whatsapp_notification import send_whatsapp_notification
 import logging
 import time
 from django.utils.timezone import now
@@ -159,16 +160,19 @@ def _internal_student_dashboard_update(student_id, class_id, test_num, db_name):
     # Generate overview data with Neo4j retry
     @neo4j_retry(max_attempts=3)
     def fetch_overview():
-        return Generate_overview_data(db_name)
+        return Generate_overview_data(db_name, student_id, class_id, test_num)
     
-    metrics, insights, PT, SA = fetch_overview()
+    metrics, insights, PT, SA, action_plan, checklist, study_tips = fetch_overview()
     
     # Validate and ensure dict structure
     metrics = ensure_dict(metrics, default={})
     insights = ensure_dict(insights, default={})
     PT = ensure_dict(PT, default={})
-    SA = ensure_dict(SA, default={})
-    
+    SA = ensure_list(SA, default=[])  # SA is a list of test-wise subject score records
+    action_plan = ensure_list(action_plan, default=[])
+    checklist = ensure_list(checklist, default=[])
+    study_tips = ensure_list(study_tips, default=[])
+    logger.info(f"data of SA {SA}")
     logger.info(f"✅ Overview data generated for {student_id} test {test_num}")
 
     # Populate overview
@@ -180,7 +184,23 @@ def _internal_student_dashboard_update(student_id, class_id, test_num, db_name):
         performance_trend=PT,
         subject_analysis=SA
     )
-    result['overview'] = {'metrics': metrics, 'insights': insights, 'PT': PT, 'SA': SA}
+    
+    # Save action plan
+    if action_plan:
+        Save_Overview_Metric(student_id, class_id, "AP", action_plan)
+        logger.info(f"✅ Action plan saved for {student_id} with {len(action_plan)} items")
+    
+    # Save checklist
+    if checklist:
+        Save_Overview_Metric(student_id, class_id, "CL", checklist)
+        logger.info(f"✅ Checklist saved for {student_id} with {len(checklist)} checkpoints")
+    
+    # Save study tips
+    if study_tips:
+        Save_Overview_Metric(student_id, class_id, "ST", study_tips)
+        logger.info(f"✅ Study tips saved for {student_id} with {len(study_tips)} tips")
+    
+    result['overview'] = {'metrics': metrics, 'insights': insights, 'PT': PT, 'SA': SA, 'AP': action_plan, 'CL': checklist, 'ST': study_tips}
 
     # Generate and populate performance data with Neo4j retry
     @neo4j_retry(max_attempts=3)
@@ -445,5 +465,30 @@ def update_educator_dashboard(class_id, test_num, student_results=None):
     # Final status update
     status_obj.status = "Successful"
     status_obj.logs += "✅ Educator dashboard updated successfully.\n"
+    try:
+        status_obj.ended_at = now()
+    except Exception:
+        pass
     status_obj.save()
     logger.info("✅ Educator dashboard updated successfully.")
+    
+    # 🔔 Trigger WhatsApp notification after successful completion
+    try:
+        # Get educator for this class
+        from exam.models.educator import Educator
+        educator = Educator.objects.filter(class_id=class_id).first()
+        
+        if educator and educator.phone_number:
+            logger.info(f"📱 Scheduling WhatsApp notification for {educator.email}")
+            # Schedule async task (non-blocking)
+            send_whatsapp_notification.delay(class_id, test_num, educator.id)
+        else:
+            if educator:
+                logger.info(f"ℹ️ Educator {educator.email} has no phone number - skipping WhatsApp notification")
+            else:
+                logger.warning(f"⚠️ No educator found for class {class_id}")
+    except Exception as notification_error:
+        # Never let notification errors break the pipeline
+        logger.error(f"⚠️ Error scheduling WhatsApp notification: {notification_error}", exc_info=True)
+        status_obj.logs += f"⚠️ WhatsApp notification error (non-critical): {notification_error}\n"
+        status_obj.save()

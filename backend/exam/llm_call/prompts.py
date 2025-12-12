@@ -518,3 +518,268 @@ overview_prompts = {
 **Tone**: Analytical and supportive.
 """
     }
+
+# Action Plan Prompt
+action_plan_prompt = """
+**Task**: Generate a personalized action plan for a NEET student to improve performance across ALL weak topics.
+
+**Context**: You are an AI mentor helping students prioritize their learning efforts by identifying the most impactful action items.
+
+**Input Data Provided**:
+- Multiple weak topics with performance metrics (accuracy, weighted accuracy, improvement rate)
+- Wrong questions from each topic including:
+  - Question text, options, selected answer, correct answer
+  - Misconception type and description
+  - Feedback for the incorrect answer
+  - Question type
+
+**Your Task**:
+1. Analyze ALL weak topics provided
+2. For each topic, identify potential action items based on:
+   - Root causes of mistakes
+   - Conceptual gaps and misconceptions
+   - Error patterns across questions
+   - Impact on overall performance
+3. Generate a comprehensive list of possible action items across all topics
+4. Rank ALL action items by:
+   - **Impact**: How much this will improve student's overall performance
+   - **Actionability**: How clear and achievable the action is
+5. Select ONLY the **top 5 most impactful and actionable items** from across all topics
+
+**Action Item Requirements**:
+- Each action must be **10–15 words** maximum
+- Must be specific, clear, and directly tied to their mistakes
+- Must be actionable and student-friendly
+- Use simple, easy-to-understand Indian-English
+- Avoid complex academic language or technical jargon
+- Be motivational yet honest about areas needing work
+- Each action should reference the specific topic/subject it relates to
+
+**Output Format (strict JSON)**:
+[
+  {
+    "topic": "Topic name",
+    "subject": "Subject name",
+    "accuracy": 0.45,
+    "action": "Single actionable insight (10–15 words)"
+  },
+  {
+    "topic": "Topic name",
+    "subject": "Subject name",
+    "accuracy": 0.32,
+    "action": "Single actionable insight (10–15 words)"
+  },
+  {
+    "topic": "Topic name",
+    "subject": "Subject name",
+    "accuracy": 0.58,
+    "action": "Single actionable insight (10–15 words)"
+  },
+  {
+    "topic": "Topic name",
+    "subject": "Subject name",
+    "accuracy": 0.41,
+    "action": "Single actionable insight (10–15 words)"
+  },
+  {
+    "topic": "Topic name",
+    "subject": "Subject name",
+    "accuracy": 0.29,
+    "action": "Single actionable insight (10–15 words)"
+  }
+]
+
+**Guidelines**:
+- Return EXACTLY 5 action items total (not per topic)
+- These 5 should be the highest-impact actions across ALL topics
+- Actions should directly reflect the student's actual wrong answers
+- Focus on learning improvements, not just "practice more"
+- Keep tone supportive and constructive
+- No generic advice—make it specific to the data
+- Multiple actions can be from the same topic if they're high-impact
+
+**Important**:
+- Return ONLY the JSON array of exactly 5 items
+- No explanations, no notes, no markdown code blocks
+- Strictly follow the format above
+
+"""
+
+# Checklist Prompt
+checklist_prompt = """
+**Task**: Generate a diagnostic checklist identifying student's problems and mistakes across all weak topics in a test.
+
+**Context**: You are an AI diagnostic tool helping students understand WHAT went wrong in their performance—not HOW to fix it. This checklist is about identifying mistakes, misconceptions, and problem patterns.
+
+**Input Data Provided**:
+- Multiple weak topics from a specific test with performance metrics
+- Wrong questions from each topic including:
+  - Question text, options, selected answer, correct answer
+  - Misconception type and description
+  - Feedback for the incorrect answer
+  - Question type
+
+**Your Task**:
+1. Analyze ALL weak topics and wrong answers provided
+2. Identify specific problems, mistakes, and misconceptions across all topics:
+   - What conceptual errors were made
+   - What calculation/procedural mistakes occurred
+   - What patterns of confusion are evident
+   - What fundamental gaps exist
+3. Generate a comprehensive list of diagnostic checkpoints
+4. Rank ALL checkpoints by:
+   - **Severity**: How much this mistake impacts overall performance
+   - **Frequency**: How often this mistake appears across questions
+5. Select ONLY the **top 6 most critical problem checkpoints** from across all topics
+
+**Checkpoint Requirements**:
+- Each checkpoint must be **10–15 words** maximum
+- Must clearly identify WHAT went wrong (not how to fix it)
+- Must be diagnostic and factual, not prescriptive
+- Use simple, easy-to-understand Indian-English
+- Avoid solution-oriented language (no "should do", "need to practice")
+- Be direct and clear about the mistake or gap
+- Each checkpoint should reference the specific topic/subject where the problem occurred
+
+**Output Format (strict JSON)**:
+[
+  {
+    "topic": "Topic name",
+    "subject": "Subject name",
+    "accuracy": 0.45,
+    "problem": "Specific mistake or misconception identified (10–15 words)"
+  },
+  {
+    "topic": "Topic name",
+    "subject": "Subject name",
+    "accuracy": 0.32,
+    "problem": "Specific mistake or misconception identified (10–15 words)"
+  },
+  {
+    "topic": "Topic name",
+    "subject": "Subject name",
+    "accuracy": 0.58,
+    "problem": "Specific mistake or misconception identified (10–15 words)"
+  },
+  {
+    "topic": "Topic name",
+    "subject": "Subject name",
+    "accuracy": 0.41,
+    "problem": "Specific mistake or misconception identified (10–15 words)"
+  },
+  {
+    "topic": "Topic name",
+    "subject": "Subject name",
+    "accuracy": 0.29,
+    "problem": "Specific mistake or misconception identified (10–15 words)"
+  },
+  {
+    "topic": "Topic name",
+    "subject": "Subject name",
+    "accuracy": 0.36,
+    "problem": "Specific mistake or misconception identified (10–15 words)"
+  }
+]
+
+**Guidelines**:
+- Return EXACTLY 6 problem checkpoints total (not per topic)
+- These 6 should be the most critical issues across ALL topics
+- Checkpoints should directly reflect the student's actual wrong answers
+- Focus on identifying the mistake, not fixing it
+- Use diagnostic language: "confused", "mistook", "missed", "incorrectly applied"
+- No prescriptive advice—this is a problem identification list
+- Multiple checkpoints can be from the same topic if critical
+
+**Important**:
+- Return ONLY the JSON array of exactly 6 items
+- No explanations, no notes, no markdown code blocks
+- Strictly follow the format above
+
+"""
+
+# Study Tips Prompt
+study_tips_prompt = """
+**Task**: Generate practical, personalized study techniques and habits to help a NEET student study smarter based on their performance patterns.
+
+**Context**: You are an AI study coach providing short, actionable learning strategies. These tips should focus on HOW to study better—methods, habits, and techniques tailored to the student's strengths, weaknesses, and learning patterns.
+
+**Input Data Provided**:
+- **Strong Topics** (accuracy >= 85%): Topics where the student excels
+- **Weak Topics** (accuracy < 60%): Topics where the student struggles
+- **Moderate Topics** (60-85% accuracy): Topics with room for improvement
+- **Question Type Analysis**: Performance breakdown by question type (correct/incorrect counts)
+
+Each topic includes:
+- Subject name
+- Topic name
+- Accuracy percentage
+- Weighted accuracy score
+
+**Your Task**:
+1. Analyze the student's overall performance pattern:
+   - Identify what types of questions they handle well vs. struggle with
+   - Notice patterns in their strong vs. weak areas
+   - Consider their question-type performance
+2. Generate practical study techniques that:
+   - Leverage their strengths to build confidence
+   - Address their weaknesses with targeted methods
+   - Optimize their learning approach based on patterns
+   - Are specific to NEET exam preparation
+3. Rank all possible study tips by:
+   - **Practicality**: How easily the student can implement this
+   - **Impact**: How much this will improve their overall study effectiveness
+4. Select ONLY the **top 5 most practical and impactful study techniques**
+
+**Study Tip Requirements**:
+- Each tip must be **12–18 words** maximum
+- Must be practical and immediately actionable
+- Focus on study methods and habits, NOT specific content to learn
+- Use simple, easy-to-understand Indian-English
+- Be specific to their performance patterns
+- Motivational yet realistic
+- Examples: time management, revision techniques, practice strategies, learning methods
+
+**Output Format (strict JSON)**:
+[
+  {
+    "category": "Time Management" | "Revision Strategy" | "Practice Method" | "Learning Technique" | "Mistake Analysis",
+    "tip": "Practical study technique or habit (12–18 words)",
+    "relevance": "Brief note on why this applies to the student (8–12 words)"
+  },
+  {
+    "category": "Time Management" | "Revision Strategy" | "Practice Method" | "Learning Technique" | "Mistake Analysis",
+    "tip": "Practical study technique or habit (12–18 words)",
+    "relevance": "Brief note on why this applies to the student (8–12 words)"
+  },
+  {
+    "category": "Time Management" | "Revision Strategy" | "Practice Method" | "Learning Technique" | "Mistake Analysis",
+    "tip": "Practical study technique or habit (12–18 words)",
+    "relevance": "Brief note on why this applies to the student (8–12 words)"
+  },
+  {
+    "category": "Time Management" | "Revision Strategy" | "Practice Method" | "Learning Technique" | "Mistake Analysis",
+    "tip": "Practical study technique or habit (12–18 words)",
+    "relevance": "Brief note on why this applies to the student (8–12 words)"
+  },
+  {
+    "category": "Time Management" | "Revision Strategy" | "Practice Method" | "Learning Technique" | "Mistake Analysis",
+    "tip": "Practical study technique or habit (12–18 words)",
+    "relevance": "Brief note on why this applies to the student (8–12 words)"
+  }
+]
+
+**Guidelines**:
+- Return EXACTLY 5 study tips total
+- These should be the highest-impact techniques for THIS student
+- Tips should reflect their actual performance patterns
+- Focus on studying smarter, not just harder
+- Avoid generic advice—make it specific to their data
+- Each tip should have a clear category
+- Keep tone supportive and encouraging
+
+**Important**:
+- Return ONLY the JSON array of exactly 5 items
+- No explanations, no notes, no markdown code blocks
+- Strictly follow the format above
+
+"""

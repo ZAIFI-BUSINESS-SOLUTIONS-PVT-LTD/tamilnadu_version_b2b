@@ -32,9 +32,8 @@ def start_from_analysis(class_id, test_num):
             #print(f"🚀 starting student analysis for {test_num} for class {class_id}...")
             status_obj.logs += f"\n starting student analysis for {test_num} for class {class_id}..."
             analyse_students(class_id, test_num)
-            status_obj.status = "Successful"
-            status_obj.logs += "\n✅ Processing completed"
-            status_obj.ended_at = now()
+            # analysis tasks scheduled — do not mark final success here
+            status_obj.logs += "\n✅ Processing completed (analysis scheduled)"
             status_obj.save()
             try:
                 logger.info(f"🚀 Updating students dashboard {test_num} for class {class_id}...")
@@ -89,9 +88,8 @@ def start_from_student_analysis(class_id, test_num):
         #print(f"🚀 starting student analysis for {test_num} for class {class_id}...")
         status_obj.logs += f"\n starting student analysis for {test_num} for class {class_id}..."
         analyse_students(class_id, test_num)
-        status_obj.status = "Successful"
-        status_obj.logs += "\n✅ Processing completed"
-        status_obj.ended_at = now()
+        # analysis tasks scheduled — do not mark final success here
+        status_obj.logs += "\n✅ Processing completed (analysis scheduled)"
         status_obj.save()
         try:
             logger.info(f"🚀 Updating students dashboard {test_num} for class {class_id}...")
