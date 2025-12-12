@@ -8,6 +8,9 @@ import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement
 import FilterDrawer from '../../components/ui/filter-drawer.jsx';
 import Stat from '../components/ui/stat-mobile.jsx';
 import { Card } from '../../components/ui/card.jsx';
+import ActionPlanCard from '../components/ActionPlanCard.jsx';
+import ChecklistCard from '../components/ChecklistCard.jsx';
+import StudyTipsCard from '../components/StudyTipsCard.jsx';
 
 // Register ChartJS components (safe to call even if imported elsewhere)
 ChartJS.register(
@@ -48,6 +51,9 @@ function SDashboardMobile() {
     keyInsightsData: {},
     subjectWiseData: {},
     subjectWiseDataMapping: [],
+    actionPlan: [],
+    checklist: [],
+    studyTips: [],
     lastTestImprovement: 0,
     lastTestPercentage: 0,
     isLoading: true,
@@ -136,6 +142,9 @@ function SDashboardMobile() {
           keyInsightsData: data.keyInsightsData || {},
           subjectWiseData,
           subjectWiseDataMapping,
+          actionPlan: data.actionPlan || [],
+          checklist: data.checklist || [],
+          studyTips: data.studyTips || [],
           perTestStats,
           lastTestImprovement,
           lastTestPercentage,
@@ -329,6 +338,21 @@ function SDashboardMobile() {
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* Action Plan Section - Mobile */}
+          <div className="w-full px-3 pb-4">
+            <ActionPlanCard actionPlan={dashboardData.actionPlan} />
+          </div>
+
+          {/* Checklist Section - Mobile */}
+          <div className="w-full px-3 pb-4">
+            <ChecklistCard checklist={dashboardData.checklist} />
+          </div>
+
+          {/* Study Tips Section - Mobile */}
+          <div className="w-full px-3 pb-4">
+            <StudyTipsCard studyTips={dashboardData.studyTips} />
           </div>
 
           {/* Divider: thin dashed gray line */}

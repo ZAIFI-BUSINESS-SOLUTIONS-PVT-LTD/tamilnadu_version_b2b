@@ -10,6 +10,9 @@ import Carousel from '../components/ui/carousel.jsx';
 import { Card } from '../../components/ui/card.jsx';
 import SDashboardMobile from './s_dashboard_mobile.jsx';
 import PageLoader from '../components/LoadingPage';
+import ActionPlanCard from '../components/ActionPlanCard.jsx';
+import ChecklistCard from '../components/ChecklistCard.jsx';
+import StudyTipsCard from '../components/StudyTipsCard.jsx';
 
 function SDashboard() {
   // State to hold the student dashboard data and loading/error status
@@ -18,6 +21,8 @@ function SDashboard() {
     subjectWiseData: {},
     subjectWiseDataMapping: [],
     performanceTrendDataMapping: {},
+    actionPlan: [],
+    checklist: [],
     lastTestImprovement: 0,
     lastTestPercentage: 0,
     isLoading: true,
@@ -104,6 +109,9 @@ function SDashboard() {
           subjectWiseData,
           subjectWiseDataMapping,
           performanceTrendDataMapping: data.performanceTrendDataMapping || {},
+          actionPlan: data.actionPlan || [],
+          checklist: data.checklist || [],
+          studyTips: data.studyTips || [],
           perTestStats,
           lastTestImprovement,
           lastTestPercentage,
@@ -133,6 +141,7 @@ function SDashboard() {
   const {
     keyInsightsData,
     subjectWiseData,
+    actionPlan,
     lastTestImprovement,
     lastTestPercentage,
     isLoading,
@@ -377,6 +386,21 @@ function SDashboard() {
                   ]}
                   emptyMessage="No insights available"
                 />
+              </div>
+
+              {/* Action Plan Section */}
+              <div className="hidden sm:block w-full mt-4">
+                <ActionPlanCard actionPlan={dashboardData.actionPlan} />
+              </div>
+
+              {/* Checklist Section */}
+              <div className="hidden sm:block w-full mt-4">
+                <ChecklistCard checklist={dashboardData.checklist} />
+              </div>
+
+              {/* Study Tips Section */}
+              <div className="hidden sm:block w-full mt-4">
+                <StudyTipsCard studyTips={dashboardData.studyTips} />
               </div>
             </div>
 
