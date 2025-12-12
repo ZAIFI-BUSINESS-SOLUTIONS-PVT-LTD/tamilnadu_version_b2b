@@ -260,10 +260,9 @@ export default function StudentReport() {
 
   // Prepare SWOT by subject mapping (like Report.jsx)
   const PREFERRED_SUBJECT_ORDER = ["Physics", "Chemistry", "Biology", "Botany", "Zoology"];
-  const CATEGORIES = ["Weaknesses", "Opportunities", "Strengths"];
+  const CATEGORIES = ["Weaknesses", "Strengths"];
   const CATEGORY_LABELS = {
     Weaknesses: "Focus Zone",
-    Opportunities: "Edge Zone",
     Strengths: "Steady Zone"
   };
 
@@ -284,7 +283,7 @@ export default function StudentReport() {
   }
 
   const subjectsSwot = {};
-  derivedSubjects.forEach(s => subjectsSwot[s] = { Strengths: [], Weaknesses: [], Opportunities: [], Threats: [] });
+  derivedSubjects.forEach(s => subjectsSwot[s] = { Strengths: [], Weaknesses: [], Threats: [] });
   if (swotData && typeof swotData === 'object') {
     Object.keys(swotData).forEach(cat => {
       const arr = swotData[cat] || [];
@@ -292,8 +291,11 @@ export default function StudentReport() {
         arr.forEach(item => {
           const subj = item.subject || 'Unknown';
           const topics = Array.isArray(item.topics) ? item.topics : [];
-          if (!subjectsSwot[subj]) subjectsSwot[subj] = { Strengths: [], Weaknesses: [], Opportunities: [], Threats: [] };
-          subjectsSwot[subj][cat] = subjectsSwot[subj][cat].concat(topics.length ? topics : ['No data']);
+          if (!subjectsSwot[subj]) subjectsSwot[subj] = { Strengths: [], Weaknesses: [], Threats: [] };
+          // Only append to known buckets (we removed Opportunities/Edge Zone from the UI)
+          if (subjectsSwot[subj][cat]) {
+            subjectsSwot[subj][cat] = subjectsSwot[subj][cat].concat(topics.length ? topics : ['No data']);
+          }
         });
       }
     });

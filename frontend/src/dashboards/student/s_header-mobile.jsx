@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
 import { fetchstudentdetail } from '../../utils/api.js';
 import HeaderBase from '../components/header/HeaderBase.jsx';
 import UserDropdown from '../components/header/UserDropDown.jsx';
+import FeedbackModal from '../components/feedback/FeedbackModal.jsx';
 import Logo from '../../assets/images/logo.svg';
 
 /**
@@ -17,6 +18,9 @@ import Logo from '../../assets/images/logo.svg';
 const StudentHeaderMobile = () => {
   // Fetch student user data using a custom hook
   const { userData: studentInfo, isLoading } = useUserData(fetchstudentdetail, { name: '', student_id: '' });
+
+  // State for controlling the visibility of the feedback modal
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   // React Router hook for navigation
   const navigate = useNavigate();
@@ -33,6 +37,11 @@ const StudentHeaderMobile = () => {
 
   return (
     <>
+      {/* Conditional rendering of the FeedbackModal */}
+      {showFeedbackModal && (
+        <FeedbackModal onClose={() => setShowFeedbackModal(false)} userType="student" />
+      )}
+
       {/* Mobile Header (visible on small screens) */}
       <HeaderBase isMobile>
         <div className="flex items-center justify-between w-full py-3">
@@ -52,6 +61,7 @@ const StudentHeaderMobile = () => {
               userInfo={studentInfo}
               onLogout={handleLogout}
               type="student"
+              onFeedback={() => setShowFeedbackModal(true)}
             />
           </div>
         </div>

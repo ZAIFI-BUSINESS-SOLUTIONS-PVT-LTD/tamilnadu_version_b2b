@@ -896,7 +896,6 @@ const MobileInsightsSelect = ({ keyInsightsData = {} }) => {
   const sections = {
     quickRecommendations: keyInsightsData?.quickRecommendations || [],
     keyStrengths: keyInsightsData?.keyStrengths || [],
-    areasForImprovement: keyInsightsData?.areasForImprovement || [],
     yetToDecide: keyInsightsData?.yetToDecide || []
   };
 
@@ -904,7 +903,6 @@ const MobileInsightsSelect = ({ keyInsightsData = {} }) => {
 
   const tabs = [
     { key: 'yetToDecide', label: 'Focus Zone' },
-    { key: 'areasForImprovement', label: 'Edge Zone' },
     { key: 'keyStrengths', label: 'Steady Zone' }
   ];
 
@@ -918,8 +916,6 @@ const MobileInsightsSelect = ({ keyInsightsData = {} }) => {
           if (isActive) {
             if (tab.key === 'keyStrengths') {
               activeClasses = 'bg-green-100 text-green-900 shadow-sm shadow-green-200/50 border border-green-300';
-            } else if (tab.key === 'areasForImprovement') {
-              activeClasses = 'bg-blue-100 text-blue-900 shadow-sm shadow-blue-200/50 border border-blue-300';
             } else if (tab.key === 'yetToDecide') {
               activeClasses = 'bg-orange-100 text-orange-900 shadow-sm shadow-orange-200/60 border border-orange-300';
             }

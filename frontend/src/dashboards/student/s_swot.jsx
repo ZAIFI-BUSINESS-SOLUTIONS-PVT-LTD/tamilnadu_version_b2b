@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, ArrowCircleUp, WarningCircle, Funnel, CaretDown, Target, Lightning } from '@phosphor-icons/react';
+import { CheckCircle, XCircle, ArrowUpCircle, AlertTriangle, Filter, ChevronDown, Target, Zap } from 'lucide-react';
 import { fetchStudentSWOT, fetchAvailableSwotTests } from '../../utils/api';
 // import FilterDrawer from '../../components/ui/filter-drawer.jsx'; // Removed for desktop
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, } from '../../components/ui/select.jsx';
@@ -115,16 +115,17 @@ const useSwotData = (fetchSwotData, fetchAvailableTestsData) => {
                 if (!organized[subject]) {
                     organized[subject] = {
                         'Focus Zone': [],
-                        'Edge Zone': [],
                         'Steady Zone': [],
                     };
                 }
-                // Push the SWOT item into the appropriate subject and category
-                organized[subject][category].push({
-                    title,
-                    description,
-                    topics: subjectMap[subject],
-                });
+                // Only include Focus and Steady zone items; drop other categories (e.g., Edge/Opportunities)
+                if (category === 'Focus Zone' || category === 'Steady Zone') {
+                    organized[subject][category].push({
+                        title,
+                        description,
+                        topics: subjectMap[subject],
+                    });
+                }
             }
         }
         return organized;
@@ -146,7 +147,7 @@ const useSwotData = (fetchSwotData, fetchAvailableTestsData) => {
 // Mapping of API metric keys to SWOT categories, titles, and descriptions
 const metricToCategoryMap = {
     TW_MCT: ['Focus Zone', 'Most Challenging Topics', 'Topics where the student has struggled:'],
-    TO_RLT: ['Edge Zone', 'Rapid Learning Topics', 'Topics that can be quickly improved with targeted practice:'],
+    TO_RLT: ['Opportunities', 'Rapid Learning Topics', 'Topics that can be quickly improved with targeted practice:'],
     TS_BPT: ['Steady Zone', 'Best Performing Topics', 'Areas where the student excels:'],
 };
 
@@ -158,14 +159,14 @@ const SwotSection = ({ label, icon, color, border, data, selectedSubject }) => {
     // Small subtitle mapping for each zone (used under the title in mobile view)
     const zoneSubtitleMap = {
         'Focus Zone': 'Areas to improve',
-        'Edge Zone': 'Quick wins',
+        'Opportunities': 'Quick wins',
         'Steady Zone': 'Strong areas',
     };
 
     // Gradient/background map for each zone
     const zoneBgMap = {
         'Focus Zone': 'bg-gradient-to-br from-pink-100 via-pink-50 to-pink-50',
-        'Edge Zone': 'bg-gradient-to-br from-blue-100 via-blue-50 to-blue-50',
+        'Opportunities': 'bg-gradient-to-br from-blue-100 via-blue-50 to-blue-50',
         'Steady Zone': 'bg-gradient-to-br from-green-100 via-green-50 to-green-50',
     };
 
@@ -286,13 +287,6 @@ const SSWOT = () => {
             border: 'border-red-200'
         },
         {
-            label: 'Edge Zone',
-            icon: <Lightning className="mr-2" />,
-            color: 'text-blue-600',
-            // slightly darker than the blue background
-            border: 'border-blue-200'
-        },
-        {
             label: 'Steady Zone',
             icon: <CheckCircle className="mr-2" />,
             color: 'text-green-600',
@@ -352,7 +346,7 @@ const SSWOT = () => {
         return (
             <div className="flex flex-col items-center justify-center h-screen p-4">
                 <div className="alert alert-error max-w-md ">
-                    <WarningCircle className="stroke-current shrink-0 h-6 w-6" weight="bold" />
+                    <AlertTriangle className="stroke-current shrink-0 h-6 w-6" />
                     <div>
                         <h3 className="font-bold">Error</h3>
                         <div className="text-xs">{String(error)}</div>
@@ -371,7 +365,7 @@ const SSWOT = () => {
                 <div className="lg:mt-12 mt-6 sm:p-6 px-4 space-y-6">
                     {/* Selector Section */}
                     <div className="flex flex-col sm:flex-row  items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 mb-4 pb-4 bg-white sm:pt-4 px-4 pt-2 rounded-xl shadow-xl">
-                        <Funnel className="hidden sm:block text-gray-400 w-5 h-5" />
+                        <Filter className="hidden sm:block text-gray-400 w-5 h-5" />
                         {/* Desktop: keep original Select dropdowns */}
                         <div className="flex items-center gap-2">
                             <span className="text-sm text-gray-400 min-w-max pl-1">Test</span>

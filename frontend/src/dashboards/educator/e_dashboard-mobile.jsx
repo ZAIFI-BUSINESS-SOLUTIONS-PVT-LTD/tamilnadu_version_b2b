@@ -60,12 +60,6 @@ function EDashboard() {
       tagTooltip: 'AI-generated strengths identified for your class.',
     },
     {
-      key: 'areasForImprovement',
-      title: 'Areas for Improvement',
-      items: dashboardData.keyInsightsData.areasForImprovement || [],
-      tagTooltip: 'AI-generated suggestions for improvement.',
-    },
-    {
       key: 'yetToDecide',
       title: 'Consistency Vulnerability',
       items: dashboardData.keyInsightsData.yetToDecide || [],

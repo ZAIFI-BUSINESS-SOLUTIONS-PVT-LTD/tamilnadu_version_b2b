@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  House,
+  Home,
   Target,
-  ChartBar,
-  Files,
-  ChatCircleDots,
-  TextAlignLeft
-} from "@phosphor-icons/react";
+  BarChart3,
+  FileText,
+  MessageSquare,
+  AlignLeft
+} from "lucide-react";
 import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
 import { fetchstudentdetail } from '../../utils/api.js';
 import DesktopSidebar from '../components/header/DesktopSidebar.jsx';
@@ -49,19 +49,19 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
   const sidebarItems = [
     {
       to: '/student/dashboard',
-      icon: <House weight="regular" size={20} />,
+      icon: <Home size={20} />,
       text: 'Home',
       activePattern: /^\/student\/dashboard/
     },
     {
       to: '/student/swot',
-      icon: <Target weight="regular" size={20} />,
+      icon: <Target size={20} />,
       text: 'Analysis',
       activePattern: /^\/student\/swot/
     },
     {
       to: '/student/performance',
-      icon: <ChartBar weight="regular" size={20} />,
+      icon: <BarChart3 size={20} />,
       text: 'Performance',
       activePattern: /^\/student\/performance/
     },
@@ -75,14 +75,9 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
    */
   const additionalItems = [
     {
-      icon: <Files weight="regular" size={20} />,
+      icon: <FileText size={20} />,
       text: 'Download Report',
       onClick: () => setShowDownloadModal(true) // Triggers the DownloadReportModal
-    },
-    {
-      icon: <ChatCircleDots weight="regular" size={20} />,
-      text: 'Feedback',
-      onClick: () => setShowFeedbackModal(true) // Triggers the FeedbackModal
     }
   ];
 
@@ -145,7 +140,7 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
               className="btn btn-sm h-10 w-10 btn-square bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 flex items-center justify-center transition-colors"
               aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
-              <TextAlignLeft size={20} />
+              <AlignLeft size={20} />
             </button>
 
             {/* Greeting and Current Date */}
@@ -166,6 +161,7 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
                 userInfo={studentInfo}
                 onLogout={handleLogout}
                 type="student"
+                onFeedback={() => setShowFeedbackModal(true)}
               />
             </div>
           </div>

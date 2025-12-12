@@ -132,10 +132,10 @@ export default function TeacherReport() {
                 const key = category.toLowerCase(); // e.g. 'Strengths' -> 'strengths'
                 items.forEach((item) => {
                     if (!data[item.subject]) {
-                        data[item.subject] = { weaknesses: [], opportunities: [], strengths: [] };
+                        data[item.subject] = { weaknesses: [], strengths: [] };
                     }
-                    // push topics (array) into the proper bucket
-                    if (Array.isArray(item.topics) && item.topics.length) {
+                    // Only populate weaknesses/strengths; skip opportunities
+                    if ((key === 'weaknesses' || key === 'strengths') && Array.isArray(item.topics) && item.topics.length) {
                         data[item.subject][key].push(...item.topics);
                     }
                 });
@@ -352,8 +352,8 @@ export default function TeacherReport() {
     // Filter subjects: only render subjects that have SWOT topics present.
     // If a subject's SWOT is missing, hide the whole subject section.
     const renderSubjects = combined.filter(sub => {
-        const buckets = subjectData[sub] || { weaknesses: [], opportunities: [], strengths: [] };
-        const hasSwot = (buckets.weaknesses && buckets.weaknesses.length) || (buckets.opportunities && buckets.opportunities.length) || (buckets.strengths && buckets.strengths.length);
+        const buckets = subjectData[sub] || { weaknesses: [], strengths: [] };
+        const hasSwot = (buckets.weaknesses && buckets.weaknesses.length) || (buckets.strengths && buckets.strengths.length);
         return Boolean(hasSwot);
     });
 
@@ -398,7 +398,7 @@ export default function TeacherReport() {
                         const { data, yAxis } = chartEntry;
                         const thisDonutData = subjectDonutMap[subject] || [];
                         const averageLineValue = data && data.length ? data.reduce((s, d) => s + Number(d.averageScore || 0), 0) / data.length : null;
-                        const buckets = subjectData[subject] || { weaknesses: [], opportunities: [], strengths: [] };
+                        const buckets = subjectData[subject] || { weaknesses: [], strengths: [] };
                         return (
                             <div key={subject} className="print-page">
                                 <div className="page-content">
@@ -543,23 +543,7 @@ export default function TeacherReport() {
                                                     </ul>
                                                 </div>
 
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-3 h-3 bg-gray-100 border border-gray-300 rounded-sm"></div>
-                                                        <h4 className="font-semibold text-sm text-gray-700">Edge Zone</h4>
-                                                    </div>
-                                                    <ul className="space-y-2 text-sm ml-5">
-                                                        {buckets.opportunities.length ? (
-                                                            buckets.opportunities.map((topic, idx) => (
-                                                                <li key={idx} className="text-gray-600 relative before:content-['•'] before:absolute before:-left-4 before:text-gray-400 before:font-bold">
-                                                                    {topic}
-                                                                </li>
-                                                            ))
-                                                        ) : (
-                                                            <li className="italic text-gray-400 text-sm">No emerging opportunities</li>
-                                                        )}
-                                                    </ul>
-                                                </div>
+                                                {/* Edge Zone removed - only Focus and Steady zones shown */}
 
                                                 <div className="space-y-3">
                                                     <div className="flex items-center gap-2">

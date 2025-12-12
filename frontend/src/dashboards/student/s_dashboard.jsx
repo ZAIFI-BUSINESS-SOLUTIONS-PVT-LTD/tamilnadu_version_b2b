@@ -357,19 +357,7 @@ function SDashboard() {
                       ),
                       tagTooltip: 'AI-generated strengths identified for the student.'
                     },
-                    {
-                      key: 'areasForImprovement',
-                      title: 'Areas for Improvement',
-                      items: keyInsightsData?.areasForImprovement || [],
-                      icon: <AlertTriangle size={18} className="text-amber-500" />,
-                      tag: (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-                          <Sparkles size={12} />
-                          AI Generated
-                        </span>
-                      ),
-                      tagTooltip: 'AI-generated suggestions for improvement.'
-                    },
+                    
                     {
                       key: 'yetToDecide',
                       title: 'Consistency Vulnerability',
@@ -1212,7 +1200,6 @@ const MobileInsightsSelect = ({ keyInsightsData = {} }) => {
   const sections = {
     quickRecommendations: keyInsightsData?.quickRecommendations || [],
     keyStrengths: keyInsightsData?.keyStrengths || [],
-    areasForImprovement: keyInsightsData?.areasForImprovement || [],
     yetToDecide: keyInsightsData?.yetToDecide || []
   };
 
@@ -1227,7 +1214,6 @@ const MobileInsightsSelect = ({ keyInsightsData = {} }) => {
         <SelectContent side="bottom" align="end">
           {/* <SelectItem value="quickRecommendations">Quick Recommendations</SelectItem> */}
           <SelectItem value="keyStrengths">Key Strengths</SelectItem>
-          <SelectItem value="areasForImprovement">Areas for Improvement</SelectItem>
           <SelectItem value="yetToDecide">Consistency Threats</SelectItem>
         </SelectContent>
       </Select>

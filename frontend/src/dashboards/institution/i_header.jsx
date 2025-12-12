@@ -12,6 +12,10 @@ import StudentReportModal from './components/i_studentreport.jsx';
 
 const InstitutionHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
   const { educators, selectedEducatorId, setSelectedEducatorId } = useInstitution();
+  const sortedEducators = React.useMemo(() => {
+    if (!Array.isArray(educators)) return [];
+    return [...educators].sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
+  }, [educators]);
   const navigate = useNavigate();
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [showStudentReportModal, setShowStudentReportModal] = useState(false);
@@ -36,7 +40,7 @@ const InstitutionHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
     {
       to: '/institution/students',
       icon: <User size={20} />,
-      text: 'Students',
+      text: 'Classrooms',
       activePattern: /^\/institution\/students/
     },
     {
@@ -77,11 +81,7 @@ const InstitutionHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
       caretIcon: isReportsCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />,
       children: reportItems
     },
-    {
-      icon: <MessageCircle size={20} />,
-      text: 'Feedback',
-      onClick: () => setShowFeedbackModal(true)
-    }
+    // Feedback moved into user dropdown
   ];
 
   useEffect(() => {
@@ -186,13 +186,13 @@ const InstitutionHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
         <div className="flex items-center gap-4">
           {/* Educator Selector moved to the right, before profile */}
           <div className="hidden sm:flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-600">Educator:</span>
-            <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={setSelectedEducatorId}>
+            <span className="text-sm font-medium text-gray-600">Classroom:</span>
+            <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="Select Educator" />
               </SelectTrigger>
               <SelectContent>
-                {educators.map((edu) => (
+                {sortedEducators.map((edu) => (
                   <SelectItem key={edu.id} value={String(edu.id)}>
                     {edu.name}
                   </SelectItem>
@@ -205,6 +205,8 @@ const InstitutionHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
           <UserDropdown
             userInfo={{ name: 'Institution Admin', inst: 'Institution' }}
             onLogout={handleLogout}
+            onFeedback={() => setShowFeedbackModal(true)}
+            type="educator"
           />
         </div>
       </header>

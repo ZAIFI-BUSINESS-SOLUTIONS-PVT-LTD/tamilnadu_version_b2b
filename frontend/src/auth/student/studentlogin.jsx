@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { studentLogin } from '../../utils/api';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Eye, EyeSlash, GraduationCap, Sparkle } from '@phosphor-icons/react';
+import { ArrowLeft, Eye, EyeOff, GraduationCap, Sparkles } from 'lucide-react';
 import studentLoginImg from '../../assets/auth images/studentlogin.svg';
 import {
   Card,
@@ -68,7 +68,7 @@ const StudentLogin = () => {
               aria-label="Go back"
               whileTap={{ scale: 0.95 }}
             >
-              <ArrowLeft size={18} weight="bold" />
+              <ArrowLeft size={18} />
             </motion.button>
 
             <CardHeader className="p-0">
@@ -143,7 +143,7 @@ const StudentLogin = () => {
                     whileTap={{ scale: 0.95 }}
                   >
                     {showPassword ? (
-                      <EyeSlash size={18} className="text-gray-500 hover:text-blue-600 transition-colors" />
+                      <EyeOff size={18} className="text-gray-500 hover:text-blue-600 transition-colors" />
                     ) : (
                       <Eye size={18} className="text-gray-500 hover:text-blue-600 transition-colors" />
                     )}
@@ -167,7 +167,7 @@ const StudentLogin = () => {
                   </>
                 ) : (
                   <>
-                    <Sparkle weight="fill" size={16} className="mr-2" />
+                    <Sparkles size={16} className="mr-2" />
                     Continue
                   </>
                 )}

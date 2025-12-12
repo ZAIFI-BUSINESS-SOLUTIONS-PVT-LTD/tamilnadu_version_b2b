@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
 import { fetcheducatordetail } from '../../utils/api.js';
 import HeaderBase from '../components/header/HeaderBase.jsx';
 import UserDropdown from '../components/header/UserDropDown.jsx';
+import FeedbackModal from '../components/feedback/FeedbackModal.jsx';
 import Logo from '../../assets/images/logo.svg';
 
 /**
@@ -13,6 +14,7 @@ import Logo from '../../assets/images/logo.svg';
 const EducatorHeaderMobile = () => {
   const { userData: educatorInfo, isLoading } = useUserData(fetcheducatordetail, { name: '', inst: '' });
   const navigate = useNavigate();
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -21,17 +23,23 @@ const EducatorHeaderMobile = () => {
   };
 
   return (
-    <HeaderBase isMobile>
-      <div className="flex items-center justify-between w-full py-3">
-        <div className="flex items-center">
-          <img src={Logo} alt="InzightEd Logo" className="h-7 pt-1" />
-        </div>
+    <>
+      <HeaderBase isMobile>
+        <div className="flex items-center justify-between w-full py-3">
+          <div className="flex items-center">
+            <img src={Logo} alt="InzightEd Logo" className="h-7 pt-1" />
+          </div>
 
-        <div className="flex items-center">
-          <UserDropdown userInfo={educatorInfo} onLogout={handleLogout} type="educator" />
+          <div className="flex items-center">
+            <UserDropdown userInfo={educatorInfo} onLogout={handleLogout} onFeedback={() => setShowFeedbackModal(true)} type="educator" />
+          </div>
         </div>
-      </div>
-    </HeaderBase>
+      </HeaderBase>
+
+      {showFeedbackModal && (
+        <FeedbackModal onClose={() => setShowFeedbackModal(false)} userType="educator" />
+      )}
+    </>
   );
 };
 
