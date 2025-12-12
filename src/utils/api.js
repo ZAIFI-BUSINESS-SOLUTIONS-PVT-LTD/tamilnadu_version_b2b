@@ -947,3 +947,91 @@ export const getEducatorDetails = async () => {
     return { error: 'Failed to fetch educator details' };
   }
 };
+
+// =============================================================================
+// TEACHER MANAGEMENT APIs
+// =============================================================================
+
+/**
+ * Create a new teacher for a class and subject
+ */
+export const createTeacher = async (teacherData) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.post(
+      `${API_BASE_URL}/teachers/`,
+      teacherData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error creating teacher:', error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch all teachers for a specific class
+ */
+export const getTeachersByClass = async (classId) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(
+      `${API_BASE_URL}/classes/${classId}/teachers/`,
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching teachers:', error);
+    throw error;
+  }
+};
+
+/**
+ * Update teacher details (email, phone, test_range, etc.)
+ */
+export const updateTeacher = async (teacherId, updates) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.put(
+      `${API_BASE_URL}/teachers/${teacherId}/`,
+      updates,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error updating teacher:', error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a teacher
+ */
+export const deleteTeacher = async (teacherId) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.delete(
+      `${API_BASE_URL}/teachers/${teacherId}/delete/`,
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting teacher:', error);
+    throw error;
+  }
+};
