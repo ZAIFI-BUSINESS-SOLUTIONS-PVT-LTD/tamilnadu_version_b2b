@@ -5,6 +5,7 @@ from .test_metadata import TestMetadata
 from .student import Student  
 from .educator import Educator  
 from .manager import Manager
+from .teacher import Teacher
 
 
 from .question_paper import QuestionPaper

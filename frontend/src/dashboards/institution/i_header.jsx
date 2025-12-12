@@ -6,7 +6,7 @@ import DesktopSidebar from '../components/header/DesktopSidebar.jsx';
 import UserDropdown from '../components/header/UserDropDown.jsx';
 import FeedbackModal from '../components/feedback/FeedbackModal.jsx';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select.jsx';
-import { fetchAvailableSwotTests_Educator, fetcheducatorstudent } from '../../utils/api.js';
+import { fetchAvailableSwotTests_Educator, fetchInstitutionEducatorStudents } from '../../utils/api.js';
 import TeacherReportModal from './components/i_teacherreport.jsx';
 import StudentReportModal from './components/i_studentreport.jsx';
 
@@ -87,7 +87,11 @@ const InstitutionHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
   useEffect(() => {
     async function loadStudents() {
       try {
-        const data = await fetcheducatorstudent();
+        if (!selectedEducatorId) {
+          setStudents([]);
+          return;
+        }
+        const data = await fetchInstitutionEducatorStudents(selectedEducatorId);
         setStudents(Array.isArray(data?.students) ? data.students : []);
       } catch (err) {
         setStudents([]);

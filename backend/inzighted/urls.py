@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path
-from exam.views import auth_views, student_views, admin_views, upload_views, educator_views, institution_views, feedback_views
+from exam.views import auth_views, student_views, admin_views, upload_views, educator_views, institution_views, feedback_views, teacher_views
 from exam.views import password_reset_views
 
 urlpatterns = [
@@ -77,5 +77,11 @@ urlpatterns = [
     path('api/educator/feedback/', feedback_views.submit_educator_feedback, name='submit_educator_feedback'),
     path('api/institution/feedback/', feedback_views.submit_institution_feedback, name='submit_institution_feedback'),
     path('api/feedback/history/', feedback_views.get_my_feedback_history, name='get_my_feedback_history'),
+
+    # Teacher APIs
+    path('api/teachers/', teacher_views.create_teacher, name='create_teacher'),
+    path('api/classes/<str:class_id>/teachers/', teacher_views.list_teachers, name='list_teachers'),
+    path('api/teachers/<int:teacher_id>/', teacher_views.update_teacher, name='update_teacher'),
+    path('api/teachers/<int:teacher_id>/delete/', teacher_views.delete_teacher, name='delete_teacher'),
 
 ]

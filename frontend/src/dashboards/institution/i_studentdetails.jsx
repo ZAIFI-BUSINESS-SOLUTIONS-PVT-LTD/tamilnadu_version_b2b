@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { fetchInstitutionEducatorAllStudentResults, fetchInstitutionEducatorStudents, createInstitutionStudent, updateInstitutionStudent, deleteInstitutionStudent } from '../../utils/api';
+import { fetchInstitutionEducatorAllStudentResults, createInstitutionStudent, updateInstitutionStudent, deleteInstitutionStudent, createTeacher, getTeachersByClass, updateTeacher, deleteTeacher } from '../../utils/api';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import {
   Search,
   Loader,
@@ -25,7 +26,7 @@ import LoadingPage from '../components/LoadingPage.jsx';
 import { useInstitution } from './index.jsx';
 
 function IStudentDetails() {
-  const { selectedEducatorId } = useInstitution();
+  const { selectedEducatorId, educators } = useInstitution();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [groupedResults, setGroupedResults] = useState([]);
@@ -46,7 +47,8 @@ function IStudentDetails() {
   const [subjectEducators, setSubjectEducators] = useState([]); // { id, subject, educator }
   const [subjModalOpen, setSubjModalOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState(null);
-  const [subjForm, setSubjForm] = useState({ subject: '', educator: '' });
+  const [subjForm, setSubjForm] = useState({ subject: '', educator: '', email: '', phone_number: '', test_range: '' });
+  const [classIdForTeachers, setClassIdForTeachers] = useState(null);
 
   const fetchResults = useCallback(async () => {
     if (!selectedEducatorId) return;
@@ -105,39 +107,53 @@ function IStudentDetails() {
     );
   };
 
-  useEffect(() => {
-    if (!selectedEducatorId) return;
-    const fetchNames = async () => {
-      try {
-        const res = await fetchInstitutionEducatorStudents(selectedEducatorId);
-        if (res && Array.isArray(res.students)) {
-          const map = {};
-          res.students.forEach(s => {
-            map[s.student_id] = s.name;
-          });
-          setStudentNameMap(map);
-        }
-      } catch (err) {
-        // Optionally handle error
-      }
-    };
-    fetchNames();
-  }, [selectedEducatorId]);
+  // Note: we no longer fetch students here to obtain class_id or names.
+  // The institution context provides educator information (including `class_id`).
+  // Keep `studentNameMap` empty by default; modal will fall back to `modalStudent.student_name`.
 
   useEffect(() => {
     fetchResults();
   }, [fetchResults]);
 
-  // Initialize / load subject-educator mappings for the selected batch (placeholder)
+  // Fetch teachers using class_id from selected educator
   useEffect(() => {
     if (!selectedEducatorId) {
       setSubjectEducators([]);
+      setClassIdForTeachers(null);
       return;
     }
-    // Placeholder subjects; replace with API call to fetch saved mappings
-    const defaults = ['Physics', 'Chemistry', 'Biology', 'Botany', 'Zoology'].map((sub, idx) => ({ id: `${selectedEducatorId}-${idx}`, subject: sub, educator: '' }));
-    setSubjectEducators(defaults);
-  }, [selectedEducatorId]);
+    
+    const fetchTeachers = async () => {
+      try {
+        // Get class_id from the selected educator in context
+        const selectedEducator = educators.find(e => e.id === selectedEducatorId);
+        
+        if (!selectedEducator || !selectedEducator.class_id) {
+          console.warn('No class_id found for selected educator');
+          setClassIdForTeachers(null);
+          setSubjectEducators([]);
+          return;
+        }
+        
+        const classId = selectedEducator.class_id;
+        setClassIdForTeachers(classId);
+        
+        // Fetch teachers for this class
+        const teachersRes = await getTeachersByClass(classId);
+        if (teachersRes && teachersRes.success && Array.isArray(teachersRes.data)) {
+          setSubjectEducators(teachersRes.data);
+        } else {
+          // No teachers yet, initialize empty
+          setSubjectEducators([]);
+        }
+      } catch (err) {
+        console.error('Error fetching teachers:', err);
+        toast.error('Failed to load teachers');
+      }
+    };
+    
+    fetchTeachers();
+  }, [selectedEducatorId, educators]);
 
   const groupResultsByStudent = (results) => {
     const grouped = {};
@@ -464,15 +480,93 @@ function IStudentDetails() {
                     <label className="block text-sm font-medium text-gray-700">Educator Name</label>
                     <Input className="input input-bordered w-full" value={subjForm.educator} onChange={e => setSubjForm(prev => ({ ...prev, educator: e.target.value }))} />
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Email (Optional)</label>
+                    <Input 
+                      type="email" 
+                      className="input input-bordered w-full" 
+                      placeholder="teacher@example.com"
+                      value={subjForm.email} 
+                      onChange={e => setSubjForm(prev => ({ ...prev, email: e.target.value }))} 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Phone Number (Optional)</label>
+                    <Input 
+                      type="tel" 
+                      className="input input-bordered w-full" 
+                      placeholder="+1234567890"
+                      value={subjForm.phone_number} 
+                      onChange={e => setSubjForm(prev => ({ ...prev, phone_number: e.target.value }))} 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Test Range (Optional)</label>
+                    <Input 
+                      type="text" 
+                      className="input input-bordered w-full" 
+                      placeholder="e.g., 1,2,3 or 1-5"
+                      value={subjForm.test_range} 
+                      onChange={e => setSubjForm(prev => ({ ...prev, test_range: e.target.value }))} 
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Specify which tests this teacher handled (e.g., "1,2,3" or "1-5")</p>
+                  </div>
                   <div className="modal-action mt-4 flex gap-2">
-                    <Button variant="default" onClick={() => {
-                      if (!subjForm.subject) return;
-                      if (editingSubject) {
-                        setSubjectEducators(prev => prev.map(p => p.id === editingSubject.id ? { ...p, subject: subjForm.subject, educator: subjForm.educator } : p));
-                      } else {
-                        setSubjectEducators(prev => [...prev, { id: Date.now(), subject: subjForm.subject, educator: subjForm.educator }]);
+                    <Button variant="default" onClick={async () => {
+                      if (!subjForm.subject || !subjForm.educator) {
+                        toast.error('Subject and Educator Name are required');
+                        return;
                       }
-                      setSubjModalOpen(false);
+                      
+                      if (!classIdForTeachers) {
+                        toast.error('Class ID not available. Please add students first.');
+                        return;
+                      }
+                      
+                      try {
+                        if (editingSubject && !editingSubject.id.toString().startsWith('temp-')) {
+                          // Update existing teacher
+                          const updates = {
+                            subject: subjForm.subject,
+                            teacher_name: subjForm.educator,
+                            email: subjForm.email?.trim() || null,
+                            phone_number: subjForm.phone_number?.trim() || null,
+                            test_range: subjForm.test_range?.trim() || null
+                          };
+                          const response = await updateTeacher(editingSubject.id, updates);
+                          if (response.success) {
+                            toast.success('Teacher updated successfully');
+                            // Refresh list
+                            const teachersRes = await getTeachersByClass(classIdForTeachers);
+                            if (teachersRes && teachersRes.success) {
+                              setSubjectEducators(teachersRes.data);
+                            }
+                          }
+                        } else {
+                          // Create new teacher
+                          const payload = {
+                            class_id: classIdForTeachers,
+                            subject: subjForm.subject,
+                            teacher_name: subjForm.educator,
+                            email: subjForm.email?.trim() || null,
+                            phone_number: subjForm.phone_number?.trim() || null,
+                            test_range: subjForm.test_range?.trim() || null
+                          };
+                          const response = await createTeacher(payload);
+                          if (response.success) {
+                            toast.success('Teacher added successfully');
+                            // Refresh list
+                            const teachersRes = await getTeachersByClass(classIdForTeachers);
+                            if (teachersRes && teachersRes.success) {
+                              setSubjectEducators(teachersRes.data);
+                            }
+                          }
+                        }
+                        setSubjModalOpen(false);
+                      } catch (err) {
+                        console.error('Error saving teacher:', err);
+                        toast.error(err.response?.data?.error || 'Failed to save teacher');
+                      }
                     }}>
                       Save
                     </Button>
@@ -766,7 +860,7 @@ function IStudentDetails() {
         <aside className="w-80 pl-6 card bg-white border border-gray-250 rounded-2xl p-6 h-fit sticky top-8 self-start">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold">Class Educators</h3>
-            <Button size="sm" onClick={() => { setEditingSubject(null); setSubjForm({ subject: '', educator: '' }); setSubjModalOpen(true); }}>Add</Button>
+            <Button size="sm" onClick={() => { setEditingSubject(null); setSubjForm({ subject: '', educator: '', email: '', phone_number: '', test_range: '' }); setSubjModalOpen(true); }}>Add</Button>
           </div>
 
           <div className="space-y-3">
@@ -778,13 +872,45 @@ function IStudentDetails() {
               <div key={s.id} className="flex items-center gap-2 p-2 rounded hover:bg-gray-50">
                 <div className="flex-1">
                   <div className="text-sm font-medium text-gray-800">{s.subject}</div>
-                  <div className="text-sm text-gray-500 truncate">{s.educator || <span className="italic">Unassigned</span>}</div>
+                  <div className="text-sm text-gray-500 truncate">{s.teacher_name || s.educator || <span className="italic">Unassigned</span>}</div>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => { setEditingSubject(s); setSubjForm({ subject: s.subject, educator: s.educator }); setSubjModalOpen(true); }} aria-label="Edit subject">
+                  <Button variant="ghost" size="icon" onClick={() => { 
+                    setEditingSubject(s); 
+                    setSubjForm({ 
+                      subject: s.subject, 
+                      educator: s.teacher_name || s.educator || '', 
+                      email: s.email || '', 
+                      phone_number: s.phone_number || '',
+                      test_range: s.test_range || '' 
+                    }); 
+                    setSubjModalOpen(true); 
+                  }} aria-label="Edit subject">
                     <Edit className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="text-red-600" onClick={() => { setSubjectEducators(prev => prev.filter(x => x.id !== s.id)); }} aria-label="Delete subject">
+                  <Button variant="ghost" size="icon" className="text-red-600" onClick={async () => { 
+                    if (!s.id.toString().startsWith('temp-')) {
+                      try {
+                        const response = await deleteTeacher(s.id);
+                        if (response.success) {
+                          toast.success('Teacher deleted successfully');
+                          // Refresh list
+                          if (classIdForTeachers) {
+                            const teachersRes = await getTeachersByClass(classIdForTeachers);
+                            if (teachersRes && teachersRes.success) {
+                              setSubjectEducators(teachersRes.data);
+                            }
+                          }
+                        }
+                      } catch (err) {
+                        console.error('Error deleting teacher:', err);
+                        toast.error('Failed to delete teacher');
+                      }
+                    } else {
+                      // Just remove from local state for temp items
+                      setSubjectEducators(prev => prev.filter(x => x.id !== s.id));
+                    }
+                  }} aria-label="Delete subject">
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
