@@ -508,10 +508,9 @@ export default function Report() {
   // different payload shapes (Overall vs per-test). Preserve preferred
   // ordering when possible.
   const PREFERRED_SUBJECT_ORDER = ["Physics", "Chemistry", "Biology", "Botany", "Zoology"];
-  const CATEGORIES = ["Weaknesses", "Opportunities", "Strengths"];
+  const CATEGORIES = ["Weaknesses", "Strengths"];
   const CATEGORY_LABELS = {
     Weaknesses: "Focus Zone",
-    Opportunities: "Edge Zone",
     Strengths: "Steady Zone"
   };
 
@@ -542,7 +541,7 @@ export default function Report() {
   // Initialize mapping for each derived subject
   const subjectsSwot = {};
   derivedSubjects.forEach(s => {
-    subjectsSwot[s] = { Strengths: [], Weaknesses: [], Opportunities: [], Threats: [] };
+    subjectsSwot[s] = { Strengths: [], Weaknesses: [], Threats: [] };
   });
 
   // Populate the mapping from swotData
@@ -553,8 +552,8 @@ export default function Report() {
         arr.forEach(item => {
           const subj = item.subject || item.subject_name || null;
           const topics = Array.isArray(item.topics) ? item.topics : [];
-          if (subj) {
-            if (!subjectsSwot[subj]) subjectsSwot[subj] = { Strengths: [], Weaknesses: [], Opportunities: [], Threats: [] };
+            if (subj) {
+            if (!subjectsSwot[subj]) subjectsSwot[subj] = { Strengths: [], Weaknesses: [], Threats: [] };
             subjectsSwot[subj][cat] = (subjectsSwot[subj][cat] || []).concat(topics);
           }
         });

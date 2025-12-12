@@ -20,6 +20,7 @@ import {
 import Table from '../components/ui/table.jsx';
 import { Button } from '../../components/ui/button.jsx';
 import { Input } from '../../components/ui/input.jsx';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select.jsx';
 import { Card, CardHeader, CardContent } from '../../components/ui/card.jsx';
 import Modal from '../components/ui/modal.jsx';
 import LoadingPage from '../components/LoadingPage.jsx';
@@ -122,22 +123,22 @@ function IStudentDetails() {
       setClassIdForTeachers(null);
       return;
     }
-    
+
     const fetchTeachers = async () => {
       try {
         // Get class_id from the selected educator in context
         const selectedEducator = educators.find(e => e.id === selectedEducatorId);
-        
+
         if (!selectedEducator || !selectedEducator.class_id) {
           console.warn('No class_id found for selected educator');
           setClassIdForTeachers(null);
           setSubjectEducators([]);
           return;
         }
-        
+
         const classId = selectedEducator.class_id;
         setClassIdForTeachers(classId);
-        
+
         // Fetch teachers for this class
         const teachersRes = await getTeachersByClass(classId);
         if (teachersRes && teachersRes.success && Array.isArray(teachersRes.data)) {
@@ -151,7 +152,7 @@ function IStudentDetails() {
         toast.error('Failed to load teachers');
       }
     };
-    
+
     fetchTeachers();
   }, [selectedEducatorId, educators]);
 
@@ -474,7 +475,17 @@ function IStudentDetails() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Subject</label>
-                    <Input className="input input-bordered w-full" value={subjForm.subject} onChange={e => setSubjForm(prev => ({ ...prev, subject: e.target.value }))} />
+                    <Select value={subjForm.subject} onValueChange={(value) => setSubjForm(prev => ({ ...prev, subject: value }))}>
+                      <SelectTrigger className="w-full text-start">
+                        <SelectValue placeholder="Select a subject" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Physics">Physics</SelectItem>
+                        <SelectItem value="Chemistry">Chemistry</SelectItem>
+                        <SelectItem value="Botany">Botany</SelectItem>
+                        <SelectItem value="Zoology">Zoology</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Educator Name</label>
@@ -482,32 +493,32 @@ function IStudentDetails() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Email (Optional)</label>
-                    <Input 
-                      type="email" 
-                      className="input input-bordered w-full" 
+                    <Input
+                      type="email"
+                      className="input input-bordered w-full"
                       placeholder="teacher@example.com"
-                      value={subjForm.email} 
-                      onChange={e => setSubjForm(prev => ({ ...prev, email: e.target.value }))} 
+                      value={subjForm.email}
+                      onChange={e => setSubjForm(prev => ({ ...prev, email: e.target.value }))}
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Phone Number (Optional)</label>
-                    <Input 
-                      type="tel" 
-                      className="input input-bordered w-full" 
+                    <Input
+                      type="tel"
+                      className="input input-bordered w-full"
                       placeholder="+1234567890"
-                      value={subjForm.phone_number} 
-                      onChange={e => setSubjForm(prev => ({ ...prev, phone_number: e.target.value }))} 
+                      value={subjForm.phone_number}
+                      onChange={e => setSubjForm(prev => ({ ...prev, phone_number: e.target.value }))}
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Test Range (Optional)</label>
-                    <Input 
-                      type="text" 
-                      className="input input-bordered w-full" 
+                    <Input
+                      type="text"
+                      className="input input-bordered w-full"
                       placeholder="e.g., 1,2,3 or 1-5"
-                      value={subjForm.test_range} 
-                      onChange={e => setSubjForm(prev => ({ ...prev, test_range: e.target.value }))} 
+                      value={subjForm.test_range}
+                      onChange={e => setSubjForm(prev => ({ ...prev, test_range: e.target.value }))}
                     />
                     <p className="text-xs text-gray-500 mt-1">Specify which tests this teacher handled (e.g., "1,2,3" or "1-5")</p>
                   </div>
@@ -517,12 +528,12 @@ function IStudentDetails() {
                         toast.error('Subject and Educator Name are required');
                         return;
                       }
-                      
+
                       if (!classIdForTeachers) {
                         toast.error('Class ID not available. Please add students first.');
                         return;
                       }
-                      
+
                       try {
                         if (editingSubject && !editingSubject.id.toString().startsWith('temp-')) {
                           // Update existing teacher
@@ -875,20 +886,20 @@ function IStudentDetails() {
                   <div className="text-sm text-gray-500 truncate">{s.teacher_name || s.educator || <span className="italic">Unassigned</span>}</div>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => { 
-                    setEditingSubject(s); 
-                    setSubjForm({ 
-                      subject: s.subject, 
-                      educator: s.teacher_name || s.educator || '', 
-                      email: s.email || '', 
+                  <Button variant="ghost" size="icon" onClick={() => {
+                    setEditingSubject(s);
+                    setSubjForm({
+                      subject: s.subject,
+                      educator: s.teacher_name || s.educator || '',
+                      email: s.email || '',
                       phone_number: s.phone_number || '',
-                      test_range: s.test_range || '' 
-                    }); 
-                    setSubjModalOpen(true); 
+                      test_range: s.test_range || ''
+                    });
+                    setSubjModalOpen(true);
                   }} aria-label="Edit subject">
                     <Edit className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="text-red-600" onClick={async () => { 
+                  <Button variant="ghost" size="icon" className="text-red-600" onClick={async () => {
                     if (!s.id.toString().startsWith('temp-')) {
                       try {
                         const response = await deleteTeacher(s.id);

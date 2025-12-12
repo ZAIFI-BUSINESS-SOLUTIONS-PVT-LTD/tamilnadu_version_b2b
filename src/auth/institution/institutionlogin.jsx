@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { institutionLogin } from '../../utils/api';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Eye, EyeSlash, LockKey, Envelope, Sparkle } from '@phosphor-icons/react';
+import { ArrowLeft, Eye, EyeOff, Lock, Mail, Sparkles } from 'lucide-react';
 import educatorLoginImg from '../../assets/auth images/educatorlogin.svg';
 import {
   Card,
@@ -69,7 +69,7 @@ const InstitutionLogin = () => {
               aria-label="Go back"
               whileTap={{ scale: 0.95 }}
             >
-              <ArrowLeft size={18} weight="bold" />
+              <ArrowLeft size={18} />
             </motion.button>
 
             <CardHeader className="p-0">
@@ -107,7 +107,7 @@ const InstitutionLogin = () => {
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Envelope size={16} className="text-gray-400" />
+                    <Mail size={16} className="text-gray-400" />
                   </div>
                   <input
                     id="email"
@@ -133,7 +133,7 @@ const InstitutionLogin = () => {
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <LockKey size={16} className="text-gray-400" />
+                    <Lock size={16} className="text-gray-400" />
                   </div>
                   <input
                     id="password"
@@ -153,7 +153,7 @@ const InstitutionLogin = () => {
                     whileTap={{ scale: 0.95 }}
                   >
                     {showPassword ? (
-                      <EyeSlash size={18} className="text-gray-500 hover:text-blue-600 transition-colors" />
+                      <EyeOff size={18} className="text-gray-500 hover:text-blue-600 transition-colors" />
                     ) : (
                       <Eye size={18} className="text-gray-500 hover:text-blue-600 transition-colors" />
                     )}
@@ -177,7 +177,7 @@ const InstitutionLogin = () => {
                   </>
                 ) : (
                   <>
-                    <Sparkle weight="fill" size={16} className="mr-2" />
+                    <Sparkles size={16} className="mr-2" />
                     Access Dashboard
                   </>
                 )}

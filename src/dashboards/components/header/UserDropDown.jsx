@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { SignOut } from "@phosphor-icons/react";
+import { LogOut, MessageSquare } from "lucide-react";
 
 /**
  * UserDropdown Component
@@ -9,6 +9,7 @@ import { SignOut } from "@phosphor-icons/react";
 const UserDropdown = ({
   userInfo, // Object containing user details (name, inst/student_id)
   onLogout, // Function to handle user logout
+  onFeedback, // Optional function to open feedback modal
   type,     // String indicating the user type ('student' or 'educator')
 }) => {
   // Get the first letter of the user's name, or 'U' as a fallback
@@ -58,13 +59,24 @@ const UserDropdown = ({
         </div>
 
         {/* Logout Button */}
-        <div className="p-2">
+        <div className="p-2 space-y-2">
+          {onFeedback && (
+            <button
+              onClick={onFeedback}
+              className="flex items-center gap-3 w-full py-2 px-3 hover:bg-gray-50 rounded-lg text-gray-700 transition-colors focus:outline-none"
+              role="menuitem"
+            >
+              <MessageSquare size={18} aria-hidden="true" />
+              <span>Feedback</span>
+            </button>
+          )}
+
           <button
             onClick={onLogout}
             className="flex items-center gap-3 w-full py-2 px-3 hover:bg-gray-50 rounded-lg text-red-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
             role="menuitem" // Semantic role for a menu item
           >
-            <SignOut size={18} aria-hidden="true" /> {/* Hide icon from screen readers as text is present */}
+            <LogOut size={18} aria-hidden="true" /> {/* Hide icon from screen readers as text is present */}
             <span>Logout</span>
           </button>
         </div>
@@ -80,6 +92,7 @@ UserDropdown.propTypes = {
     student_id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]), // Student ID for student
   }).isRequired,
   onLogout: PropTypes.func.isRequired,
+  onFeedback: PropTypes.func,
   type: PropTypes.oneOf(['student', 'educator']).isRequired,
 };
 

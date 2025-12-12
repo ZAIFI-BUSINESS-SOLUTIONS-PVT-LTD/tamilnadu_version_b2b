@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { SpinnerGap, CheckCircle } from "@phosphor-icons/react";
+import { Loader2, CheckCircle } from "lucide-react";
 
 
 const WaitingPage = () => {
@@ -63,7 +63,7 @@ const WaitingPage = () => {
             )}
             <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-blue-500 to-blue-700 animate-ping-slow opacity-50" />
             {!completed && (
-              <SpinnerGap className="w-12 h-12 text-white animate-spin relative z-10" />
+              <Loader2 className="w-12 h-12 text-white animate-spin relative z-10" />
             )}
           </div>
         </div>

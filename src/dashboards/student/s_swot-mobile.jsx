@@ -151,18 +151,19 @@ const useSwotData = (fetchSwotData, fetchAvailableTestsData, fetchDashboardData)
             for (const subject in subjectMap) {
                 // Initialize the subject's SWOT categories if they don't exist
                 if (!organized[subject]) {
-                    organized[subject] = {
-                        'Focus Zone': [],
-                        'Edge Zone': [],
-                        'Steady Zone': [],
-                    };
-                }
-                // Push the SWOT item into the appropriate subject and category
-                organized[subject][category].push({
-                    title,
-                    description,
-                    topics: subjectMap[subject],
-                });
+                        organized[subject] = {
+                            'Focus Zone': [],
+                            'Steady Zone': [],
+                        };
+                    }
+                    // Only include Focus and Steady zone items; drop other categories (e.g., Edge/Opportunities)
+                    if (category === 'Focus Zone' || category === 'Steady Zone') {
+                        organized[subject][category].push({
+                            title,
+                            description,
+                            topics: subjectMap[subject],
+                        });
+                    }
             }
         }
         return organized;
@@ -185,7 +186,7 @@ const useSwotData = (fetchSwotData, fetchAvailableTestsData, fetchDashboardData)
 // Mapping of API metric keys to SWOT categories, titles, and descriptions
 const metricToCategoryMap = {
     TW_MCT: ['Focus Zone', 'Most Challenging Topics', 'Topics where the student has struggled:'],
-    TO_RLT: ['Edge Zone', 'Rapid Learning Topics', 'Topics that can be quickly improved with targeted practice:'],
+    TO_RLT: ['Opportunities', 'Rapid Learning Topics', 'Topics that can be quickly improved with targeted practice:'],
     TS_BPT: ['Steady Zone', 'Best Performing Topics', 'Areas where the student excels:'],
 };
 
@@ -197,14 +198,12 @@ const SwotSection = ({ label, icon, color, border, data, selectedSubject }) => {
     // Small subtitle mapping for each zone (used under the title in mobile view)
     const zoneSubtitleMap = {
         'Focus Zone': 'Areas to improve',
-        'Edge Zone': 'Quick wins',
         'Steady Zone': 'Strong areas',
     };
 
     // Gradient/background map for each zone
     const zoneBgMap = {
         'Focus Zone': 'bg-gradient-to-br from-pink-100 via-pink-50 to-pink-50',
-        'Edge Zone': 'bg-gradient-to-br from-blue-100 via-blue-50 to-blue-50',
         'Steady Zone': 'bg-gradient-to-br from-green-100 via-green-50 to-green-50',
     };
 
@@ -325,13 +324,6 @@ const SSWOTMobile = () => {
             color: 'text-red-600',
             // slightly darker than the pink/red background
             border: 'border-red-200'
-        },
-        {
-            label: 'Edge Zone',
-            icon: <Zap className="mr-2" />,
-            color: 'text-blue-600',
-            // slightly darker than the blue background
-            border: 'border-blue-200'
         },
         {
             label: 'Steady Zone',
@@ -504,19 +496,17 @@ const SSWOTMobile = () => {
                 {(() => {
                     const tabs = [
                         { key: 'yetToDecide', label: 'Focus Zone' },
-                        { key: 'areasForImprovement', label: 'Edge Zone' },
                         { key: 'keyStrengths', label: 'Steady Zone' }
                     ];
 
                     // map our selectedZone label to the tab key used here
                     const keyForLabel = (label) => {
                         if (label === 'Focus Zone') return 'yetToDecide';
-                        if (label === 'Edge Zone') return 'areasForImprovement';
                         if (label === 'Steady Zone') return 'keyStrengths';
                         return 'yetToDecide';
                     };
 
-                    const [selectedTab, setSelectedTab] = [keyForLabel(selectedZone), (k) => { setSelectedZone(k === 'yetToDecide' ? 'Focus Zone' : k === 'areasForImprovement' ? 'Edge Zone' : 'Steady Zone'); }];
+                    const [selectedTab, setSelectedTab] = [keyForLabel(selectedZone), (k) => { setSelectedZone(k === 'yetToDecide' ? 'Focus Zone' : 'Steady Zone'); }];
 
                     return (
                         <>
@@ -527,8 +517,6 @@ const SSWOTMobile = () => {
                                     if (isActive) {
                                         if (tab.key === 'keyStrengths') {
                                             activeClasses = 'bg-green-100 text-green-900 shadow-sm shadow-green-200/50 border border-green-300';
-                                        } else if (tab.key === 'areasForImprovement') {
-                                            activeClasses = 'bg-blue-100 text-blue-900 shadow-sm shadow-blue-200/50 border border-blue-300';
                                         } else if (tab.key === 'yetToDecide') {
                                             activeClasses = 'bg-orange-100 text-orange-900 shadow-sm shadow-orange-200/60 border border-orange-300';
                                         }

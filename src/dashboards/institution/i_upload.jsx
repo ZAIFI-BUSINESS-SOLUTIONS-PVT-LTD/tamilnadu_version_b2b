@@ -1,14 +1,14 @@
 import React, { useState, lazy, Suspense, useEffect } from 'react';
-import { UploadSimple, Plus, MagnifyingGlass, X } from '@phosphor-icons/react';
+import { Upload, Plus, Search, X, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { useTests } from '../components/hooks/e_upload/e_use_tests';
 import { useFileUpload } from '../components/hooks/e_upload/e_use_file_upload';
 import Table from '../components/ui/table.jsx';
 import { Button } from '../../components/ui/button.jsx';
 import { Input } from '../../components/ui/input.jsx';
-import { Loader2, Search, CheckCircle2, XCircle } from 'lucide-react';
 import LoadingPage from '../components/LoadingPage.jsx';
 import { toast } from 'react-hot-toast';
 import { useInstitution } from './index.jsx';
+import FeedbackModal from '../components/feedback/FeedbackModal.jsx';
 
 // Reuse the educator upload modal
 const UploadModal = lazy(() => import('../educator/components/e_docsupload.jsx'));
@@ -18,6 +18,8 @@ const IUpload = () => {
 
   // State to control the visibility of the upload modal
   const [isModalOpen, setIsModalOpen] = useState(false);
+  // State to control the visibility of the feedback modal after upload
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   // State to manage the current step in the upload modal
   const [step, setStep] = useState(0);
 
@@ -116,6 +118,8 @@ const IUpload = () => {
       setIsModalOpen(false);
       setStep(0);
       loadTests();
+      // Open feedback modal after successful upload
+      setShowFeedbackModal(true);
     }
   };
 
@@ -208,9 +212,8 @@ const IUpload = () => {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                <MagnifyingGlass
+                <Search
                   className="h-5 w-5 absolute left-3 top-2 opacity-50"
-                  weight="bold"
                 />
                 {searchTerm && (
                   <Button
@@ -254,7 +257,7 @@ const IUpload = () => {
           ) : (
             <div className="flex flex-col items-center justify-center w-full p-16 text-center border-2 border-dashed border-gray-300 rounded-xl bg-gray-50">
               <div className="p-4 bg-primary/10 rounded-full mb-4">
-                <UploadSimple size={40} className="text-primary" weight="duotone" />
+                <Upload size={40} className="text-primary" />
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-1">No tests uploaded yet</h3>
               <p className="text-gray-500 mb-6 max-w-md">Get started by uploading a test file for this educator.</p>
@@ -281,9 +284,8 @@ const IUpload = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <MagnifyingGlass
+              <Search
                 className="h-5 w-5 absolute left-3 top-3 opacity-50"
-                weight="bold"
               />
               {searchTerm && (
                 <Button
@@ -340,7 +342,7 @@ const IUpload = () => {
           ) : (
             <div className="flex flex-col items-center justify-center w-full p-8 text-center">
               <div className="p-3 bg-primary/10 rounded-full mb-3">
-                <UploadSimple size={28} className="text-primary" weight="duotone" />
+                <Upload size={28} className="text-primary" />
               </div>
               <h4 className="text-sm font-medium text-gray-900 mb-1">No tests uploaded yet</h4>
               <p className="text-sm text-gray-500 mb-3">Upload a test to begin analysis.</p>
@@ -359,7 +361,7 @@ const IUpload = () => {
         size="icon"
         className="sm:hidden fixed bottom-24 right-4 z-40 bg-primary text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-colors"
       >
-        <Plus size={22} weight="bold" />
+        <Plus size={22} />
       </Button>
 
       {isModalOpen && (
@@ -374,6 +376,9 @@ const IUpload = () => {
             isUploading={isUploading}
           />
         </Suspense>
+      )}
+      {showFeedbackModal && (
+        <FeedbackModal onClose={() => setShowFeedbackModal(false)} userType="institution" />
       )}
     </div>
   );

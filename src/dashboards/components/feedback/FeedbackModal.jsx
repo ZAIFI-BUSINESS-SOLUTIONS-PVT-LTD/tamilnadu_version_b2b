@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
-import { X, PaperPlaneTilt } from '@phosphor-icons/react';
+import { X, Send } from 'lucide-react';
+import { Card, CardHeader, CardContent, CardFooter, CardTitle } from '../../../components/ui/card.jsx';
+import { Button } from '../../../components/ui/button.jsx';
+import { Input } from '../../../components/ui/input.jsx';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../../components/ui/select.jsx';
 import { submitStudentFeedback, submitEducatorFeedback, submitInstitutionFeedback } from '../../../utils/api';
 
 /**
@@ -14,7 +18,7 @@ import { submitStudentFeedback, submitEducatorFeedback, submitInstitutionFeedbac
  */
 const FeedbackModal = ({ onClose, userType = 'student' }) => {
   const [formData, setFormData] = useState({
-    satisfaction_rate: '',
+    satisfaction_rate: null,
     need_improvement: '',
     what_you_like: ''
   });
@@ -32,7 +36,7 @@ const FeedbackModal = ({ onClose, userType = 'student' }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validation
     if (!formData.satisfaction_rate || !formData.need_improvement || !formData.what_you_like) {
       setErrorMessage('Please fill in all fields');
@@ -46,7 +50,7 @@ const FeedbackModal = ({ onClose, userType = 'student' }) => {
 
     try {
       let response;
-      
+
       // Choose the correct API function based on user type
       switch (userType) {
         case 'educator':
@@ -81,117 +85,90 @@ const FeedbackModal = ({ onClose, userType = 'student' }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800">Share Your Feedback</h2>
-          <button
+    <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4">
+      <Card className="max-w-xl w-full">
+        <CardHeader className="relative flex items-center justify-center">
+          <div>
+            <CardTitle className="text-lg">Share Your Feedback</CardTitle>
+          </div>
+          <Button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            variant="ghost"
+            size="icon"
             aria-label="Close feedback modal"
+            className="absolute right-4 top-2 text-gray-400 hover:text-gray-600 rounded-full"
           >
-            <X size={24} />
-          </button>
-        </div>
+            <X size={22} aria-hidden="true" />
+          </Button>
+        </CardHeader>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Satisfaction Rate */}
-          <div>
-            <label htmlFor="satisfaction_rate" className="block text-sm font-medium text-gray-700 mb-2">
-              Satisfaction Rate (1-5)
-            </label>
-            <select
-              id="satisfaction_rate"
-              name="satisfaction_rate"
-              value={formData.satisfaction_rate}
-              onChange={handleInputChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
-            >
-              <option value="">Select rating</option>
-              <option value="1">1 - Very Dissatisfied</option>
-              <option value="2">2 - Dissatisfied</option>
-              <option value="3">3 - Neutral</option>
-              <option value="4">4 - Satisfied</option>
-              <option value="5">5 - Very Satisfied</option>
-            </select>
-          </div>
-
-          {/* Need Improvement */}
-          <div>
-            <label htmlFor="need_improvement" className="block text-sm font-medium text-gray-700 mb-2">
-              What needs improvement?
-            </label>
-            <textarea
-              id="need_improvement"
-              name="need_improvement"
-              value={formData.need_improvement}
-              onChange={handleInputChange}
-              rows="3"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-              placeholder="Share your thoughts on areas that need improvement..."
-              required
-            />
-          </div>
-
-          {/* What You Like Most */}
-          <div>
-            <label htmlFor="what_you_like" className="block text-sm font-medium text-gray-700 mb-2">
-              What do you like most?
-            </label>
-            <textarea
-              id="what_you_like"
-              name="what_you_like"
-              value={formData.what_you_like}
-              onChange={handleInputChange}
-              rows="3"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-              placeholder="Share what you appreciate most..."
-              required
-            />
-          </div>
-
-          {/* Status Messages */}
-          {submitStatus === 'success' && (
-            <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
-              <p className="font-medium">Thank you for your feedback!</p>
-              <p className="text-sm">Your response has been submitted successfully.</p>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Satisfaction Rate</label>
+              <Select value={formData.satisfaction_rate} onValueChange={(v) => setFormData(prev => ({ ...prev, satisfaction_rate: v }))}>
+                <SelectTrigger className="w-full text-left">
+                  <SelectValue placeholder="Select rating" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 - Very Dissatisfied</SelectItem>
+                  <SelectItem value="2">2 - Dissatisfied</SelectItem>
+                  <SelectItem value="3">3 - Neutral</SelectItem>
+                  <SelectItem value="4">4 - Satisfied</SelectItem>
+                  <SelectItem value="5">5 - Very Satisfied</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          )}
 
-          {submitStatus === 'error' && (
-            <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
-              <p className="font-medium">Error</p>
-              <p className="text-sm">{errorMessage}</p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">What needs improvement?</label>
+              <textarea
+                name="need_improvement"
+                value={formData.need_improvement}
+                onChange={handleInputChange}
+                rows={4}
+                className="w-full rounded-md border border-input px-3 py-2 text-sm shadow-sm focus:ring-1 focus:ring-ring resize-none"
+                placeholder="Share your thoughts on areas that need improvement..."
+                required
+              />
             </div>
-          )}
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isSubmitting || submitStatus === 'success'}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {isSubmitting ? (
-              <>
-                <span className="animate-spin">⏳</span>
-                Submitting...
-              </>
-            ) : submitStatus === 'success' ? (
-              <>
-                ✓ Submitted
-              </>
-            ) : (
-              <>
-                <PaperPlaneTilt size={20} />
-                Submit Feedback
-              </>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">What do you like most?</label>
+              <textarea
+                name="what_you_like"
+                value={formData.what_you_like}
+                onChange={handleInputChange}
+                rows={4}
+                className="w-full rounded-md border border-input px-3 py-2 text-sm shadow-sm focus:ring-1 focus:ring-ring resize-none"
+                placeholder="Share what you appreciate most..."
+                required
+              />
+            </div>
+
+            {submitStatus === 'success' && (
+              <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
+                <p className="font-medium">Thank you for your feedback!</p>
+                <p className="text-sm">Your response has been submitted successfully.</p>
+              </div>
             )}
-          </button>
-        </form>
-      </div>
+
+            {submitStatus === 'error' && (
+              <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+                <p className="font-medium">Error</p>
+                <p className="text-sm">{errorMessage}</p>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3">
+              <Button type="submit" disabled={isSubmitting || submitStatus === 'success'}>
+                {isSubmitting ? 'Submitting...' : submitStatus === 'success' ? '✓ Submitted' : (<><Send size={16} /> Submit Feedback</>)}
+              </Button>
+              <Button variant="outline" onClick={onClose} type="button">Cancel</Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 };

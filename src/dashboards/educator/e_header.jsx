@@ -129,11 +129,7 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
       // Always provide the children for mobile dock popups. Desktop will respect `isCollapsed`.
       children: reportItems
     },
-    {
-      icon: <MessageCircle size={20} />,
-      text: 'Feedback',
-      onClick: () => setShowFeedbackModal(true)
-    }
+    // Feedback moved into user dropdown
   ];
 
   /**
@@ -248,6 +244,7 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
               <UserDropdown
                 userInfo={educatorInfo}
                 onLogout={handleLogout}
+                onFeedback={() => setShowFeedbackModal(true)}
                 type="educator"
               />
             </div>

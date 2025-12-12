@@ -78,18 +78,7 @@ function EDashboard() {
       ),
       tagTooltip: 'AI-generated strengths identified for your class.',
     },
-    {
-      key: 'areasForImprovement',
-      title: 'Areas for Improvement',
-      items: dashboardData.keyInsightsData.areasForImprovement || [],
-      tag: (
-        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-          <Sparkles size={12} />
-          AI Generated
-        </span>
-      ),
-      tagTooltip: 'AI-generated suggestions for improvement.',
-    },
+    
     {
       key: 'yetToDecide',
       title: 'Consistency Vulnerability',

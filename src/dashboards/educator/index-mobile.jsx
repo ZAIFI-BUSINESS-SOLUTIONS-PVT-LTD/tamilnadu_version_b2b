@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
-  House,
-  UploadSimple,
-  Student,
-  Files,
+  Home,
+  Upload,
+  Users,
+  FileText,
   Target
-} from "@phosphor-icons/react";
+} from "lucide-react";
 import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
 import { fetcheducatordetail, fetchAvailableSwotTests_Educator, fetcheducatorstudent } from '../../utils/api.js';
 import MobileDock from '../components/header/MobileDock.jsx';
@@ -33,25 +33,25 @@ export const ELayout = () => {
   const sidebarItems = [
     {
       to: '/educator/dashboard',
-      icon: <House weight="regular" size={20} />,
+      icon: <Home size={20} />,
       text: 'Home',
       activePattern: /^\/educator\/dashboard/
     },
     {
       to: '/educator/upload',
-      icon: <UploadSimple weight="regular" size={20} />,
+      icon: <Upload size={20} />,
       text: 'Upload',
       activePattern: /^\/educator\/upload/
     },
     {
       to: '/educator/swot',
-      icon: <Target weight="regular" size={20} />,
+      icon: <Target size={20} />,
       text: 'SWOT',
       activePattern: /^\/educator\/swot/
     },
     {
       to: '/educator/students',
-      icon: <Student weight="regular" size={20} />,
+      icon: <Users size={20} />,
       text: 'Students',
       activePattern: /^\/educator\/students/
     }
@@ -59,12 +59,12 @@ export const ELayout = () => {
 
   const additionalItems = [
     {
-      icon: <Files weight="regular" size={20} />,
+      icon: <FileText size={20} />,
       text: 'Student Report',
       onClick: () => setShowStudentReportModal(true)
     },
     {
-      icon: <Files weight="regular" size={20} />,
+      icon: <FileText size={20} />,
       text: 'Teacher Report',
       onClick: () => setShowTeacherReportModal(true)
     }

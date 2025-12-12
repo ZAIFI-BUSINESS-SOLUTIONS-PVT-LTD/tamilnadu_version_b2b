@@ -135,16 +135,17 @@ const useSwotData = (fetchSwotData, fetchAvailableTestsData) => {
           organized[subject] = {
             Strengths: [],
             Weaknesses: [],
-            Opportunities: [],
             Threats: [],
           };
         }
-        // Push the SWOT item into the appropriate subject and category
-        organized[subject][category].push({
-          title,
-          description,
-          topics: subjectMap[subject],
-        });
+        // Only include Strengths, Weaknesses, and Threats; drop Opportunities (Edge Zone)
+        if (category === 'Strengths' || category === 'Weaknesses' || category === 'Threats') {
+          organized[subject][category].push({
+            title,
+            description,
+            topics: subjectMap[subject],
+          });
+        }
       }
     }
     return organized;
@@ -202,14 +203,12 @@ const SwotSection = ({ label, displayLabel, icon, color, border, data, selectedS
   // Small subtitle mapping for each zone (used under the title in mobile view)
   const zoneSubtitleMap = {
     'Focus Zone': 'Areas to improve',
-    'Edge Zone': 'Quick wins',
     'Steady Zone': 'Strong areas',
   };
 
   // Gradient/background map for each zone
   const zoneBgMap = {
     'Focus Zone': 'bg-gradient-to-br from-pink-100 via-pink-50 to-pink-50',
-    'Edge Zone': 'bg-gradient-to-br from-blue-100 via-blue-50 to-blue-50',
     'Steady Zone': 'bg-gradient-to-br from-green-100 via-green-50 to-green-50',
   };
 
@@ -320,11 +319,7 @@ const ESWOT = () => {
           item.title !== 'Strongest Question Types' && item.title !== 'Improvement Over Time'
         );
       }
-      if (filtered[subject].Opportunities) {
-        filtered[subject].Opportunities = filtered[subject].Opportunities.filter(item =>
-          item.title !== 'Missed Opportunities' && item.title !== 'Practice Recommendations'
-        );
-      }
+      // Drop Opportunities (Edge Zone) entirely from educator view
     }
     return filtered;
   }, [swotData]);
@@ -338,14 +333,6 @@ const ESWOT = () => {
       color: 'text-red-600',
       // slightly darker than the pink/red background
       border: 'border-red-200'
-    },
-    {
-      label: 'Opportunities',
-      displayLabel: 'Edge Zone',
-      icon: <Zap className="mr-2" />,
-      color: 'text-blue-600',
-      // slightly darker than the blue background
-      border: 'border-blue-200'
     },
     {
       label: 'Strengths',
@@ -392,14 +379,12 @@ const ESWOT = () => {
 
   const keyForLabel = (label) => {
     if (label === 'Focus Zone') return 'yetToDecide';
-    if (label === 'Edge Zone') return 'areasForImprovement';
     if (label === 'Steady Zone') return 'keyStrengths';
     return 'yetToDecide';
   };
 
   const keyToLabel = (key) => {
     if (key === 'yetToDecide') return 'Focus Zone';
-    if (key === 'areasForImprovement') return 'Edge Zone';
     if (key === 'keyStrengths') return 'Steady Zone';
     return 'Focus Zone';
   };
@@ -571,7 +556,6 @@ const ESWOT = () => {
             {(() => {
               const tabs = [
                 { key: 'yetToDecide', label: 'Focus Zone' },
-                { key: 'areasForImprovement', label: 'Edge Zone' },
                 { key: 'keyStrengths', label: 'Steady Zone' }
               ];
 
@@ -584,8 +568,6 @@ const ESWOT = () => {
                       if (isActive) {
                         if (tab.key === 'keyStrengths') {
                           activeClasses = 'bg-green-100 text-green-900 shadow-sm shadow-green-200/50 border border-green-300';
-                        } else if (tab.key === 'areasForImprovement') {
-                          activeClasses = 'bg-blue-100 text-blue-900 shadow-sm shadow-blue-200/50 border border-blue-300';
                         } else if (tab.key === 'yetToDecide') {
                           activeClasses = 'bg-orange-100 text-orange-900 shadow-sm shadow-orange-200/60 border border-orange-300';
                         }

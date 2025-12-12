@@ -1,7 +1,7 @@
 import React from 'react';
-import { CheckCircle, AlertCircle, Filter, Target, Zap, Atom, FlaskConical, Microscope, Leaf, PawPrint, ChevronDown } from 'lucide-react';
+import { CheckCircle, AlertCircle, Filter, Target, Atom, FlaskConical, Microscope, Leaf, PawPrint, User, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { fetchInstitutionEducatorSWOT, fetchAvailableSwotTests_InstitutionEducator } from '../../utils/api';
+import { fetchInstitutionEducatorSWOT, fetchAvailableSwotTests_InstitutionEducator, getTeachersByClass } from '../../utils/api';
 import LoadingPage from '../components/LoadingPage.jsx';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, } from '../../components/ui/select.jsx';
 import { Button } from '../../components/ui/button.jsx';
@@ -143,13 +143,11 @@ const SwotSection = ({ label, displayLabel, icon, color, border, data, selectedS
 
   const zoneSubtitleMap = {
     'Focus Zone': 'Areas to improve',
-    'Edge Zone': 'Quick wins',
     'Steady Zone': 'Strong areas',
   };
 
   const zoneBgMap = {
     'Focus Zone': 'bg-gradient-to-br from-pink-100 via-pink-50 to-pink-50',
-    'Edge Zone': 'bg-gradient-to-br from-blue-100 via-blue-50 to-blue-50',
     'Steady Zone': 'bg-gradient-to-br from-green-100 via-green-50 to-green-50',
   };
 
@@ -210,7 +208,7 @@ SwotSection.propTypes = {
 };
 
 const IAnalysis = () => {
-  const { selectedEducatorId } = useInstitution();
+  const { selectedEducatorId, educators } = useInstitution();
   const {
     selectedSubject,
     setSelectedSubject,
@@ -236,14 +234,42 @@ const IAnalysis = () => {
           item.title !== 'Strongest Question Types' && item.title !== 'Improvement Over Time'
         );
       }
-      if (filtered[subject].Opportunities) {
-        filtered[subject].Opportunities = filtered[subject].Opportunities.filter(item =>
-          item.title !== 'Missed Opportunities' && item.title !== 'Practice Recommendations'
-        );
-      }
     }
     return filtered;
   }, [swotData]);
+
+  // State for teacher data
+  const [teachers, setTeachers] = useState([]);
+
+  // Fetch teachers when selectedEducatorId changes
+  useEffect(() => {
+    // Clear previous teachers immediately to avoid showing stale data
+    setTeachers([]);
+
+    if (!selectedEducatorId) return;
+
+    const fetchTeachers = async () => {
+      try {
+        // Get class_id from the selected educator
+        const educator = educators?.find(e => e.id === selectedEducatorId || String(e.id) === String(selectedEducatorId));
+        if (!educator || !educator.class_id) {
+          setTeachers([]);
+          return;
+        }
+        const response = await getTeachersByClass(educator.class_id);
+        if (response && response.success) {
+          setTeachers(Array.isArray(response.data) ? response.data : []);
+        } else {
+          setTeachers([]);
+        }
+      } catch (error) {
+        console.error('Error fetching teachers:', error);
+        setTeachers([]);
+      }
+    };
+
+    fetchTeachers();
+  }, [selectedEducatorId, educators]);
 
   const sections = [
     {
@@ -252,13 +278,6 @@ const IAnalysis = () => {
       icon: <Target className="mr-2" />,
       color: 'text-red-600',
       border: 'border-red-200'
-    },
-    {
-      label: 'Opportunities',
-      displayLabel: 'Edge Zone',
-      icon: <Zap className="mr-2" />,
-      color: 'text-blue-600',
-      border: 'border-blue-200'
     },
     {
       label: 'Strengths',
@@ -273,7 +292,7 @@ const IAnalysis = () => {
     value: test,
     label: test
   }));
-  
+
   const subjectsFromData = Object.keys(swotData || {});
 
   const orderedSubjects = (() => {
@@ -296,15 +315,21 @@ const IAnalysis = () => {
 
   const keyToLabel = (key) => {
     if (key === 'yetToDecide') return 'Focus Zone';
-    if (key === 'areasForImprovement') return 'Edge Zone';
     if (key === 'keyStrengths') return 'Steady Zone';
     return 'Focus Zone';
   };
 
   const activeLabel = keyToLabel(selectedTab);
 
+  // Active teacher for the selected subject (used in header display)
+  const activeTeacher = teachers.find(t => String(t.subject || '').toLowerCase() === String(selectedSubject || '').toLowerCase());
+  const teacherName = activeTeacher && activeTeacher.teacher_name ? activeTeacher.teacher_name : 'Not assigned';
+  const teacherInitials = teacherName && teacherName !== 'Not assigned'
+    ? teacherName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
+    : '';
+
   if (!selectedEducatorId) {
-      return <div className="text-center py-8 mt-20">Please select an educator to view their analysis.</div>;
+    return <div className="text-center py-8 mt-20">Please select an educator to view their analysis.</div>;
   }
 
   if (loading) {
@@ -331,36 +356,58 @@ const IAnalysis = () => {
 
   return (
     <div className="md:mt-12 lg:px-4 lg:space-y-6">
-      <div className="hidden lg:flex lg:flex-row items-start lg:items-center space-y-2 lg:space-y-0 lg:space-x-4 mb-4 pb-4 bg-white lg:pt-4 px-4 pt-2 rounded-xl shadow-xl">
-        <Filter className="text-gray-400 w-5 h-5" />
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-400 min-w-max pl-1">Test</span>
-          <Select value={selectedTest} onValueChange={(v) => setSelectedTest && setSelectedTest(v)}>
-            <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full lg:w-auto text-start">
-              <SelectValue placeholder="Select Test" />
-            </SelectTrigger>
-            <SelectContent side="bottom" align="end">
-              {testOptions.map(opt => (
-                <SelectItem key={String(opt.value)} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <div className="hidden lg:flex lg:flex-row lg:items-center lg:justify-between mb-4 pb-4 bg-white lg:pt-4 px-4 pt-2 rounded-xl border border-gray-200">
+        <div className="flex items-center gap-4">
+          <Filter className="text-gray-400 w-5 h-5" />
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400 min-w-max pl-1">Test</span>
+            <Select value={selectedTest} onValueChange={(v) => setSelectedTest && setSelectedTest(v)}>
+              <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full lg:w-auto text-start">
+                <SelectValue placeholder="Select Test" />
+              </SelectTrigger>
+              <SelectContent side="bottom" align="end">
+                {testOptions.map(opt => (
+                  <SelectItem key={String(opt.value)} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <span className="text-sm text-gray-400 min-w-max pl-1">Subject</span>
-          <Select value={selectedSubject} onValueChange={(v) => setSelectedSubject && setSelectedSubject(v)}>
-            <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full lg:w-auto text-start">
-              <SelectValue placeholder="Select Subject" />
-            </SelectTrigger>
-            <SelectContent side="bottom" align="end">
-              {subjectOptions.map(opt => (
-                <SelectItem key={String(opt.value)} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <span className="text-sm text-gray-400 min-w-max pl-1">Subject</span>
+            <Select value={selectedSubject} onValueChange={(v) => setSelectedSubject && setSelectedSubject(v)}>
+              <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full lg:w-auto text-start">
+                <SelectValue placeholder="Select Subject" />
+              </SelectTrigger>
+              <SelectContent side="bottom" align="end">
+                {subjectOptions.map(opt => (
+                  <SelectItem key={String(opt.value)} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        {/* Teacher name display - improved visual */}
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col text-right">
+            <span className="text-xs text-gray-400">Educator</span>
+            <span className="text-sm font-semibold text-gray-900">{teacherName}</span>
+          </div>
+          <div className="inline-flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-full px-3 py-1 shadow-sm">
+            <div className="flex items-center justify-center w-8 h-8 bg-white rounded-full border border-gray-100">
+              {teacherInitials ? (
+                <span className="text-sm font-medium text-gray-700">{teacherInitials}</span>
+              ) : (
+                <User className="w-4 h-4 text-gray-500" />
+              )}
+            </div>
+            <div className="hidden lg:block">
+              <div className="text-sm font-medium text-gray-700">{teacherName}</div>
+              <div className="text-xs text-gray-400">{activeTeacher?.email || ''}</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -457,7 +504,6 @@ const IAnalysis = () => {
             {(() => {
               const tabs = [
                 { key: 'yetToDecide', label: 'Focus Zone' },
-                { key: 'areasForImprovement', label: 'Edge Zone' },
                 { key: 'keyStrengths', label: 'Steady Zone' }
               ];
 
@@ -470,8 +516,6 @@ const IAnalysis = () => {
                       if (isActive) {
                         if (tab.key === 'keyStrengths') {
                           activeClasses = 'bg-green-100 text-green-900 shadow-sm shadow-green-200/50 border border-green-300';
-                        } else if (tab.key === 'areasForImprovement') {
-                          activeClasses = 'bg-blue-100 text-blue-900 shadow-sm shadow-blue-200/50 border border-blue-300';
                         } else if (tab.key === 'yetToDecide') {
                           activeClasses = 'bg-orange-100 text-orange-900 shadow-sm shadow-orange-200/60 border border-orange-300';
                         }

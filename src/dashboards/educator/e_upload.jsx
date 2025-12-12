@@ -1,11 +1,10 @@
 import React, { useState, lazy, Suspense, useEffect } from 'react';
-import { UploadSimple, Plus, MagnifyingGlass, X } from '@phosphor-icons/react';
+import { Upload, Plus, Search, X, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { useTests } from '../components/hooks/e_upload/e_use_tests';
 import { useFileUpload } from '../components/hooks/e_upload/e_use_file_upload';
 import Table from '../components/ui/table.jsx';
 import { Button } from '../../components/ui/button.jsx';
 import { Input } from '../../components/ui/input.jsx';
-import { Loader2, Search, CheckCircle2, XCircle } from 'lucide-react';
 import LoadingPage from '../components/LoadingPage.jsx';
 import { toast } from 'react-hot-toast';
 
@@ -212,9 +211,8 @@ const EUpload = () => {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                <MagnifyingGlass
+                <Search
                   className="h-5 w-5 absolute left-3 top-2 opacity-50"
-                  weight="bold"
                 />
                 {searchTerm && (
                   <Button
@@ -261,7 +259,7 @@ const EUpload = () => {
             /* Display a message and upload button if no tests are uploaded */
             <div className="flex flex-col items-center justify-center w-full p-16 text-center border-2 border-dashed border-gray-300 rounded-xl bg-gray-50">
               <div className="p-4 bg-primary/10 rounded-full mb-4">
-                <UploadSimple size={40} className="text-primary" weight="duotone" />
+                <Upload size={40} className="text-primary" />
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-1">No tests uploaded yet</h3>
               <p className="text-gray-500 mb-6 max-w-md">Get started by uploading your first test file to begin analysis.</p>
@@ -286,9 +284,8 @@ const EUpload = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <MagnifyingGlass
+              <Search
                 className="h-5 w-5 absolute left-3 top-3 opacity-50"
-                weight="bold"
               />
               {searchTerm && (
                 <Button
@@ -347,7 +344,7 @@ const EUpload = () => {
           ) : (
             <div className="flex flex-col items-center justify-center w-full p-8 text-center">
               <div className="p-3 bg-primary/10 rounded-full mb-3">
-                <UploadSimple size={28} className="text-primary" weight="duotone" />
+                <Upload size={28} className="text-primary" />
               </div>
               <h4 className="text-sm font-medium text-gray-900 mb-1">No tests uploaded yet</h4>
               <p className="text-sm text-gray-500 mb-3">Upload your first test to begin analysis.</p>
@@ -367,7 +364,7 @@ const EUpload = () => {
         size="icon"
         className="sm:hidden fixed bottom-24 right-4 z-40 bg-primary text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-colors"
       >
-        <Plus size={22} weight="bold" />
+        <Plus size={22} />
       </Button>
 
       {/* Subject configuration moved inside the UploadModal component */}
