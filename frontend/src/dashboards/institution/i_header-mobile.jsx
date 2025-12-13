@@ -5,7 +5,9 @@ import UserDropdown from '../components/header/UserDropDown.jsx';
 import FeedbackModal from '../components/feedback/FeedbackModal.jsx';
 import Logo from '../../assets/images/logo.svg';
 import { useInstitution } from './index.jsx';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select.jsx';
+import FilterDrawer from '../../components/ui/filter-drawer.jsx';
+import { Button } from '../../components/ui/button.jsx';
+import { ChevronDown } from 'lucide-react';
 
 /**
  * InstitutionHeaderMobile
@@ -55,25 +57,50 @@ const InstitutionHeaderMobile = () => {
 // Mobile select component for choosing educator/classroom
 const MobileEducatorSelect = () => {
     const { educators, selectedEducatorId, setSelectedEducatorId } = useInstitution();
+    const [open, setOpen] = useState(false);
 
     const sorted = useMemo(() => {
         if (!Array.isArray(educators)) return [];
         return [...educators].sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
     }, [educators]);
 
+    const selectedName = useMemo(() => {
+        const sel = sorted.find((s) => String(s.id) === String(selectedEducatorId));
+        return sel ? sel.name : '';
+    }, [sorted, selectedEducatorId]);
+
+    const panels = [
+        {
+            key: 'educator',
+            label: 'Classroom',
+            options: sorted.map((edu) => ({ value: edu.id, label: edu.name })),
+            selected: selectedEducatorId,
+            onSelect: (v) => (setSelectedEducatorId ? setSelectedEducatorId(v ?? null) : null),
+        },
+    ];
+
     return (
-        <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
-            <SelectTrigger className="w-full">
-                <SelectValue placeholder="Classroom" />
-            </SelectTrigger>
-            <SelectContent>
-                {sorted.map((edu) => (
-                    <SelectItem key={edu.id} value={String(edu.id)}>
-                        {edu.name}
-                    </SelectItem>
-                ))}
-            </SelectContent>
-        </Select>
+        <>
+            <button
+                className="btn btn-sm bg-gray-200 inline-flex items-center gap-2 rounded-xl"
+                onClick={() => setOpen(true)}
+                aria-label="Open filters"
+            >
+                <span className="text-sm">{selectedName || 'Classroom'}</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-gray-600">
+                    <path d="M6 9l6 6 6-6" stroke="#4b5563" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+            </button>
+
+
+            <FilterDrawer
+                open={open}
+                onOpenChange={setOpen}
+                panels={panels}
+                initialActivePanel="educator"
+                title="Select Classroom"
+            />
+        </>
     );
 };
 

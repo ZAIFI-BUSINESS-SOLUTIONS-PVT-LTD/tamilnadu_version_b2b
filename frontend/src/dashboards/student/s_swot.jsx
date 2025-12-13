@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, ArrowUpCircle, AlertTriangle, Filter, ChevronDown, Target, Zap } from 'lucide-react';
-import { fetchStudentSWOT, fetchAvailableSwotTests } from '../../utils/api';
+import { fetchStudentSWOT, fetchAvailableSwotTests, getStudentDashboardData } from '../../utils/api';
 // import FilterDrawer from '../../components/ui/filter-drawer.jsx'; // Removed for desktop
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, } from '../../components/ui/select.jsx';
 import PropTypes from 'prop-types';
@@ -9,6 +9,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/ca
 // Import mobile component
 import SSWOTMobile from './s_swot-mobile.jsx';
 import LoadingPage from '../components/LoadingPage.jsx';
+import QuestionBreakdownCard from './components/QuestionBreakdownCard.jsx';
 // Custom hook to fetch and manage SWOT analysis data
 const useSwotData = (fetchSwotData, fetchAvailableTestsData) => {
     // State for the currently selected subject. Start empty and set after data loads.
@@ -177,7 +178,7 @@ const SwotSection = ({ label, icon, color, border, data, selectedSubject }) => {
         // Make card a column flex container and full height so siblings in the desktop grid can match heights
         // Add a thin border whose color is provided via the `border` prop so the border is slightly
         // darker than the background gradient.
-        <Card className={`${outerBg} rounded-2xl overflow-hidden h-full flex flex-col border ${border}`}>
+        <Card className={`${outerBg} rounded-2xl overflow-hidden flex flex-col border ${border}`}>
             <CardHeader className="px-4 py-2">
                 <div className="flex items-center justify-between w-full">
                     <div className="flex items-center">
@@ -189,10 +190,10 @@ const SwotSection = ({ label, icon, color, border, data, selectedSubject }) => {
                 </div>
             </CardHeader>
 
-            <CardContent className="px-4 pb-4 pt-0 flex-1">
+            <CardContent className="px-4 pb-4 pt-0 flex-1 min-h-0">
                 {/* Inner white rounded box that holds the items (matches design in screenshot) */}
-                <div className="bg-white p-4 rounded-lg flex flex-col h-full">
-                    <div className="space-y-4 flex-1 overflow-auto">
+                <div className="bg-white p-4 rounded-lg flex flex-col min-h-0">
+                    <div className="space-y-4">
                         {itemsToRender.length > 0 ? (
                             itemsToRender.map((item, idx) => (
                                 <div key={item.id || `${label}-${selectedSubject}-${item.title || ''}-${idx}`} className={`p-3 rounded-lg`}>
@@ -273,6 +274,28 @@ const SSWOT = () => {
         loading,
         error
     } = useSwotData(fetchStudentSWOT, fetchAvailableSwotTests);
+
+    // Fetch subject-wise mapping once for the Question Breakdown card
+    const [subjectWiseDataMapping, setSubjectWiseDataMapping] = useState([]);
+    const [mappingLoading, setMappingLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchMapping = async () => {
+            setMappingLoading(true);
+            try {
+                const data = await getStudentDashboardData();
+                const mapping = Array.isArray(data?.subjectWiseDataMapping) ? data.subjectWiseDataMapping : [];
+                setSubjectWiseDataMapping(mapping);
+            } catch (e) {
+                console.error('Error loading subjectWiseDataMapping for Question Breakdown:', e);
+                setSubjectWiseDataMapping([]);
+            } finally {
+                setMappingLoading(false);
+            }
+        };
+
+        fetchMapping();
+    }, []);
 
     /**
      * Defines the configuration for each SWOT section, including label, icon, and styling.
@@ -362,9 +385,9 @@ const SSWOT = () => {
                 <SSWOTMobile />
             </div>
             <div className="hidden md:block">
-                <div className="lg:mt-12 mt-6 sm:p-6 px-4 space-y-6">
+                <div className="lg:mt-12 mt-6 sm:p-6 px-0 w-full max-w-full space-y-6">
                     {/* Selector Section */}
-                    <div className="flex flex-col sm:flex-row  items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 mb-4 pb-4 bg-white sm:pt-4 px-4 pt-2 rounded-xl shadow-xl">
+                    <div className="flex flex-col sm:flex-row  items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 mb-4 pb-4 bg-white sm:pt-4 px-4 pt-2 rounded-xl border border-gray-200">
                         <Filter className="hidden sm:block text-gray-400 w-5 h-5" />
                         {/* Desktop: keep original Select dropdowns */}
                         <div className="flex items-center gap-2">
@@ -398,19 +421,41 @@ const SSWOT = () => {
                         </div>
                     </div>
 
-                    {/* Desktop/large screens: stacked vertical layout to make it look more filled */}
-                    <div className="flex flex-col space-y-6">
-                        {sections.map(({ label, icon, color, border }) => (
-                            <SwotSection
-                                key={label}
-                                label={label}
-                                icon={icon}
-                                color={color}
-                                border={border}
-                                data={swotData}
-                                selectedSubject={selectedSubject}
-                            />
-                        ))}
+                    {/* Desktop layout: left column stacked SWOT sections, right column Question Breakdown */}
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                        <div className="flex flex-col space-y-6 lg:col-span-2">
+                            {sections.map(({ label, icon, color, border }) => (
+                                <SwotSection
+                                    key={label}
+                                    label={label}
+                                    icon={icon}
+                                    color={color}
+                                    border={border}
+                                    data={swotData}
+                                    selectedSubject={selectedSubject}
+                                />
+                            ))}
+                        </div>
+
+                        <div className="flex items-stretch lg:col-span-2">
+                            {!mappingLoading ? (
+                                <div className="w-full h-full">
+                                    <QuestionBreakdownCard
+                                        subjectWiseDataMapping={subjectWiseDataMapping}
+                                        selectedTest={selectedTest}
+                                        setSelectedTest={setSelectedTest}
+                                        // let QuestionBreakdownCard treat empty subject as "Overall"
+                                        selectedSubject={selectedSubject || ''}
+                                        setSelectedSubject={setSelectedSubject}
+                                        showSelectors={false}
+                                    />
+                                </div>
+                            ) : (
+                                <Card className="w-full rounded-2xl border border-gray-250 bg-white p-6">
+                                    <div className="text-sm text-gray-500">Loading question breakdown…</div>
+                                </Card>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

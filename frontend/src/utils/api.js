@@ -914,7 +914,7 @@ export const forgotPassword = async (email) => {
     return { error: 'Network error, please try again' };
   }
 };
- 
+
 /**
  * Reset Password - consume token and set new password
  */

@@ -5,8 +5,13 @@ import Tooltip from './tooltip';
 
 /**
  * General-purpose Carousel component for displaying sections of content.
+ *
+ * Backward compatible:
+ * - Use `section.items` (array) for the default bulleted list UI.
+ * - Use `section.content` (ReactNode) to render arbitrary UI for a slide.
+ *
  * @param {Object} props
- * @param {Array<{title: string, items: Array, icon?: React.ReactNode, subtitle?: string, tag?: React.ReactNode}>} props.sections - Array of sections to display
+ * @param {Array<{title: string, items?: Array, content?: React.ReactNode, icon?: React.ReactNode, subtitle?: string, tag?: React.ReactNode}>} props.sections
  * @param {string} [props.emptyMessage] - Message to show if no sections or items
  * @param {number} [props.height] - Height of the carousel in px (default 330)
  */
@@ -65,7 +70,9 @@ const Carousel = ({ sections = [], emptyMessage = 'No content available', height
 
         {/* Content area with fixed height and scrolling if needed */}
         <div className="px-6 py-2 flex items-start justify-center overflow-y-auto" style={{ height: `calc(${height}px - 60px - 30px)` }}>
-          {Array.isArray(section.items) && section.items.length > 0 ? (
+          {section.content ? (
+            <div className="w-full">{section.content}</div>
+          ) : Array.isArray(section.items) && section.items.length > 0 ? (
             <ul className="space-y-3 w-full max-w-3xl">
               {section.items.map((item, i) => (
                 <li key={i} className="flex items-start gap-3 text-gray-800 leading-relaxed">
@@ -77,7 +84,7 @@ const Carousel = ({ sections = [], emptyMessage = 'No content available', height
               ))}
             </ul>
           ) : (
-            <div className="text-gray-500 text-xl">No {section.title.toLowerCase()} available.</div>
+            <div className="text-gray-500 text-xl">No {String(section.title || 'content').toLowerCase()} available.</div>
           )}
         </div>
 
