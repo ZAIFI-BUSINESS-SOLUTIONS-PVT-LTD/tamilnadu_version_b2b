@@ -10,8 +10,8 @@ const tenantConfig = {
     backend: 'https://api.inzighted.com/api'
   },
   'https://tamilnadu.inzighted.com': {
-    frontend: 'https://tamilnadu.inzighted.com',
-    backend: 'https://tamilnaduapi.inzighted.com/api'
+    frontend: process.env.PDF_TAMIL_FRONTEND_URL || 'https://tamilnadu.inzighted.com',
+    backend: process.env.PDF_TAMIL_BACKEND_URL || 'https://tamilnaduapi.inzighted.com/api'
   }
 };
 

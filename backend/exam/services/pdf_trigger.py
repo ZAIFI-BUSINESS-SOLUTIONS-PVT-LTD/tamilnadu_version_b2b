@@ -7,6 +7,9 @@ after test processing completion.
 
 import requests
 import logging
+import time
+import boto3
+from botocore.exceptions import ClientError
 from django.conf import settings
 from django.contrib.auth.models import User
 from celery import shared_task
@@ -39,29 +42,52 @@ class PDFTriggerService:
         try:
             import jwt
             from django.conf import settings
+            from exam.models.educator import Educator
             
-            payload = {
-                'user_id': user_id,
-                'user_type': user_type,
-                'class_id': class_id,
-                'test_id': test_id,
-                'scope': 'report:read',
-                'exp': datetime.utcnow() + timedelta(minutes=10),  # 10 minute expiry
-                'iat': datetime.utcnow(),
-                'iss': 'inzighted-backend'
-            }
-            
-            # Add specific ID fields based on user type
+            # The /report endpoint uses educator endpoints, so we need to authenticate as an educator
+            # who has access to this student, not as the student themselves
             if user_type == 'student':
-                payload['student_id'] = user_id
-            elif user_type == 'teacher':
-                payload['teacher_id'] = user_id
-                payload['educator_id'] = user_id  # Alternative field name
+                # Look up an educator for this class
+                educator = Educator.objects.filter(class_id=class_id).first()
+                if not educator:
+                    logger.error(f"No educator found for class {class_id}")
+                    return None
+                
+                # Generate token as the educator
+                payload = {
+                    'email': educator.email,  # Required by UniversalJWTAuthentication
+                    'role': 'educator',  # Must be educator to access educator endpoints
+                    'educator_id': str(educator.id),
+                    'class_id': class_id,
+                    'test_id': test_id,
+                    'scope': 'report:read',
+                    'exp': datetime.utcnow() + timedelta(minutes=10),
+                    'iat': datetime.utcnow(),
+                    'iss': 'inzighted-backend'
+                }
+                logger.debug(f"Generated report token for student {user_id} as educator {educator.email} (class {class_id})")
+            
+            elif user_type == 'teacher' or user_type == 'educator':
+                # For teacher reports, authenticate as that teacher
+                payload = {
+                    'email': user_id,
+                    'role': 'educator',
+                    'educator_id': user_id,
+                    'class_id': class_id,
+                    'test_id': test_id,
+                    'scope': 'report:read',
+                    'exp': datetime.utcnow() + timedelta(minutes=10),
+                    'iat': datetime.utcnow(),
+                    'iss': 'inzighted-backend'
+                }
+                logger.debug(f"Generated report token for educator {user_id}")
+            else:
+                logger.error(f"Invalid user_type: {user_type}")
+                return None
             
             secret_key = getattr(settings, 'SECRET_KEY', 'fallback-secret')
             token = jwt.encode(payload, secret_key, algorithm='HS256')
             
-            logger.debug(f"Generated report token for {user_type} {user_id}")
             return token
             
         except Exception as e:
@@ -139,10 +165,11 @@ class PDFTriggerService:
                 url,
                 json=payload,
                 headers=headers,
-                timeout=30
+                timeout=150
             )
             
-            if response.status_code == 202:
+            # Accept 202 (accepted) or 200 (completed) as success
+            if response.status_code in (202, 200):
                 result = response.json()
                 logger.info(f"PDF generation triggered successfully: {result}")
                 return {
@@ -206,8 +233,36 @@ def trigger_bulk_pdf_generation(self, test_id: str, class_id: str, student_ids: 
     """Async task to trigger bulk PDF generation for a test completion"""
     service = PDFTriggerService()
     results = []
-    
-    # Trigger student PDFs
+    # Helper: check S3 existence for deterministic keys
+    def _s3_head_exists(s3_key: str) -> bool:
+        aws_key = getattr(settings, 'AWS_ACCESS_KEY_ID', None)
+        aws_secret = getattr(settings, 'AWS_SECRET_ACCESS_KEY', None)
+        aws_bucket = getattr(settings, 'AWS_STORAGE_BUCKET_NAME', None)
+        aws_region = getattr(settings, 'AWS_S3_REGION_NAME', None) or None
+
+        if not (aws_key and aws_secret and aws_bucket):
+            # No S3 configured — cannot verify existence
+            return False
+
+        s3 = boto3.client(
+            's3',
+            aws_access_key_id=aws_key,
+            aws_secret_access_key=aws_secret,
+            region_name=aws_region
+        )
+
+        try:
+            s3.head_object(Bucket=aws_bucket, Key=s3_key)
+            return True
+        except ClientError as e:
+            if e.response.get('Error', {}).get('Code') in ('404', 'NotFound'):
+                return False
+            # For other errors, log and return False
+            logger.warn(f"S3 head_object failed for {s3_key}: {e}")
+            return False
+
+
+    # Trigger student PDFs sequentially and wait for S3 presence before next
     for student_id in student_ids:
         result = service.trigger_pdf_generation(
             test_id=test_id,
@@ -215,13 +270,44 @@ def trigger_bulk_pdf_generation(self, test_id: str, class_id: str, student_ids: 
             report_type='student',
             student_id=student_id
         )
+
         results.append({
             'type': 'student',
             'id': student_id,
             'result': result
         })
+
+        # If trigger succeeded, attempt to verify S3 upload before continuing
+        expected_s3_key = None
+        if result.get('success'):
+            data = result.get('data') or {}
+            expected_s3_key = data.get('s3Key')
+
+        # Fallback deterministic key if pdf_service didn't return s3Key
+        if not expected_s3_key:
+            sanitized_class = str(class_id or 'unknown').replace('/', '_')
+            # Format testId as "Test_N" if it's just a number
+            formatted_test = f"Test_{test_id}" if str(test_id).isdigit() else str(test_id)
+            sanitized_test = formatted_test.replace('/', '_').replace(' ', '_')
+            expected_s3_key = f"reports/{sanitized_class}/{sanitized_test}/students/{student_id}.pdf"
+
+        # Poll S3 for the object (max wait 300s)
+        max_wait = 300
+        poll_interval = 5
+        waited = 0
+        found = False
+        while waited < max_wait:
+            if _s3_head_exists(expected_s3_key):
+                found = True
+                logger.info(f"Confirmed S3 object exists: {expected_s3_key}")
+                break
+            time.sleep(poll_interval)
+            waited += poll_interval
+
+        if not found:
+            logger.warning(f"Timed out waiting for S3 object {expected_s3_key} after {max_wait}s")
     
-    # Trigger teacher PDFs if provided
+    # Trigger teacher PDFs if provided (sequential)
     if teacher_ids:
         for teacher_id in teacher_ids:
             result = service.trigger_pdf_generation(
@@ -235,6 +321,34 @@ def trigger_bulk_pdf_generation(self, test_id: str, class_id: str, student_ids: 
                 'id': teacher_id,
                 'result': result
             })
+
+            # For teacher PDFs, if s3Key returned verify it exists (similar to students)
+            expected_s3_key = None
+            if result.get('success'):
+                data = result.get('data') or {}
+                expected_s3_key = data.get('s3Key')
+
+            if not expected_s3_key:
+                sanitized_class = str(class_id or 'unknown').replace('/', '_')
+                # Format testId as "Test_N" if it's just a number
+                formatted_test = f"Test_{test_id}" if str(test_id).isdigit() else str(test_id)
+                sanitized_test = formatted_test.replace('/', '_').replace(' ', '_')
+                expected_s3_key = f"reports/{sanitized_class}/{sanitized_test}/teacher_{teacher_id}.pdf"
+
+            max_wait = 300
+            poll_interval = 5
+            waited = 0
+            found = False
+            while waited < max_wait:
+                if _s3_head_exists(expected_s3_key):
+                    found = True
+                    logger.info(f"Confirmed S3 object exists: {expected_s3_key}")
+                    break
+                time.sleep(poll_interval)
+                waited += poll_interval
+
+            if not found:
+                logger.warning(f"Timed out waiting for S3 object {expected_s3_key} after {max_wait}s")
     
     success_count = sum(1 for r in results if r['result']['success'])
     total_count = len(results)

@@ -151,6 +151,17 @@ STATIC_URL = '/static/'
 # Default to `/usr/src/app/static_root` but allow overriding with env var.
 STATIC_ROOT = os.getenv('DJANGO_STATIC_ROOT', '/usr/src/app/static_root')
 
+# === PDF Service Integration ===
+# URL the backend should use to call the internal pdf service endpoint.
+# In Docker compose this is typically the service name (http://pdf_service:8080).
+PDF_SERVICE_URL = os.getenv('PDF_SERVICE_URL', 'http://pdf_service:8080')
+
+# Internal token expected by the pdf service for internal requests.
+PDF_SERVICE_INTERNAL_TOKEN = os.getenv('PDF_SERVICE_INTERNAL_TOKEN', 'changeme-internal-token')
+
+# Default frontend origin used when generating report tokens or calling the PDF service
+DEFAULT_FRONTEND_ORIGIN = os.getenv('DEFAULT_FRONTEND_ORIGIN', 'https://tamilnadu.inzighted.com')
+
 # === AWS S3 Storage ===
 AWS_S3_REGION_NAME = 'us-east-1'  # e.g., 'us-east-1'
 AWS_S3_FILE_OVERWRITE = True

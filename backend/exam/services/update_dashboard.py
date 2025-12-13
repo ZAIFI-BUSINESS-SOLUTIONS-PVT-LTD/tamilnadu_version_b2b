@@ -11,8 +11,9 @@ from exam.services.whatsapp_notification import send_whatsapp_notification
 import logging
 import time
 from django.utils.timezone import now
-from celery import shared_task, chord
+from celery import shared_task, chord, group
 from functools import wraps
+from exam.services.pdf_trigger import trigger_student_pdf_generation, trigger_teacher_pdf_generation
 
 logger = logging.getLogger(__name__)
 
@@ -492,3 +493,47 @@ def update_educator_dashboard(class_id, test_num, student_results=None):
         logger.error(f"⚠️ Error scheduling WhatsApp notification: {notification_error}", exc_info=True)
         status_obj.logs += f"⚠️ WhatsApp notification error (non-critical): {notification_error}\n"
         status_obj.save()
+
+    # =====================
+    # Trigger PDF generation
+    # - First: generate student PDFs for this test (only students who attended)
+    # - After all student PDFs are triggered/completed, generate teacher PDF(s)
+    try:
+        from exam.models.educator import Educator
+
+        # Build student PDF tasks for students who have responses for this test
+        student_objs = Student.objects.filter(class_id=class_id)
+        student_tasks = []
+        for stud in student_objs:
+            resp_map = fetch_student_responses(stud.student_id, class_id, test_num)
+            if resp_map:
+                student_tasks.append(trigger_student_pdf_generation.s(stud.student_id, test_num, class_id))
+
+        # Build teacher tasks (one per educator for the class)
+        teacher_objs = Educator.objects.filter(class_id=class_id)
+        teacher_tasks = []
+        for ed in teacher_objs:
+            # Use educator primary key as teacher_id
+            teacher_tasks.append(trigger_teacher_pdf_generation.s(ed.id, test_num, class_id))
+
+        if student_tasks:
+            logger.info(f"📄 Scheduling PDF generation: {len(student_tasks)} student PDFs for class {class_id}, test {test_num}")
+            if teacher_tasks:
+                # After all student tasks complete, run teacher tasks
+                chord(student_tasks)(group(teacher_tasks))
+                logger.info(f"📄 Teacher PDF tasks will run after student PDFs complete ({len(teacher_tasks)} teachers)")
+            else:
+                # Only students to generate
+                group(student_tasks).apply_async()
+                logger.info("📄 Student PDF tasks scheduled (no teacher PDFs found)")
+        else:
+            # No students to generate; if teacher tasks exist, run them directly
+            if teacher_tasks:
+                logger.info(f"📄 No student PDFs found; scheduling {len(teacher_tasks)} teacher PDF tasks directly")
+                group(teacher_tasks).apply_async()
+    except Exception as pdf_err:
+        logger.error(f"⚠️ Failed to schedule PDF generation tasks: {pdf_err}", exc_info=True)
+        status_obj.logs += f"⚠️ Failed to schedule PDF generation tasks: {pdf_err}\n"
+        status_obj.save()
+
+    # PDF generation scheduling complete

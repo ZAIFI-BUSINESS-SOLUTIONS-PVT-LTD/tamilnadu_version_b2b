@@ -103,7 +103,12 @@ class PdfService {
    */
   generateDeterministicS3Key(classId, testId, reportType, userId = null) {
     const sanitizedClassId = String(classId || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_');
-    const sanitizedTestId = String(testId || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_');
+    // Format testId as "Test_N" if it's just a number, then sanitize
+    let formattedTestId = String(testId || 'unknown');
+    if (/^\d+$/.test(formattedTestId)) {
+      formattedTestId = `Test_${formattedTestId}`;
+    }
+    const sanitizedTestId = formattedTestId.replace(/[^a-zA-Z0-9_-]/g, '_');
     const sanitizedUserId = userId ? String(userId).replace(/[^a-zA-Z0-9_-]/g, '_') : null;
     
     if (reportType === 'student') {
@@ -337,9 +342,16 @@ class PdfService {
       // Set viewport for consistent rendering
       await page.setViewport({ width: 1200, height: 800 });
 
+      // Add console and error listeners for debugging
+      page.on('console', msg => logger.debug(`Page console [${msg.type()}]: ${msg.text()}`));
+      page.on('pageerror', err => logger.error('Page error:', { error: err.message }));
+      page.on('requestfailed', req => logger.warn('Request failed:', { url: req.url(), failure: req.failure()?.errorText }));
+
       // Build report URL using tenant-specific frontend URL
-      const reportURL = `${tenantUrls.frontend}/report?studentId=${encodeURIComponent(studentId)}&testId=${encodeURIComponent(testId)}`;
-      logger.debug('Navigating to report URL', { url: reportURL, origin });
+      // Format testId as "Test N" if it's just a number
+      const formattedTestId = /^\d+$/.test(String(testId)) ? `Test ${testId}` : testId;
+      const reportURL = `${tenantUrls.frontend}/report?studentId=${encodeURIComponent(studentId)}&testId=${encodeURIComponent(formattedTestId)}`;
+      logger.debug('Navigating to report URL', { url: reportURL, origin, frontendHost: new URL(tenantUrls.frontend).hostname, rawTestId: testId, formattedTestId });
 
       // Navigate to the page
       await page.goto(reportURL, {
@@ -349,13 +361,29 @@ class PdfService {
 
       // Wait for React app to be ready
       logger.debug('Waiting for React app to be ready...');
-      await page.waitForFunction(
-        "window.__PDF_READY__ === true",
-        {
-          timeout: 120000, // Increased from 15000 to 30000ms
-          polling: 500
+      try {
+        await page.waitForFunction(
+          "window.__PDF_READY__ === true",
+          {
+            timeout: 120000,
+            polling: 500
+          }
+        );
+      } catch (waitError) {
+        // On timeout, capture debug info
+        logger.error('Timeout waiting for __PDF_READY__', { error: waitError.message });
+        const screenshotPath = path.join(config.pdf.tempDir, `debug_${studentId}_${testId}_${Date.now()}.png`);
+        const htmlPath = path.join(config.pdf.tempDir, `debug_${studentId}_${testId}_${Date.now()}.html`);
+        try {
+          await page.screenshot({ path: screenshotPath, fullPage: true });
+          const html = await page.content();
+          fs.writeFileSync(htmlPath, html);
+          logger.info('Debug artifacts saved', { screenshot: screenshotPath, html: htmlPath });
+        } catch (debugErr) {
+          logger.warn('Could not save debug artifacts', { error: debugErr.message });
         }
-      );
+        throw waitError;
+      }
 
       // Generate PDF
       logger.debug('Generating PDF...');
@@ -614,8 +642,10 @@ class PdfService {
         });
       }
       await page.setViewport({ width: 1200, height: 800 });
-      const reportURL = `${tenantUrls.frontend}/student-report?testId=${encodeURIComponent(sanitizedTestId)}`;
-      logger.debug('Navigating to student self-report URL', { url: reportURL });
+      // Format testId as "Test N" if it's just a number
+      const formattedTestId = /^\d+$/.test(String(sanitizedTestId)) ? `Test ${sanitizedTestId}` : sanitizedTestId;
+      const reportURL = `${tenantUrls.frontend}/student-report?testId=${encodeURIComponent(formattedTestId)}`;
+      logger.debug('Navigating to student self-report URL', { url: reportURL, rawTestId: sanitizedTestId, formattedTestId });
       await page.goto(reportURL, {
         waitUntil: 'networkidle0',
         timeout: config.pdf.timeout
@@ -721,8 +751,10 @@ class PdfService {
         });
       }
       await page.setViewport({ width: 1200, height: 800 });
-      const reportURL = `${tenantUrls.frontend}/teacher-report?testId=${encodeURIComponent(sanitizedTestId)}`;
-      logger.debug('Navigating to teacher self-report URL', { url: reportURL });
+      // Format testId as "Test N" if it's just a number
+      const formattedTestId = /^\d+$/.test(String(sanitizedTestId)) ? `Test ${sanitizedTestId}` : sanitizedTestId;
+      const reportURL = `${tenantUrls.frontend}/teacher-report?testId=${encodeURIComponent(formattedTestId)}`;
+      logger.debug('Navigating to teacher self-report URL', { url: reportURL, rawTestId: sanitizedTestId, formattedTestId });
       await page.goto(reportURL, {
         waitUntil: 'networkidle0',
         timeout: config.pdf.timeout
