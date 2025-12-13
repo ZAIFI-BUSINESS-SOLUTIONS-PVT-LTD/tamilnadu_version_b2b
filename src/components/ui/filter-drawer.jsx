@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Button } from './button.jsx';
 
@@ -83,8 +84,11 @@ const FilterDrawer = ({
 
     if (!isMounted) return null;
 
-    return (
-        <div className="fixed inset-0 z-[70] flex sm:hidden">
+    // If document is not available (SSR), don't attempt to portal
+    if (typeof document === 'undefined') return null;
+
+    const content = (
+        <div className="fixed inset-0 z-[9999] flex sm:hidden">
             {/* backdrop */}
             <div
                 className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'
@@ -96,7 +100,7 @@ const FilterDrawer = ({
             {/* drawer panel - slides from bottom */}
             <aside
                 className={`relative mt-auto w-full h-1/2 bg-white rounded-t-2xl shadow-2xl overflow-hidden transform-gpu transition-all duration-300 ease-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`}
-                style={{ transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)' }}
+                style={{ transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)', zIndex: 10000 }}
             >
                 {/* drag handle */}
                 <div className="flex justify-center pt-2 pb-1">
@@ -247,6 +251,8 @@ const FilterDrawer = ({
             </aside>
         </div>
     );
+
+    return createPortal(content, document.body);
 };
 
 export default FilterDrawer;

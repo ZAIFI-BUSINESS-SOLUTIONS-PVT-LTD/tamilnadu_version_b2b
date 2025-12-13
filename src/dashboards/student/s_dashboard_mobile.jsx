@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getStudentDashboardData } from '../../utils/api.js';
-import { TrendingUp, HelpCircle, AlertTriangle, FileText, ChevronRight, SwatchBook, Target } from 'lucide-react';
+import { TrendingUp, HelpCircle, AlertTriangle, FileText, ChevronRight, SwatchBook, Target, ListChecks, Lightbulb } from 'lucide-react';
 import { Line, Doughnut } from 'react-chartjs-2';
 import PageLoader from '../components/LoadingPage';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import FilterDrawer from '../../components/ui/filter-drawer.jsx';
 import Stat from '../components/ui/stat-mobile.jsx';
 import { Card } from '../../components/ui/card.jsx';
-import ActionPlanCard from '../components/ActionPlanCard.jsx';
-import ChecklistCard from '../components/ChecklistCard.jsx';
-import StudyTipsCard from '../components/StudyTipsCard.jsx';
+import ActionPlanCard from './components/ActionPlanCard.jsx';
+import ChecklistCard from './components/ChecklistCard.jsx';
+import { Button } from '../../components/ui/button.jsx';
+import StudyTipsCard from './components/StudyTipsCard.jsx';
 
 // Register ChartJS components (safe to call even if imported elsewhere)
 ChartJS.register(
@@ -106,26 +107,41 @@ function SDashboardMobile() {
           return { testName, totalScore, totalQuestions, percentage };
         });
 
-        // Compute Recent Test Percentage, averages and improvements from perTestStats
-        const testKeys = perTestStats.map(p => p.testName);
+        // numeric-aware ordering: ensure tests like Test10 come after Test9
+        const extractTestNum = (s) => {
+          const m = String(s || '').match(/(\d+)/);
+          return m ? parseInt(m[1], 10) : NaN;
+        };
+
+        const sortedPerTestStats = [...perTestStats].sort((a, b) => {
+          const na = extractTestNum(a.testName);
+          const nb = extractTestNum(b.testName);
+          if (!isNaN(na) && !isNaN(nb)) return na - nb; // numeric ascending
+          if (!isNaN(na)) return 1;
+          if (!isNaN(nb)) return -1;
+          return String(a.testName || '').localeCompare(String(b.testName || ''));
+        });
+
+        // Compute Recent Test Percentage, averages and improvements from sortedPerTestStats
+        const testKeys = sortedPerTestStats.map(p => p.testName);
         let lastTestImprovement = 0;
         let lastTestPercentage = 0;
         let averageMarkImprovement = 0;
         let averagePercentage = 0;
 
-        if (perTestStats.length > 0) {
-          const last = perTestStats[perTestStats.length - 1];
+        if (sortedPerTestStats.length > 0) {
+          const last = sortedPerTestStats[sortedPerTestStats.length - 1];
           lastTestPercentage = last.percentage || 0;
-          if (perTestStats.length > 1) {
-            const prev = perTestStats[perTestStats.length - 2];
+          if (sortedPerTestStats.length > 1) {
+            const prev = sortedPerTestStats[sortedPerTestStats.length - 2];
             const prevPct = prev?.percentage || 0;
             lastTestImprovement = prevPct > 0 ? ((lastTestPercentage - prevPct) / prevPct) * 100 : (lastTestPercentage - prevPct);
           }
 
-          const allPercentages = perTestStats.map(p => p.percentage || 0);
+          const allPercentages = sortedPerTestStats.map(p => p.percentage || 0);
           averagePercentage = allPercentages.length ? allPercentages.reduce((s, n) => s + n, 0) / allPercentages.length : 0;
 
-          if (perTestStats.length > 1) {
+          if (sortedPerTestStats.length > 1) {
             const prevAvg = allPercentages.slice(0, -1).length ? allPercentages.slice(0, -1).reduce((s, n) => s + n, 0) / (allPercentages.length - 1) : 0;
             const newAvg = averagePercentage;
             averageMarkImprovement = prevAvg > 0 ? ((newAvg - prevAvg) / prevAvg) * 100 : (newAvg - prevAvg);
@@ -135,7 +151,7 @@ function SDashboardMobile() {
         }
 
         // Debug: log perTestStats so we can inspect computed percentages in mobile
-        console.debug('mobile perTestStats', perTestStats);
+        console.debug('mobile perTestStats', sortedPerTestStats);
 
         // Update the dashboard data state with the fetched and transformed data
         setDashboardData({
@@ -145,7 +161,7 @@ function SDashboardMobile() {
           actionPlan: data.actionPlan || [],
           checklist: data.checklist || [],
           studyTips: data.studyTips || [],
-          perTestStats,
+          perTestStats: sortedPerTestStats,
           lastTestImprovement,
           lastTestPercentage,
           averagePercentage,
@@ -322,37 +338,45 @@ function SDashboardMobile() {
         </div>
 
         {/* Rest Container */}
-        <div className="w-full space-y-6 bg-white rounded-t-2xl pt-4 pb-10">
+        <div className="w-full space-y-5 bg-white rounded-t-2xl pt-4 pb-10">
           <div className="w-full text-center">
             <span className='text-xs italic text-gray-400'>InzightEd generates tips for you to ace your next exam</span>
           </div>
           {/* Mobile: Card with Select + list */}
-          <div className="w-full px-3 pb-2">
+          <div className="w-full px-3">
             <div className="flex items-center ">
               <div className="w-full">
-
                 <MobileInsightsSelect keyInsightsData={keyInsightsData} />
-                <button onClick={() => navigate('/student/swot')} className="w-full mt-6 px-4 py-3 bg-gradient-to-b from-gray-600 to-gray-800 text-white rounded-xl font-semibold flex items-center justify-between">
-                  <span>View AI Generated tips for all tests</span>
-                  <ChevronRight className="w-5 h-5 border border-gray-500 rounded-lg" />
-                </button>
+
               </div>
             </div>
           </div>
 
           {/* Action Plan Section - Mobile */}
-          <div className="w-full px-3 pb-4">
-            <ActionPlanCard actionPlan={dashboardData.actionPlan} />
+          <div className="w-full px-3">
+            <CollapsibleCard title="Action Plan" defaultOpen={false} icon={<SwatchBook className="w-5 h-5 text-emerald-600" />}>
+              <ActionPlanCard actionPlan={dashboardData.actionPlan} />
+            </CollapsibleCard>
           </div>
 
-          {/* Checklist Section - Mobile */}
-          <div className="w-full px-3 pb-4">
-            <ChecklistCard checklist={dashboardData.checklist} />
+          {/* Problems Checklist Section - Mobile */}
+          <div className="w-full px-3">
+            <CollapsibleCard title="Problems Checklist" defaultOpen={false} icon={<ListChecks className="w-5 h-5 text-sky-600" />}>
+              <ChecklistCard checklist={dashboardData.checklist} />
+            </CollapsibleCard>
           </div>
 
           {/* Study Tips Section - Mobile */}
-          <div className="w-full px-3 pb-4">
-            <StudyTipsCard studyTips={dashboardData.studyTips} />
+          <div className="w-full px-3">
+            <CollapsibleCard title="Smarter Study Tips" defaultOpen={false} icon={<Lightbulb className="w-5 h-5 text-gray-600" />}>
+              <StudyTipsCard studyTips={dashboardData.studyTips} />
+            </CollapsibleCard>
+          </div>
+          <div className="w-full px-3">
+            <button onClick={() => navigate('/student/swot')} className="w-full mt-6 px-4 py-3 bg-gradient-to-b from-gray-600 to-gray-800 text-white rounded-xl font-semibold flex items-center justify-between">
+              <span>View AI Generated tips for all tests</span>
+              <ChevronRight className="w-5 h-5 border border-gray-500 rounded-lg" />
+            </button>
           </div>
 
           {/* Divider: thin dashed gray line */}
@@ -414,6 +438,62 @@ function SDashboardMobile() {
 }
 
 // -------------------------- Helpers & Subcomponents --------------------------
+
+/** CollapsibleCard: small reusable wrapper to make sections collapsible on mobile */
+const CollapsibleCard = ({ title = '', children = null, defaultOpen = true, icon = null }) => {
+  const [open, setOpen] = useState(defaultOpen);
+  const contentRef = useRef(null);
+  const [contentHeight, setContentHeight] = useState(0);
+
+  // measure content height whenever children change or on mount
+  useLayoutEffect(() => {
+    if (contentRef.current) {
+      // use scrollHeight to capture full content height
+      setContentHeight(contentRef.current.scrollHeight);
+    }
+  }, [children]);
+
+  // update measured height when opening (handles dynamic content)
+  useEffect(() => {
+    if (open && contentRef.current) setContentHeight(contentRef.current.scrollHeight);
+  }, [open]);
+
+  return (
+    <div className="bg-white shadow-sm overflow-hidden border border-gray-100 rounded-xl">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between p-3 focus:outline-none focus:ring-2 focus:ring-primary rounded-md"
+        aria-expanded={open}
+        aria-controls={`collapsible-${title.replace(/\s+/g, '-').toLowerCase()}`}
+      >
+        <div className="flex items-center">
+          {icon ? (
+            <div className="flex-shrink-0 mr-3 w-6 h-6 flex items-center justify-center rounded-md bg-gray-50">
+              {icon}
+            </div>
+          ) : null}
+          <div className="text-base font-semibold text-gray-800">{title}</div>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={`text-gray-600 transform transition-transform duration-300 ${open ? 'rotate-180' : ''}`}>
+          <path d="M6 9l6 6 6-6" stroke="#4b5563" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      <div
+        id={`collapsible-${title.replace(/\s+/g, '-').toLowerCase()}`}
+        ref={contentRef}
+        className="overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out"
+        style={{ maxHeight: open ? `${contentHeight}px` : '0px', opacity: open ? 1 : 0 }}
+        aria-hidden={!open}
+      >
+        <div className="p-3">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 /** DonutChart component: shows correct/incorrect/unattended counts for a selected test and subject */
 /**

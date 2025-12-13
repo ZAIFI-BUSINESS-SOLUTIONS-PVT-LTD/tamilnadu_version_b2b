@@ -207,6 +207,8 @@ SwotSection.propTypes = {
   data: PropTypes.object.isRequired,
 };
 
+import FilterDrawer from '../../components/ui/filter-drawer.jsx';
+
 const IAnalysis = () => {
   const { selectedEducatorId, educators } = useInstitution();
   const {
@@ -328,6 +330,9 @@ const IAnalysis = () => {
     ? teacherName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
     : '';
 
+  // Drawer state for mobile-only Test selection
+  const [testDrawerOpen, setTestDrawerOpen] = React.useState(false);
+
   if (!selectedEducatorId) {
     return <div className="text-center py-8 mt-20">Please select an educator to view their analysis.</div>;
   }
@@ -418,19 +423,28 @@ const IAnalysis = () => {
               <h1 className="text-2xl font-bold text-gray-800">Test wise analysis</h1>
             </div>
             <div className="py-4">
-              <Select value={selectedTest} onValueChange={(v) => setSelectedTest && setSelectedTest(v)}>
-                <SelectTrigger className="btn btn-sm justify-start rounded-lg text-sm w-auto">
-                  <SelectValue placeholder="Select Test" />
-                  <ChevronDown size={16} className="ml-1" />
-                </SelectTrigger>
-                <SelectContent side="bottom" align="end">
-                  {testOptions.map(opt => (
-                    <SelectItem key={String(opt.value)} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <button
+                className="btn btn-sm justify-start rounded-lg text-sm w-auto inline-flex items-center gap-2"
+                onClick={() => setTestDrawerOpen(true)}
+                aria-label="Select Test"
+              >
+                <span className="truncate">{selectedTest || 'Select Test'}</span>
+                <ChevronDown size={16} className="ml-1" />
+              </button>
+
+              <FilterDrawer
+                open={testDrawerOpen}
+                onOpenChange={setTestDrawerOpen}
+                panels={[{
+                  key: 'test',
+                  label: 'Test',
+                  options: testOptions,
+                  selected: selectedTest,
+                  onSelect: (v) => setSelectedTest && setSelectedTest(v),
+                }]}
+                initialActivePanel="test"
+                title="Select Test"
+              />
             </div>
           </div>
 

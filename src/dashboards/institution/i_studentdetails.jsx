@@ -293,8 +293,8 @@ function IStudentDetails() {
   );
 
   return (
-    <div className="sm:pt-4 w-full mx-auto">
-      <div className="flex gap-6 mt-8">
+    <div className="sm:pt-4 w-full mx-auto px-4 sm:px-6 lg:px-0">
+      <div className="flex flex-col lg:flex-row gap-6 mt-8">
         <div className="flex-1">
           <Card className="rounded-2xl border border-gray-250 bg-white w-full p-8">
             <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-gray-200">
@@ -329,7 +329,7 @@ function IStudentDetails() {
                     <Sliders className="w-5 h-5" />
                     <span>Sort</span>
                   </Button>
-                  <Button className="flex items-center gap-2" onClick={() => { setCreateModalOpen(true); setNewStudent({ class_id: '', student_id: '', name: '', dob: '' }); }}>
+                  <Button className="flex items-center gap-2 w-full sm:w-auto" onClick={() => { setCreateModalOpen(true); setNewStudent({ class_id: '', student_id: '', name: '', dob: '' }); }}>
                     <span>Add Student</span>
                   </Button>
                 </div>
@@ -339,37 +339,60 @@ function IStudentDetails() {
             <CardContent>
               {renderDeleteSummary()}
 
-              <div className="overflow-x-auto">
+              <div>
                 {sortedResults.length > 0 ? (
-                  <Table
-                    columns={columns}
-                    data={sortedResults}
-                    sortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={field => {
-                      if (sortField === field) setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                      setSortField(field);
-                    }}
-                    renderRow={renderRow}
-                    emptyState={
-                      <div className="p-8 text-center">
-                        <Frown className="h-12 w-12 mx-auto text-gray-400" />
-                        <h3 className="mt-2 text-lg font-medium text-gray-900">No results found</h3>
-                        <p className="mt-1 text-sm text-gray-500">
-                          {searchTerm ? 'Try a different search term' : 'No student results available'}
-                        </p>
-                        {searchTerm && (
-                          <Button
-                            onClick={clearSearch}
-                            className="mt-4"
-                            variant="ghost"
-                          >
-                            Clear search
-                          </Button>
-                        )}
-                      </div>
-                    }
-                  />
+                  <>
+                    <div className="sm:hidden space-y-3">
+                      {sortedResults.map(student => (
+                        <div
+                          key={student.student_id}
+                          className="p-4 border rounded-lg shadow-sm hover:bg-gray-50"
+                          onClick={() => setModalStudent(student)}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{studentNameMap[student.student_id] || student.student_name}</div>
+                              <div className="text-sm text-gray-500">ID: {student.student_id}</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm text-gray-500">Avg</div>
+                              <div className="font-medium">{student.average_score}</div>
+                            </div>
+                          </div>
+                          <div className="mt-2 flex justify-between text-sm text-gray-600">
+                            <div>Tests: {student.tests_taken}</div>
+                            <div>Rank: {rankMap[student.student_id]}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="hidden sm:block overflow-x-auto">
+                      <Table
+                        columns={columns}
+                        data={sortedResults}
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={field => {
+                          if (sortField === field) setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                          setSortField(field);
+                        }}
+                        renderRow={renderRow}
+                        emptyState={
+                          <div className="p-8 text-center">
+                            <Frown className="h-12 w-12 mx-auto text-gray-400" />
+                            <h3 className="mt-2 text-lg font-medium text-gray-900">No results found</h3>
+                            <p className="mt-1 text-sm text-gray-500">
+                              {searchTerm ? 'Try a different search term' : 'No student results available'}
+                            </p>
+                            {searchTerm && (
+                              <Button onClick={clearSearch} className="mt-4" variant="ghost">Clear search</Button>
+                            )}
+                          </div>
+                        }
+                      />
+                    </div>
+                  </>
                 ) : (
                   <div className="p-8 text-center">
                     <Frown className="h-12 w-12 mx-auto text-gray-400" />
@@ -378,13 +401,7 @@ function IStudentDetails() {
                       {searchTerm ? 'Try a different search term' : 'No student results available'}
                     </p>
                     {searchTerm && (
-                      <Button
-                        onClick={clearSearch}
-                        className="mt-4"
-                        variant="ghost"
-                      >
-                        Clear search
-                      </Button>
+                      <Button onClick={clearSearch} className="mt-4" variant="ghost">Clear search</Button>
                     )}
                   </div>
                 )}
@@ -431,9 +448,10 @@ function IStudentDetails() {
                       onChange={e => setNewStudent(prev => ({ ...prev, dob: e.target.value }))}
                     />
                   </div>
-                  <div className="modal-action mt-4 flex gap-2">
+                  <div className="modal-action mt-4 flex flex-col sm:flex-row gap-2">
                     <Button
                       variant="default"
+                      className="w-full sm:w-auto"
                       onClick={async () => {
                         setError(null);
                         try {
@@ -522,8 +540,8 @@ function IStudentDetails() {
                     />
                     <p className="text-xs text-gray-500 mt-1">Specify which tests this teacher handled (e.g., "1,2,3" or "1-5")</p>
                   </div>
-                  <div className="modal-action mt-4 flex gap-2">
-                    <Button variant="default" onClick={async () => {
+                  <div className="modal-action mt-4 flex flex-col sm:flex-row gap-2">
+                    <Button variant="default" className="w-full sm:w-auto" onClick={async () => {
                       if (!subjForm.subject || !subjForm.educator) {
                         toast.error('Subject and Educator Name are required');
                         return;
@@ -848,8 +866,8 @@ function IStudentDetails() {
                     </div>
                   </div>
 
-                  <div className="modal-action mt-4 flex gap-2">
-                    <Button variant="default" onClick={() => setSortModalOpen(false)}>Apply</Button>
+                  <div className="modal-action mt-4 flex flex-col sm:flex-row gap-2">
+                    <Button variant="default" className="w-full sm:w-auto" onClick={() => setSortModalOpen(false)}>Apply</Button>
                     <Button
                       variant="ghost"
                       onClick={() => {
@@ -868,7 +886,7 @@ function IStudentDetails() {
         </div>
 
         {/* Right-side panel moved outside card */}
-        <aside className="w-80 pl-6 card bg-white border border-gray-250 rounded-2xl p-6 h-fit sticky top-8 self-start">
+        <aside className="w-full lg:w-80 pl-0 lg:pl-6 card bg-white border border-gray-250 rounded-2xl p-6 h-fit mt-6 lg:mt-0 lg:sticky lg:top-8 self-start">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold">Class Educators</h3>
             <Button size="sm" onClick={() => { setEditingSubject(null); setSubjForm({ subject: '', educator: '', email: '', phone_number: '', test_range: '' }); setSubjModalOpen(true); }}>Add</Button>

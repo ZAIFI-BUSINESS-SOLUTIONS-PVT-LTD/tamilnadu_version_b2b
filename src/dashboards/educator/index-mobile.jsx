@@ -38,12 +38,6 @@ export const ELayout = () => {
       activePattern: /^\/educator\/dashboard/
     },
     {
-      to: '/educator/upload',
-      icon: <Upload size={20} />,
-      text: 'Upload',
-      activePattern: /^\/educator\/upload/
-    },
-    {
       to: '/educator/swot',
       icon: <Target size={20} />,
       text: 'SWOT',
@@ -133,6 +127,5 @@ export const ELayout = () => {
 // Export educator pages for easy import
 export { default as EDashboard } from './e_dashboard.jsx';
 export { default as ESWOT } from './e_analysis.jsx';
-export { default as EUpload } from './e_upload.jsx';
 export { default as EResults } from './e_studentdetails.jsx';
 export { default as EChatbot } from './e_chatbot.jsx';
