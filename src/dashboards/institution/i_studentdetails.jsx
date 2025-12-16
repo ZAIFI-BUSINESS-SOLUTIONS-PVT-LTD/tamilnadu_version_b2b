@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { fetchInstitutionEducatorAllStudentResults, createInstitutionStudent, updateInstitutionStudent, deleteInstitutionStudent, createTeacher, getTeachersByClass, updateTeacher, deleteTeacher } from '../../utils/api';
+import { fetchInstitutionEducatorAllStudentResults, createInstitutionStudent, updateInstitutionStudent, deleteInstitutionStudent, deleteInstitutionStudentTest, reuploadInstitutionStudentResponses, createTeacher, getTeachersByClass, updateTeacher, deleteTeacher } from '../../utils/api';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
@@ -42,6 +42,12 @@ function IStudentDetails() {
   const [newStudent, setNewStudent] = useState({ class_id: '', student_id: '', name: '', dob: '' });
   const [sortField, setSortField] = useState('rank');
   const [sortDirection, setSortDirection] = useState('desc');
+  const [deleteTestModalOpen, setDeleteTestModalOpen] = useState(false);
+  const [testToDelete, setTestToDelete] = useState(null);
+  const [reuploadModalOpen, setReuploadModalOpen] = useState(false);
+  const [reuploadData, setReuploadData] = useState({ studentId: null, testNum: null });
+  const [reuploadFile, setReuploadFile] = useState(null);
+  const [reuploadLoading, setReuploadLoading] = useState(false);
   const navigate = useNavigate();
 
   // Subject-wise educator mappings for the selected batch (right-side panel)
@@ -702,6 +708,42 @@ function IStudentDetails() {
                       </div>
                     )}
 
+                    {!isEditing && modalStudent && modalStudent.tests && modalStudent.tests.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-xs text-gray-500 mb-2">Manage individual tests:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {modalStudent.tests.map((test) => (
+                            <div key={test.test_num} className="flex gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 hover:bg-red-50"
+                                onClick={() => {
+                                  setTestToDelete({ studentId: modalStudent.student_id, testNum: test.test_num });
+                                  setDeleteTestModalOpen(true);
+                                }}
+                              >
+                                <Trash2 className="w-3 h-3 mr-1" />
+                                Test {test.test_num}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-blue-600 hover:bg-blue-50"
+                                onClick={() => {
+                                  setReuploadData({ studentId: modalStudent.student_id, testNum: test.test_num });
+                                  setReuploadModalOpen(true);
+                                }}
+                              >
+                                <FileText className="w-3 h-3 mr-1" />
+                                Re-upload
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="modal-action mt-6 flex justify-between">
                       {isEditing ? (
                         <>
@@ -878,6 +920,267 @@ function IStudentDetails() {
                     >
                       Cancel
                     </Button>
+                  </div>
+                </Modal>
+              )}
+
+              {/* Delete Test Confirmation Modal */}
+              {deleteTestModalOpen && testToDelete && (
+                <Modal
+                  open={deleteTestModalOpen}
+                  onClose={() => {
+                    setDeleteTestModalOpen(false);
+                    setTestToDelete(null);
+                  }}
+                  title="Delete Test"
+                  maxWidth="max-w-md"
+                >
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-1" />
+                      <div>
+                        <p className="text-sm text-gray-700">
+                          Are you sure you want to delete <strong>Test {testToDelete.testNum}</strong> for student <strong>{testToDelete.studentId}</strong>?
+                        </p>
+                        <p className="text-sm text-gray-600 mt-2">
+                          This will permanently delete:
+                        </p>
+                        <ul className="list-disc ml-5 text-sm text-gray-600 mt-1">
+                          <li>All Neo4j test nodes and relationships</li>
+                          <li>All Postgres test data (results, responses, SWOT)</li>
+                          <li>Student dashboard will be regenerated</li>
+                        </ul>
+                        <p className="text-sm text-red-600 mt-3 font-medium">
+                          This action cannot be undone.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="modal-action mt-4 flex flex-col sm:flex-row gap-2">
+                      <Button
+                        variant="default"
+                        className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white"
+                        onClick={async () => {
+                          try {
+                            setLoading(true);
+                            const res = await deleteInstitutionStudentTest(
+                              selectedEducatorId,
+                              testToDelete.studentId,
+                              testToDelete.testNum
+                            );
+
+                            if (res.error) {
+                              setError(res.error);
+                              toast.error(res.error);
+                            } else {
+                              // Show success message with details
+                              const statusMsg = [];
+                              if (res.neo4j?.status === 'ok') {
+                                statusMsg.push('✅ Neo4j test deleted');
+                              } else {
+                                statusMsg.push(`⚠️ Neo4j: ${res.neo4j?.message || 'failed'}`);
+                              }
+                              
+                              if (res.dashboard?.status === 'ok') {
+                                statusMsg.push('✅ Dashboard regenerated');
+                              } else if (res.dashboard?.status === 'partial') {
+                                statusMsg.push(`⚠️ Dashboard: ${res.dashboard?.message || 'partial'}`);
+                              }
+
+                              setDeleteSummary({
+                                message: res.message || `Test ${testToDelete.testNum} deleted`,
+                                counts: res.deleted_counts || {}
+                              });
+
+                              toast.success(`${res.message}\\n${statusMsg.join(' | ')}`);
+
+                              // Refresh results
+                              await fetchResults();
+                              
+                              // Close modals
+                              setDeleteTestModalOpen(false);
+                              setTestToDelete(null);
+                              setModalStudent(null);
+                            }
+                          } catch (err) {
+                            console.error(err);
+                            setError('Failed to delete test');
+                            toast.error('Failed to delete test');
+                          } finally {
+                            setLoading(false);
+                          }
+                        }}
+                      >
+                        Delete Test
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full sm:w-auto"
+                        onClick={() => {
+                          setDeleteTestModalOpen(false);
+                          setTestToDelete(null);
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </Modal>
+              )}
+
+              {/* Re-upload Student Responses Modal */}
+              {reuploadModalOpen && reuploadData.studentId && (
+                <Modal
+                  open={reuploadModalOpen}
+                  onClose={() => {
+                    if (!reuploadLoading) {
+                      setReuploadModalOpen(false);
+                      setReuploadData({ studentId: null, testNum: null });
+                      setReuploadFile(null);
+                    }
+                  }}
+                  title="Re-upload Student Responses"
+                  maxWidth="max-w-lg"
+                >
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <FileText className="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" />
+                      <div>
+                        <p className="text-sm text-gray-700">
+                          Re-upload responses for <strong>{reuploadData.studentId}</strong> - Test <strong>{reuploadData.testNum}</strong>
+                        </p>
+                        <p className="text-sm text-gray-600 mt-2">
+                          This will:
+                        </p>
+                        <ul className="list-disc ml-5 text-sm text-gray-600 mt-1">
+                          <li>Replace student responses in database</li>
+                          <li>Re-run student analysis with existing answer key</li>
+                          <li>Regenerate Neo4j knowledge graph</li>
+                          <li>Update student dashboard (Overview, Performance, SWOT)</li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Upload Response CSV
+                      </label>
+                      <Input
+                        type="file"
+                        accept=".csv"
+                        className="w-full"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            setReuploadFile(e.target.files[0]);
+                          }
+                        }}
+                        disabled={reuploadLoading}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        CSV must contain this student's ID in the header row
+                      </p>
+                    </div>
+
+                    {error && (
+                      <div className="p-3 rounded-md bg-red-50 border border-red-200">
+                        <p className="text-sm text-red-700">{error}</p>
+                      </div>
+                    )}
+
+                    <div className="modal-action mt-4 flex flex-col sm:flex-row gap-2">
+                      <Button
+                        variant="default"
+                        className="w-full sm:w-auto"
+                        onClick={async () => {
+                          if (!reuploadFile) {
+                            setError('Please select a CSV file');
+                            return;
+                          }
+
+                          setError(null);
+                          setReuploadLoading(true);
+
+                          try {
+                            const res = await reuploadInstitutionStudentResponses(
+                              selectedEducatorId,
+                              reuploadData.studentId,
+                              reuploadData.testNum,
+                              reuploadFile
+                            );
+
+                            if (res.error) {
+                              setError(res.error);
+                              toast.error(res.error);
+                            } else {
+                              // Show success message with details
+                              const statusMsg = [];
+                              
+                              if (res.responses?.status === 'ok') {
+                                statusMsg.push(`✅ ${res.responses.count} responses uploaded`);
+                              } else {
+                                statusMsg.push(`⚠️ Responses: ${res.responses?.message || 'failed'}`);
+                              }
+                              
+                              if (res.analysis?.status === 'ok') {
+                                statusMsg.push('✅ Analysis completed');
+                              } else {
+                                statusMsg.push(`⚠️ Analysis: ${res.analysis?.message || 'failed'}`);
+                              }
+                              
+                              if (res.dashboard?.status === 'ok') {
+                                statusMsg.push('✅ Dashboard updated');
+                              } else if (res.dashboard?.status === 'partial') {
+                                statusMsg.push(`⚠️ Dashboard: ${res.dashboard?.message || 'partial'}`);
+                              }
+
+                              setDeleteSummary({
+                                message: res.message || 'Responses re-uploaded successfully',
+                                counts: { responses: res.responses?.count || 0 }
+                              });
+
+                              toast.success(`${res.message}\\n${statusMsg.join(' | ')}`);
+
+                              // Refresh results
+                              await fetchResults();
+                              
+                              // Close modal
+                              setReuploadModalOpen(false);
+                              setReuploadData({ studentId: null, testNum: null });
+                              setReuploadFile(null);
+                              setModalStudent(null);
+                            }
+                          } catch (err) {
+                            console.error(err);
+                            setError('Failed to re-upload responses');
+                            toast.error('Failed to re-upload responses');
+                          } finally {
+                            setReuploadLoading(false);
+                          }
+                        }}
+                        disabled={!reuploadFile || reuploadLoading}
+                      >
+                        {reuploadLoading ? (
+                          <>
+                            <Loader className="w-4 h-4 mr-2 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          'Re-upload & Process'
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full sm:w-auto"
+                        onClick={() => {
+                          setReuploadModalOpen(false);
+                          setReuploadData({ studentId: null, testNum: null });
+                          setReuploadFile(null);
+                        }}
+                        disabled={reuploadLoading}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
                   </div>
                 </Modal>
               )}
