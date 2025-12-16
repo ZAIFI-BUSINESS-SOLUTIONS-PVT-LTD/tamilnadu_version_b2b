@@ -819,6 +819,68 @@ export const deleteInstitutionStudent = async (educatorId, studentId) => {
   }
 };
 
+/**
+ * Delete a specific test for a student (Institution View)
+ * @param {number} educatorId - ID of the educator
+ * @param {string} studentId - Student's ID
+ * @param {number} testNum - Test number to delete
+ */
+export const deleteInstitutionStudentTest = async (educatorId, studentId, testNum) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.delete(
+      `${API_BASE_URL}/institution/educator/${educatorId}/students/${encodeURIComponent(studentId)}/tests/${testNum}/`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting student test:', error);
+    return { error: error.response?.data?.error || 'Failed to delete test' };
+  }
+};
+
+/**
+ * Re-upload and reprocess responses for a single student (Institution View)
+ * Used when a student's responses were wrongly uploaded
+ * @param {number} educatorId - ID of the educator
+ * @param {string} studentId - Student's ID  
+ * @param {number} testNum - Test number
+ * @param {File} csvFile - CSV file with student responses
+ * @param {string} classId - Optional class ID (defaults to educator's class)
+ */
+export const reuploadInstitutionStudentResponses = async (educatorId, studentId, testNum, csvFile, classId = null) => {
+  try {
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('student_id', studentId);
+    formData.append('test_num', testNum);
+    formData.append('response_csv', csvFile);
+    if (classId) {
+      formData.append('class_id', classId);
+    }
+    
+    const response = await axios.post(
+      `${API_BASE_URL}/institution/educator/${educatorId}/students/reupload-responses/`,
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error re-uploading student responses:', error);
+    return { error: error.response?.data?.error || 'Failed to re-upload responses' };
+  }
+};
+
 // =============================================================================
 // FEEDBACK APIs
 // =============================================================================

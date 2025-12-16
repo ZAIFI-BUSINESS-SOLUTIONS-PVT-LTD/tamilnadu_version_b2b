@@ -70,6 +70,8 @@ urlpatterns = [
     path('api/institution/educator/<int:educator_id>/students/', institution_views.get_institution_educator_students, name='get_institution_educator_students'),
     # IMPORTANT: More specific routes must come before generic ones
     path('api/institution/educator/<int:educator_id>/students/create/', institution_views.create_institution_student, name='create_institution_student'),
+    path('api/institution/educator/<int:educator_id>/students/reupload-responses/', institution_views.reupload_institution_student_responses, name='reupload_institution_student_responses'),
+    path('api/institution/educator/<int:educator_id>/students/<str:student_id>/tests/<int:test_num>/', institution_views.delete_institution_student_test, name='delete_institution_student_test'),
     path('api/institution/educator/<int:educator_id>/students/<str:student_id>/', institution_views.manage_institution_student, name='manage_institution_student'),
 
     # Feedback APIs

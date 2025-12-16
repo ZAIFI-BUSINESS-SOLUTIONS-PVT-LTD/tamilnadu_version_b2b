@@ -7,13 +7,20 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.http import JsonResponse
+from django.db import transaction
 from exam.models import Educator, Student, Overview, Result, SWOT, Manager
 import json
 import logging
 import re
 
-from exam.graph_utils.delete_graph import delete_db
-from exam.models import StudentResponse, Performance
+from exam.graph_utils.delete_graph import delete_db, delete_test_graph
+from exam.models import StudentResponse, Performance, StudentResult, QuestionAnalysis, Test
+from exam.services.update_dashboard import update_single_student_dashboard
+from exam.utils.student_analysis import analyze_single_student, fetch_student_responses
+from exam.graph_utils.create_graph import create_graph
+import pandas as pd
+import csv
+from io import TextIOWrapper
 
 logger = logging.getLogger(__name__)
 
@@ -494,4 +501,454 @@ def manage_institution_student(request, educator_id, student_id):
 
     except Exception as e:
         logger.exception(f"Error in manage_institution_student: {str(e)}")
+        return Response({"error": str(e)}, status=500)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_institution_student_test(request, educator_id, student_id, test_num):
+    """
+    Delete a specific test for a student (removes Neo4j test nodes and Postgres per-test rows).
+    After deletion, regenerates the student's Overview and Performance dashboard.
+    
+    Args:
+        educator_id: The ID of the educator
+        student_id: The student's ID
+        test_num: The test number to delete
+        
+    Returns:
+        JSON with deleted counts, Neo4j status, and dashboard regeneration status
+    """
+    try:
+        # Verify manager authentication
+        manager_email = request.user.email
+        logger.info(f"[DELETE_TEST] Request from email={manager_email} for educator_id={educator_id} student_id={student_id} test_num={test_num}")
+        
+        manager = Manager.objects.filter(email=manager_email).first()
+        if not manager:
+            return Response({"error": "Manager not found"}, status=404)
+        
+        # Verify educator belongs to manager's institution
+        educator = Educator.objects.filter(id=educator_id).first()
+        if not educator:
+            return Response({"error": "Educator not found"}, status=404)
+        
+        if educator.institution != manager.institution:
+            return Response({"error": "Unauthorized: Educator does not belong to your institution"}, status=403)
+        
+        class_id = educator.class_id
+        
+        # Verify student exists
+        student = Student.objects.filter(student_id=student_id, class_id=class_id).first()
+        if not student:
+            logger.warning(f"[DELETE_TEST] Student {student_id} not found in class {class_id}")
+            return Response({"error": "Student not found"}, status=404)
+        
+        # Get Neo4j database name
+        db_name = str(student.neo4j_db).lower()
+        
+        # Log initial state
+        logger.info(f"[DELETE_TEST] Starting deletion for student_id={student_id}, class_id={class_id}, test_num={test_num}")
+        
+        # Count records before deletion
+        result_count = Result.objects.filter(student_id=student_id, class_id=class_id, test_num=test_num).count()
+        student_result_count = StudentResult.objects.filter(student_id=student_id, class_id=class_id, test_num=test_num).count()
+        response_count = StudentResponse.objects.filter(student_id=student_id, class_id=class_id, test_num=test_num).count()
+        swot_count = SWOT.objects.filter(user_id=student_id, class_id=class_id, test_num=test_num).count()
+        
+        logger.info(f"[DELETE_TEST] Found records - Result: {result_count}, StudentResult: {student_result_count}, Response: {response_count}, SWOT: {swot_count}")
+        
+        # Step 1: Delete Neo4j test nodes
+        neo4j_status = "ok"
+        neo4j_message = None
+        
+        try:
+            if db_name:
+                logger.info(f"[DELETE_TEST] Attempting to delete Neo4j Test{test_num} from database: {db_name}")
+                delete_test_graph(db_name, test_num)
+                logger.info(f"[DELETE_TEST] Neo4j test nodes deleted successfully")
+        except Exception as e:
+            neo4j_status = "failed"
+            neo4j_message = str(e)
+            logger.exception(f"[DELETE_TEST] Failed to delete Neo4j test nodes: {str(e)}")
+        
+        # Step 2: Delete Postgres per-test records within transaction
+        deleted_counts = {}
+        
+        try:
+            with transaction.atomic():
+                deleted_results = Result.objects.filter(student_id=student_id, class_id=class_id, test_num=test_num).delete()
+                logger.info(f"[DELETE_TEST] Deleted Result records: {deleted_results}")
+                
+                deleted_student_results = StudentResult.objects.filter(student_id=student_id, class_id=class_id, test_num=test_num).delete()
+                logger.info(f"[DELETE_TEST] Deleted StudentResult records: {deleted_student_results}")
+                
+                deleted_responses = StudentResponse.objects.filter(student_id=student_id, class_id=class_id, test_num=test_num).delete()
+                logger.info(f"[DELETE_TEST] Deleted StudentResponse records: {deleted_responses}")
+                
+                deleted_swot = SWOT.objects.filter(user_id=student_id, class_id=class_id, test_num=test_num).delete()
+                logger.info(f"[DELETE_TEST] Deleted SWOT records: {deleted_swot}")
+                
+                deleted_counts = {
+                    "results": deleted_results[0] if deleted_results else 0,
+                    "student_results": deleted_student_results[0] if deleted_student_results else 0,
+                    "responses": deleted_responses[0] if deleted_responses else 0,
+                    "swot": deleted_swot[0] if deleted_swot else 0
+                }
+                
+        except Exception as e:
+            logger.exception(f"[DELETE_TEST] Error during Postgres deletion: {str(e)}")
+            return Response({"error": f"Failed to delete Postgres records: {str(e)}"}, status=500)
+        
+        # Step 3: Regenerate student dashboard (Overview and Performance)
+        dashboard_status = "ok"
+        dashboard_message = None
+        
+        try:
+            # Find remaining tests for this student to determine latest test_num
+            remaining_tests = Result.objects.filter(
+                student_id=student_id, 
+                class_id=class_id
+            ).values_list('test_num', flat=True).order_by('-test_num')
+            
+            if remaining_tests:
+                latest_test_num = remaining_tests[0]
+                logger.info(f"[DELETE_TEST] Regenerating dashboard for student {student_id} using test_num={latest_test_num}")
+                
+                # Call dashboard update function
+                dashboard_result = update_single_student_dashboard(student_id, class_id, latest_test_num, db_name)
+                
+                if dashboard_result.get('ok'):
+                    logger.info(f"[DELETE_TEST] Dashboard regenerated successfully for {student_id}")
+                else:
+                    dashboard_status = "partial"
+                    dashboard_message = dashboard_result.get('error', 'Unknown error')
+                    logger.warning(f"[DELETE_TEST] Dashboard regeneration had issues: {dashboard_message}")
+            else:
+                # No tests remaining - clear Overview and Performance tables
+                logger.info(f"[DELETE_TEST] No remaining tests. Clearing Overview and Performance for {student_id}")
+                Overview.objects.filter(user_id=student_id, class_id=class_id).delete()
+                Performance.objects.filter(user_id=student_id, class_id=class_id).delete()
+                dashboard_message = "No tests remaining - cleared all dashboard data"
+                
+        except Exception as e:
+            dashboard_status = "failed"
+            dashboard_message = str(e)
+            logger.exception(f"[DELETE_TEST] Error regenerating dashboard: {str(e)}")
+        
+        # Prepare response
+        response_data = {
+            "message": f"Test {test_num} deleted successfully for student {student_id}",
+            "deleted_counts": deleted_counts,
+            "neo4j": {
+                "status": neo4j_status,
+                "message": neo4j_message
+            },
+            "dashboard": {
+                "status": dashboard_status,
+                "message": dashboard_message
+            }
+        }
+        
+        logger.info(f"[DELETE_TEST] Completed deletion for student {student_id} test {test_num}")
+        return Response(response_data, status=200)
+        
+    except Exception as e:
+        logger.exception(f"Error in delete_institution_student_test: {str(e)}")
+        return Response({"error": str(e)}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def reupload_institution_student_responses(request, educator_id):
+    """
+    Re-upload and reprocess responses for a single student.
+    Used when a student's responses were wrongly uploaded.
+    
+    Request:
+        - class_id (optional, defaults to educator's class)
+        - student_id (required)
+        - test_num (required)
+        - response_csv (required file)
+        
+    Process:
+        1. Parse CSV and update StudentResponse table for that student
+        2. Run student analysis using existing QuestionAnalysis data
+        3. Update student dashboard (Overview, Performance, SWOT)
+        
+    Returns:
+        JSON with processing status and dashboard regeneration status
+    """
+    try:
+        # Verify manager authentication
+        manager_email = request.user.email
+        logger.info(f"[REUPLOAD_STUDENT] Request from email={manager_email} for educator_id={educator_id}")
+        
+        manager = Manager.objects.filter(email=manager_email).first()
+        if not manager:
+            return Response({"error": "Manager not found"}, status=404)
+        
+        # Verify educator belongs to manager's institution
+        educator = Educator.objects.filter(id=educator_id).first()
+        if not educator:
+            return Response({"error": "Educator not found"}, status=404)
+        
+        if educator.institution != manager.institution:
+            return Response({"error": "Unauthorized: Educator does not belong to your institution"}, status=403)
+        
+        # Get parameters
+        class_id = request.data.get('class_id') or educator.class_id
+        student_id = request.data.get('student_id')
+        test_num = request.data.get('test_num')
+        
+        if not student_id or not test_num:
+            return Response({"error": "student_id and test_num are required"}, status=400)
+        
+        try:
+            test_num = int(test_num)
+        except (ValueError, TypeError):
+            return Response({"error": "test_num must be an integer"}, status=400)
+        
+        # Verify student exists
+        student = Student.objects.filter(student_id=student_id, class_id=class_id).first()
+        if not student:
+            return Response({"error": f"Student {student_id} not found in class {class_id}"}, status=404)
+        
+        # Verify test exists
+        test = Test.objects.filter(class_id=class_id, test_num=test_num).first()
+        if not test:
+            return Response({"error": f"Test {test_num} not found for class {class_id}"}, status=404)
+        
+        # Get CSV file
+        if 'response_csv' not in request.FILES:
+            return Response({"error": "response_csv file is required"}, status=400)
+        
+        csv_file = request.FILES['response_csv']
+        
+        logger.info(f"[REUPLOAD_STUDENT] Processing for student_id={student_id}, class_id={class_id}, test_num={test_num}")
+        
+        # Step 1: Parse CSV and extract responses for this student
+        responses_data = []
+        answer_map = {
+            'A': '1', 'B': '2', 'C': '3', 'D': '4',
+            1: '1', 2: '2', 3: '3', 4: '4', 
+            '1': '1', '2': '2', '3': '3', '4': '4'
+        }
+        
+        try:
+            # Read CSV file
+            csv_file.seek(0)
+            decoded_file = TextIOWrapper(csv_file, encoding='utf-8-sig')
+            reader = csv.reader(decoded_file)
+            rows = list(reader)
+            
+            if not rows or len(rows) < 2:
+                return Response({"error": "CSV file is empty or invalid"}, status=400)
+            
+            # First row should have student IDs
+            header = rows[0]
+            student_id_str = str(student_id).strip()
+            
+            # Find column index for this student
+            student_col_idx = None
+            for idx, col in enumerate(header[1:], start=1):  # Skip first column (question numbers)
+                if str(col).strip() == student_id_str:
+                    student_col_idx = idx
+                    break
+            
+            if student_col_idx is None:
+                return Response({"error": f"Student ID {student_id} not found in CSV header"}, status=400)
+            
+            # Parse responses
+            for row in rows[1:]:
+                if not row or len(row) < 2:
+                    continue
+                
+                question_number_str = str(row[0]).strip()
+                if not question_number_str.isdigit():
+                    continue
+                
+                question_number = int(question_number_str)
+                
+                if student_col_idx >= len(row):
+                    continue
+                
+                raw_answer = row[student_col_idx]
+                
+                # Map answer
+                if pd.isna(raw_answer) or raw_answer == '' or str(raw_answer).strip() == '':
+                    mapped_answer = None
+                else:
+                    if isinstance(raw_answer, (int, float)):
+                        int_val = int(raw_answer)
+                        mapped_answer = answer_map.get(int_val, None)
+                    else:
+                        answer = str(raw_answer).strip().upper()
+                        answer = answer.rstrip('0').rstrip('.') if '.' in answer else answer
+                        mapped_answer = answer_map.get(answer, None)
+                
+                responses_data.append({
+                    "question_number": question_number,
+                    "selected_answer": mapped_answer
+                })
+            
+            if not responses_data:
+                return Response({"error": "No valid responses found in CSV for this student"}, status=400)
+            
+            logger.info(f"[REUPLOAD_STUDENT] Parsed {len(responses_data)} responses for student {student_id}")
+            
+        except Exception as e:
+            logger.exception(f"[REUPLOAD_STUDENT] Error parsing CSV: {str(e)}")
+            return Response({"error": f"Failed to parse CSV: {str(e)}"}, status=500)
+        
+        # Step 2: Delete existing responses and insert new ones (within transaction)
+        response_status = "ok"
+        response_message = None
+        
+        try:
+            with transaction.atomic():
+                # Delete old responses
+                deleted_count = StudentResponse.objects.filter(
+                    student_id=student_id,
+                    class_id=class_id,
+                    test_num=test_num
+                ).delete()
+                
+                logger.info(f"[REUPLOAD_STUDENT] Deleted {deleted_count[0]} old responses")
+                
+                # Insert new responses
+                response_objects = [
+                    StudentResponse(
+                        student_id=student_id,
+                        class_id=class_id,
+                        test_num=test_num,
+                        question_number=resp["question_number"],
+                        selected_answer=resp["selected_answer"]
+                    )
+                    for resp in responses_data
+                ]
+                
+                StudentResponse.objects.bulk_create(response_objects)
+                logger.info(f"[REUPLOAD_STUDENT] Inserted {len(response_objects)} new responses")
+                
+        except Exception as e:
+            response_status = "failed"
+            response_message = str(e)
+            logger.exception(f"[REUPLOAD_STUDENT] Error updating responses: {str(e)}")
+            return Response({"error": f"Failed to update responses: {str(e)}"}, status=500)
+        
+        # Step 3: Run student analysis
+        analysis_status = "ok"
+        analysis_message = None
+        
+        try:
+            # Fetch all questions for this test from QuestionAnalysis
+            questions = list(QuestionAnalysis.objects.filter(
+                class_id=class_id,
+                test_num=test_num
+            ).values(
+                'question_number', 'subject', 'chapter', 'topic', 'subtopic',
+                'typeOfquestion', 'question_text', 'correct_answer',
+                'option_1', 'option_2', 'option_3', 'option_4',
+                'option_1_feedback', 'option_2_feedback', 'option_3_feedback', 'option_4_feedback',
+                'option_1_type', 'option_2_type', 'option_3_type', 'option_4_type',
+                'option_1_misconception', 'option_2_misconception', 
+                'option_3_misconception', 'option_4_misconception', 'im_desp'
+            ))
+            
+            if not questions:
+                analysis_status = "failed"
+                analysis_message = "No QuestionAnalysis data found for this test"
+                logger.warning(f"[REUPLOAD_STUDENT] No questions found for class {class_id}, test {test_num}")
+            else:
+                # Fetch updated responses
+                response_map = fetch_student_responses(student_id, class_id, test_num)
+                
+                if not response_map:
+                    analysis_status = "failed"
+                    analysis_message = "No responses found after upload"
+                    logger.warning(f"[REUPLOAD_STUDENT] No response_map for student {student_id}")
+                else:
+                    # Run analysis
+                    test_date = test.date
+                    db_name = str(student.neo4j_db).lower()
+                    
+                    # Delete existing Neo4j test data first
+                    try:
+                        delete_test_graph(db_name, test_num)
+                        logger.info(f"[REUPLOAD_STUDENT] Deleted old Neo4j Test{test_num} from {db_name}")
+                    except Exception as e:
+                        logger.warning(f"[REUPLOAD_STUDENT] Failed to delete old Neo4j data: {str(e)}")
+                    
+                    # Delete existing Result and StudentResult rows
+                    Result.objects.filter(student_id=student_id, class_id=class_id, test_num=test_num).delete()
+                    StudentResult.objects.filter(student_id=student_id, class_id=class_id, test_num=test_num).delete()
+                    
+                    # Run synchronous analysis (not as Celery task since this is immediate)
+                    from exam.utils.student_analysis import StudentAnalyzer
+                    
+                    analyzer = StudentAnalyzer(
+                        student_id, class_id, test_num, db_name, test_date, questions, response_map
+                    )
+                    analyzer.analyze()
+                    summary_df = analyzer.get_summary()
+                    analyzer.save_results(summary_df)
+                    
+                    # Create knowledge graph
+                    create_graph(student_id, db_name, pd.DataFrame(analyzer.analysis), test_num)
+                    
+                    logger.info(f"[REUPLOAD_STUDENT] Analysis completed for student {student_id}, test {test_num}")
+                    
+        except Exception as e:
+            analysis_status = "failed"
+            analysis_message = str(e)
+            logger.exception(f"[REUPLOAD_STUDENT] Error during analysis: {str(e)}")
+        
+        # Step 4: Regenerate student dashboard
+        dashboard_status = "ok"
+        dashboard_message = None
+        
+        if analysis_status == "ok":
+            try:
+                db_name = str(student.neo4j_db).lower()
+                dashboard_result = update_single_student_dashboard(student_id, class_id, test_num, db_name)
+                
+                if dashboard_result.get('ok'):
+                    logger.info(f"[REUPLOAD_STUDENT] Dashboard regenerated successfully for {student_id}")
+                else:
+                    dashboard_status = "partial"
+                    dashboard_message = dashboard_result.get('error', 'Unknown error')
+                    logger.warning(f"[REUPLOAD_STUDENT] Dashboard regeneration had issues: {dashboard_message}")
+                    
+            except Exception as e:
+                dashboard_status = "failed"
+                dashboard_message = str(e)
+                logger.exception(f"[REUPLOAD_STUDENT] Error regenerating dashboard: {str(e)}")
+        else:
+            dashboard_status = "skipped"
+            dashboard_message = "Skipped due to analysis failure"
+        
+        # Prepare response
+        response_data = {
+            "message": f"Student {student_id} responses re-uploaded and reprocessed for test {test_num}",
+            "responses": {
+                "status": response_status,
+                "count": len(responses_data),
+                "message": response_message
+            },
+            "analysis": {
+                "status": analysis_status,
+                "message": analysis_message
+            },
+            "dashboard": {
+                "status": dashboard_status,
+                "message": dashboard_message
+            }
+        }
+        
+        logger.info(f"[REUPLOAD_STUDENT] Completed reupload for student {student_id}, test {test_num}")
+        return Response(response_data, status=200)
+        
+    except Exception as e:
+        logger.exception(f"Error in reupload_institution_student_responses: {str(e)}")
         return Response({"error": str(e)}, status=500)
