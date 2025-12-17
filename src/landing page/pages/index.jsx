@@ -12,8 +12,8 @@ import BlogPost from '../components/blog/BlogPost.jsx';
 
 // Lazy load below-the-fold components
 const Features = React.lazy(() => import("../components/Features"));
-const WhyInzighted = React.lazy(() => import("../components/WhyInzighted"));
-const Testimonials = React.lazy(() => import("../components/Testimonials"));
+const WhyInzighted = React.lazy(() => import("../components/usp"));
+const Testimonials = React.lazy(() => import("../components/whyinzighted"));
 const Process = React.lazy(() => import("../components/Process"));
 const Institutes = React.lazy(() => import("../components/Institutes"));
 const FAQ = React.lazy(() => import("../components/FAQ"));
@@ -111,8 +111,8 @@ export function Index() {
               which shows a full-page PageLoader. Removing the inner Suspense
               prevents the footer from rendering below the hero briefly. */}
           <Features />
-          <WhyInzighted />
           <Testimonials />
+          <WhyInzighted />
           <Process />
           <Institutes />
           <FAQ />

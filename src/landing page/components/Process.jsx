@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import BookDemoModal from './Book_Demo.jsx';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronDown, ChevronUp } from 'lucide-react';
@@ -10,26 +11,23 @@ import { DotBackground } from "./animations/DotBackground";
 
 const steps = [
     {
-        title: 'Sign Up',
-        description: 'Create your account',
+        title: 'Upload',
+        description: 'Question paper, Answer key and Student responses',
     },
     {
-        title: 'Take a Test/Quiz',
-        description: 'Choose a preset mock test or build your own custom test',
-    },
-    {
-        title: 'Instant AI Feedback',
+        title: 'Instant Analysis',
         description:
             'Receive analytics on strengths, weaknesses, and personalized action steps',
     },
     {
         title: 'Improve Smarter',
         description:
-            'Follow AI-guided study tips and revisit weaker topics with your AI assistant',
+            'Follow AI-guided study tips and revisit weaker topics to boost performance',
     },
 ];
 
-const svgIcons = [process001, process002, process003, process004];
+// Shifted icons to match the new 3-step process (removed Sign Up)
+const svgIcons = [process002, process003, process004];
 
 // helper to create safe ids from titles for deep-linking
 const slugify = (s) =>
@@ -80,9 +78,10 @@ const blobPaths = [
 const Process = () => {
     // For mobile: array of open indices (only first step open by default, others collapsed)
     const [openIndex, setOpenIndex] = useState([0]);
+    const [openDemoModal, setOpenDemoModal] = useState(false);
     // Refs for the desktop grid and each icon
     const gridContainerRef = useRef(null);
-    const iconRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
+    const iconRefs = [useRef(null), useRef(null), useRef(null)];
 
     // Animation sequence state
     const [activeStep, setActiveStep] = useState(0);
@@ -186,14 +185,13 @@ const Process = () => {
                                         <>
                                             <p className="mt-2 text-base md:text-lg text-gray-700 ml-14 leading-relaxed">{step.description}</p>
                                             {idx === 0 && (
-                                                <Link to="/auth" style={{ textDecoration: 'none' }}>
                                                     <button
+                                                        onClick={() => setOpenDemoModal(true)}
                                                         className="ml-14 mt-4 px-6 py-2 rounded-full bg-gradient-to-r from-blue-400 to-blue-600 text-white font-semibold shadow-md hover:from-blue-500 hover:to-blue-600 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2"
                                                         type="button"
                                                     >
                                                         Get Started
                                                     </button>
-                                                </Link>
                                             )}
                                         </>
                                     )}
@@ -205,14 +203,14 @@ const Process = () => {
                 {/* Desktop Grid */}
                 <div className="hidden md:block relative w-full">
                     <div
-                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-20 relative z-20"
+                        className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-x-8 gap-y-20 relative z-20 justify-center justify-items-center"
                         ref={gridContainerRef}
                     >
                         {steps.map((step, idx) => (
                             <div
-                                key={idx}
-                                className="relative flex flex-col items-start text-start group p-4"
-                            >
+                                    key={idx}
+                                    className="relative flex flex-col items-center text-center group p-4"
+                                >
                                 {/* Illustration */}
                                 <motion.div
                                     className="relative flex items-center justify-center w-44 h-44 mb-8 bg-transparent"
@@ -279,20 +277,20 @@ const Process = () => {
                                 </p>
                                 {/* CTA Button for first step */}
                                 {idx === 0 && (
-                                    <Link to="https://neet.inzighted.com/" style={{ textDecoration: 'none' }}>
-                                        <button
-                                            className="mt-4 px-6 py-2 rounded-full bg-gradient-to-r from-blue-400 to-blue-600 text-white font-semibold shadow-md hover:from-blue-500 hover:to-blue-600 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2"
-                                            type="button"
-                                        >
-                                            Get Started
-                                        </button>
-                                    </Link>
+                                    <button
+                                        onClick={() => setOpenDemoModal(true)}
+                                        className="mt-4 px-6 py-2 rounded-full bg-gradient-to-r from-blue-400 to-blue-600 text-white font-semibold shadow-md hover:from-blue-500 hover:to-blue-600 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2"
+                                        type="button"
+                                    >
+                                        Get Started
+                                    </button>
                                 )}
                             </div>
                         ))}
                     </div>
                 </div>
             </div>
+            <BookDemoModal open={openDemoModal} onClose={() => setOpenDemoModal(false)} />
         </motion.section>
     );
 };

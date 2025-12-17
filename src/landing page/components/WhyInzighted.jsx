@@ -1,31 +1,49 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { useInView } from 'framer-motion';
-import { motion } from 'framer-motion';
+import face1 from '../../assets/landingpage-images/faces/face1.jpg';
+import face2 from '../../assets/landingpage-images/faces/face2.jpg';
+import face3 from '../../assets/landingpage-images/faces/face3.jpg';
+import face4 from '../../assets/landingpage-images/faces/face4.jpg';
+import face5 from '../../assets/landingpage-images/faces/face5.jpg';
+import { motion, AnimatePresence } from "framer-motion";
+import { TrendingUp, Users, BadgeCheck, Target, Clock } from 'lucide-react';
 
-import { Activity, AlarmClockCheck, ChartLine, HeartHandshake, SmartphoneNfc, Sparkles } from './animatedicons/AnimatedIcons';
-import { DotBackground } from './animations/DotBackground';
-import { Marquee } from '../../components/magicui/marquee';
-import LongitudinalInsightsAnimation from './animations/LongitudinalInsightsAnimation';
-import HyperPreciseAnalysisAnimation from './animations/HyperPreciseAnalysisAnimation';
+import amritaLogo from '../../assets/landingpage-images/recognitions/amrita.jpg';
+import ediLogo from '../../assets/landingpage-images/recognitions/EDI.jpeg';
+import msmeLogo from '../../assets/landingpage-images/recognitions/msme.jpg';
+import ngitbiLogo from '../../assets/landingpage-images/recognitions/ngitbi.jpg';
+import startupIndiaLogo from '../../assets/landingpage-images/recognitions/startup-india.jpg';
+import tamilpreneurLogo from '../../assets/landingpage-images/recognitions/tamilpreneur.png';
+import vibrantGujaratLogo from '../../assets/landingpage-images/recognitions/vibrantgujarat.jpg';
 
-const headerTitle = (
-	<div>
-		<span className="inline-flex items-center gap-2 bg-white px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium mb-4 sm:mb-6 shadow-lg">
-			<span className="bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent font-bold">The Smartest Way</span>
-		</span>
-		<h2 id="why-section-heading" className="block text-4xl md:text-5xl lg:text-6xl font-extrabold text-gray-900 mb-6 leading-tight">
-			Why choose{' '}
-			<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-blue-600">InzightEd{' '}</span>
-			in your exam prep journey?
-		</h2>
-	</div>
-);
+const avatarImages = [face1, face2, face3, face4, face5];
 
-const headerDescription = (
-	<p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed block">
-		More than a test platform—InzightEd is your intelligent study companion that accelerates exam prep with cutting-edge AI.
-	</p>
-);
+const benefits = [
+	{
+		icon: Target,
+		title: "Personalized Insights",
+		description: "Tailored analysis for students, teachers, and administrators to optimize learning outcomes."
+	},
+	{
+		icon: Clock,
+		title: "Real-Time Updates",
+		description: "Instant notifications and detailed reports for parents to stay informed about their child's progress."
+	},
+	{
+		icon: Users,
+		title: "No Arguments",
+		description: "Bridge the gap between parents and teachers with data-driven discussions and eliminate misunderstandings."
+	}
+];
+
+const recognitions = [
+	{ src: amritaLogo, alt: 'Amrita Vishwa Vidyapeetham' },
+	{ src: ediLogo, alt: 'Entrepreneurship Development Institute' },
+	{ src: msmeLogo, alt: 'MSME (Govt of India)' },
+	{ src: ngitbiLogo, alt: 'NGI TBi' },
+	{ src: startupIndiaLogo, alt: 'Startup India' },
+	{ src: vibrantGujaratLogo, alt: 'Vibrant Gujarat' },
+	{ src: tamilpreneurLogo, alt: 'Tamilpreneur' },
+];
 
 const introAnimation = {
 	initial: { opacity: 0, y: 50 },
@@ -34,251 +52,169 @@ const introAnimation = {
 	transition: { duration: 1, ease: 'easeOut' },
 };
 
-
-// Feature cards data
-const featureCards = [
-	{
-		icon: <Activity width={80} height={80} animate="animate" color="#3b82f6" stroke="#3b82f6" fill="none" strokeWidth={1} strokeOpacity={0.5} style={{ opacity: 0.12 }} />,
-		title: "Designed for Real Results",
-		desc: "Improves your exam performance and understanding."
-	},
-	{
-		icon: <SmartphoneNfc width={80} height={80} animate="animate" color="#10b981" stroke="#10b981" fill="none" strokeWidth={1} strokeOpacity={0.5} style={{ opacity: 0.12 }} />,
-		title: "Built for Digital and Paper-Based Exam Tests",
-		desc: "Prepare online or on paper with instant feedback."
-	},
-	{
-		icon: <HeartHandshake width={80} height={80} animate="animate" color="#ef4444" stroke="#ef4444" fill="none" strokeWidth={1} strokeOpacity={0.5} style={{ opacity: 0.12 }} />,
-		title: "A True Study Partner, Not Just Platform",
-		desc: "AI chatbot offers support and expert guidance."
-	},
-	{
-		icon: <AlarmClockCheck width={80} height={80} animate="animate" color="#f59e0b" stroke="#f59e0b" fill="none" strokeWidth={1} strokeOpacity={0.5} style={{ opacity: 0.12 }} />,
-		title: "Instant Actionable Feedback",
-		desc: "Get next steps and improvement areas instantly."
-	},
-	{
-		icon: <Sparkles width={80} height={80} animate="animate" color="#8b5cf6" stroke="#8b5cf6" fill="none" strokeWidth={1} strokeOpacity={0.5} style={{ opacity: 0.12 }} />,
-		title: "Built with Top Exam Experts' Guidance",
-		desc: "Expert-designed to boost confidence and success."
-	},
-	{
-		icon: <ChartLine width={80} height={80} animate="animate" color="#2563eb" stroke="#2563eb" fill="none" strokeWidth={1} strokeOpacity={0.5} style={{ opacity: 0.12 }} />,
-		title: "Effortless Progress Tracking",
-		desc: "View strengths and weaknesses with charts and insights."
-	},
-];
-
-// helper: create stable slug ids
-const slugify = (s) =>
-	String(s || '')
-		.toLowerCase()
-		.trim()
-		.replace(/\s+/g, '-')
-		.replace(/[^a-z0-9\-]/g, '');
-
-const ReviewCard = ({ icon, title, desc, compact = false }) => {
-	const titleClass = compact ? 'text-base font-bold text-gray-900 text-left' : 'text-xl md:text-2xl font-semibold text-gray-900 text-left';
-	const descClass = compact ? 'text-sm text-gray-600 text-left w-full' : 'text-base md:text-lg text-gray-700 leading-relaxed text-left w-full';
-	const id = slugify(title);
-
+// 3D Tilt Card Component
+const TiltCard = ({ children }) => {
+	const ref = useRef(null);
+	const handleMouseMove = (e) => {
+		const card = ref.current;
+		if (!card) return;
+		const rect = card.getBoundingClientRect();
+		const x = e.clientX - rect.left;
+		const y = e.clientY - rect.top;
+		const centerX = rect.width / 2;
+		const centerY = rect.height / 2;
+		const rotateX = ((y - centerY) / centerY) * 15; // max 15deg
+		const rotateY = ((x - centerX) / centerX) * -15;
+		card.style.transform = `perspective(900px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.04,1.04,1.04)`;
+		card.style.boxShadow = '0 12px 32px 0 rgba(30, 64, 175, 0.10), 0 2px 8px 0 rgba(0,0,0,0.04)';
+	};
+	const handleMouseLeave = () => {
+		const card = ref.current;
+		if (!card) return;
+		card.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg) scale3d(1,1,1)';
+		card.style.boxShadow = '';
+	};
 	return (
-		<figure id={id} aria-labelledby={`${id}-title`} className="relative h-full w-64 overflow-hidden rounded-xl border p-4 border-gray-200 bg-white">
-			<div className="absolute bottom-2 right-2 opacity-10 pointer-events-none select-none z-0">
-				{React.cloneElement(icon, { width: 80, height: 80, strokeWidth: 1, style: { opacity: 1 } })}
-			</div>
-			<div className="flex flex-col items-start gap-2 w-full relative z-10">
-				<div className="flex flex-row items-center w-full mb-2">
-					<figcaption id={`${id}-title`} className={titleClass}>{title}</figcaption>
-				</div>
-				<blockquote className={descClass}>{desc}</blockquote>
-			</div>
-		</figure>
+		<div
+			ref={ref}
+			className="flex flex-col items-center justify-center p-3 sm:p-6 w-full text-center border rounded-2xl bg-white transition-transform duration-300 ease-[cubic-bezier(.25,.8,.25,1)] will-change-transform overflow-hidden min-w-0"
+			style={{ transformStyle: 'preserve-3d' }}
+			onMouseMove={handleMouseMove}
+			onMouseLeave={handleMouseLeave}
+		>
+			{children}
+		</div>
 	);
 };
 
-
-const WhyInzighted = () => {
-	const sectionRef = useRef(null);
-	// split features for the marquee
-	const firstRow = featureCards.slice(0, Math.ceil(featureCards.length / 2));
-
-	// Lazy load animations only when in view
-	const longitudinalRef = useRef(null);
-	const hyperPreciseRef = useRef(null);
-	const longitudinalRefMobile = useRef(null);
-	const hyperPreciseRefMobile = useRef(null);
-	const marqueeRef = useRef(null);
-	// allow these animations to re-start each time they come into view
-	const isLongitudinalInView = useInView(longitudinalRef, { margin: '-100px 0px' });
-	const isHyperPreciseInView = useInView(hyperPreciseRef, { margin: '-100px 0px' });
-	const isLongitudinalMobileInView = useInView(longitudinalRefMobile, { margin: '-100px 0px' });
-	const isHyperPreciseMobileInView = useInView(hyperPreciseRefMobile, { margin: '-100px 0px' });
-	const isMarqueeInView = useInView(marqueeRef, { margin: '-100px 0px', once: true });
-	// Mobile carousel state
-	const slidesRef = useRef(null);
-	const [activeIndex, setActiveIndex] = useState(0);
-
-	// Inject ItemList JSON-LD for featureCards (includes anchor URLs)
-	useEffect(() => {
-		const base = window.location.origin + window.location.pathname;
-		const itemList = {
-			"@context": "https://schema.org",
-			"@type": "ItemList",
-			itemListElement: featureCards.map((f, i) => ({
-				"@type": "ListItem",
-				position: i + 1,
-				item: { "@type": "Service", name: f.title, description: f.desc, url: `${base}#${slugify(f.title)}` }
-			}))
-		};
-
-		const script = document.createElement('script');
-		script.type = 'application/ld+json';
-		script.text = JSON.stringify(itemList);
-		document.head.appendChild(script);
-
-		return () => script.remove();
-	}, []);
-
-	useEffect(() => {
-		const el = slidesRef.current;
-		if (!el) return;
-		const onScroll = () => {
-			// calculate active slide based on scrollLeft
-			const scrollLeft = el.scrollLeft;
-			const width = el.clientWidth;
-			const idx = Math.round(scrollLeft / width);
-			setActiveIndex(idx);
-		};
-		el.addEventListener('scroll', onScroll, { passive: true });
-		return () => el.removeEventListener('scroll', onScroll);
-	}, []);
-
+const OverviewSection = () => {
 	return (
 		<motion.section
-			ref={sectionRef}
-			className="bg-white relative overflow-hidden pb-12 pt-8"
-			{...introAnimation}
-			role="region"
-			aria-labelledby="why-section-heading"
+			className="pt-16 sm:pt-24 pb-6 md:pb-20 bg-blue-50 relative overflow-hidden"
+			initial={introAnimation.initial}
+			whileInView={introAnimation.whileInView}
+			viewport={{ once: true }}
+			transition={introAnimation.transition}
 		>
-			<DotBackground />
-
-			<div className="relative z-10 h-full flex flex-col w-full max-w-screen-2xl mx-auto items-center px-3 sm:px-4 md:px-8 gap-8">
-				<div className="w-full flex flex-col justify-center items-start">
-					<motion.div className="w-full" initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.8, ease: 'easeOut' }}>
-						<div className="flex flex-col items-center justify-start w-full">
-							<div className="w-full flex flex-col items-start">
-								<div className="mb-2 w-full flex justify-center text-center">{headerTitle}</div>
-								<div className="w-full flex justify-center text-center">{headerDescription}</div>
+			{/* Clean minimal background */}
+			<div className="relative z-10 w-full max-w-screen-2xl mx-auto items-center px-3 sm:px-4 md:px-8">
+				{/* Header Section */}
+				<motion.div
+					initial={{ opacity: 0, y: 30 }}
+					whileInView={{ opacity: 1, y: 0 }}
+					viewport={{ once: true }}
+					transition={{ duration: 0.6 }}
+					className="mx-auto text-center mb-6 sm:mb-8"
+				>
+					<div className="inline-flex items-center gap-2 bg-white px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium mb-4 sm:mb-6">
+						<span className="bg-gradient-to-tr from-blue-600 via-fuchsia-500 to-orange-400 bg-clip-text text-transparent font-bold">Why Choose InzightEd</span>
+					</div>
+					<h2 className="text-3xl md:text-5xl lg:text-6xl font-extrabold text-gray-900 leading-tight mb-6">
+						Why Inzight<span className="text-blue-500">Ed?</span>
+					</h2>
+					<p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed text-center">
+						Discover the transformative power of data-driven education with InzightEd. Elevate learning outcomes, streamline communication, and empower every stakeholder in the educational journey.
+					</p>
+					{/* Avatars Row for Social Proof using DaisyUI avatar group */}
+					<div className="avatar-group -space-x-4 justify-center mt-4 mb-2">
+						<div className="avatar">
+							<div className="w-10">
+								<img src={face1} alt="User avatar 1" loading="lazy" />
 							</div>
+						</div>
+						<div className="avatar">
+							<div className="w-10">
+								<img src={face2} alt="User avatar 2" loading="lazy" />
+							</div>
+						</div>
+						<div className="avatar">
+							<div className="w-10">
+								<img src={face3} alt="User avatar 3" loading="lazy" />
+							</div>
+						</div>
+						<div className="avatar">
+							<div className="w-10">
+								<img src={face4} alt="User avatar 4" loading="lazy" />
+							</div>
+						</div>
+						<div className="avatar">
+							<div className="w-10">
+								<img src={face5} alt="User avatar 5" loading="lazy" />
+							</div>
+						</div>
+					</div>
+				</motion.div>
+
+				{/* Video on top */}
+				<div className="mt-12">
+					<motion.div
+						initial={{ opacity: 0, scale: 0.98 }}
+						whileInView={{ opacity: 1, scale: 1 }}
+						viewport={{ once: true }}
+						transition={{ duration: 0.6 }}
+						className="w-full rounded-2xl overflow-hidden shadow-lg bg-white border"
+					>
+						{/* responsive aspect: 4:3 on small screens (taller), 16:9 on md+ */}
+						<div className="w-full aspect-[4/3] md:aspect-video">
+							<iframe
+								src="https://www.youtube.com/embed/VHnmQqFfWkw"
+								title="InzightEd Demo Video"
+								allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+								allowFullScreen
+								className="w-full h-full rounded-xl border-0"
+								loading="lazy"
+							></iframe>
 						</div>
 					</motion.div>
 				</div>
 
-				<div className="w-full flex flex-col items-center mt-4">
-					{/* Desktop: two-column layout; Mobile: carousel below (mobile-only) */}
-					<div className="w-full max-w-7xl">
-						{/* Mobile carousel - visible only on small screens */}
-						<div className="block md:hidden w-full">
-							<div className="relative">
-								<div
-									ref={slidesRef}
-									className="slides-container overflow-x-auto flex snap-x snap-mandatory touch-auto -mx-4 px-4 scrollbar-hide"
-								>
-									<div className="flex-none w-full snap-center px-4">
-										<figure className="relative w-full min-h-[20rem] overflow-hidden rounded-2xl border p-4 border-gray-200 bg-white flex flex-col justify-between">
-											<div className="w-full flex justify-center">
-												<div ref={longitudinalRefMobile} className="w-full aspect-square rounded-2xl bg-blue-50 flex items-center justify-center overflow-hidden">
-													{isLongitudinalMobileInView && <LongitudinalInsightsAnimation />}
-												</div>
-											</div>
-											<div className="flex flex-col items-start gap-2 w-full relative z-10 mt-4">
-												<div className="flex flex-row items-center w-full">
-													<figcaption id="longitudinal-insights-mobile-title" className="text-lg font-semibold text-gray-900 text-left">Longitudinal Insights</figcaption>
-												</div>
-												<blockquote aria-labelledby="longitudinal-insights-mobile-title" className="text-sm text-gray-700 text-left w-full">InzightEd combines results from every mock, updating trends after each test so you can see real progress, not just for the last attended mock test.</blockquote>
-											</div>
-										</figure>
-									</div>
-
-									<div className="flex-none w-full snap-center px-4">
-										<figure className="relative w-full min-h-[20rem] overflow-hidden rounded-2xl border p-4 border-gray-200 bg-white flex flex-col justify-between">
-
-											<div className="w-full flex justify-center">
-												<div ref={hyperPreciseRefMobile} className="w-full aspect-square rounded-2xl bg-blue-50 flex items-center justify-center overflow-hidden">
-													{isHyperPreciseMobileInView && <HyperPreciseAnalysisAnimation />}
-												</div>
-											</div>
-											<div className="flex flex-col items-start gap-2 w-full relative z-10 mt-4">
-												<div className="flex flex-row items-center w-full">
-													<figcaption id="hyper-precise-analysis-mobile-title" className="text-lg font-semibold text-gray-900 text-left">Hyper Precise Analysis</figcaption>
-												</div>
-												<blockquote aria-labelledby="hyper-precise-analysis-mobile-title" className="text-sm text-gray-700 text-left w-full">Insights drill down to topic and subtopic levels so you know exactly which chapters and subtopics need attention for focused, targeted improvement.</blockquote>
-											</div>
-										</figure>
+				{/* Three cards in a row beneath the video */}
+				<div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+					{benefits.map((benefit, index) => (
+						<motion.div
+							key={index}
+							initial={{ opacity: 0, y: 20 }}
+							whileInView={{ opacity: 1, y: 0 }}
+							viewport={{ once: true }}
+							transition={{ duration: 0.5, delay: index * 0.08 }}
+						>
+							<TiltCard>
+								<div className="mb-4">
+									<div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto">
+										<benefit.icon className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
 									</div>
 								</div>
+								<h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">{benefit.title}</h3>
+								<p className="text-sm sm:text-base text-gray-600 leading-relaxed">{benefit.description}</p>
+							</TiltCard>
+						</motion.div>
+					))}
+				</div>
 
-								{/* Indicators for mobile carousel */}
-								<div className="flex items-center justify-center gap-2 mt-3">
-									{[0, 1].map((i) => (
-										<button
-											key={i}
-											aria-label={`Go to slide ${i + 1}`}
-											onClick={() => {
-												const el = slidesRef.current;
-												if (!el) return;
-												el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' });
-											}}
-											className={`${i === activeIndex ? 'w-8 h-2 bg-blue-600 rounded-full' : 'w-2 h-2 bg-gray-300 rounded-full'}`}
+				<div>
+					{/* Achievements / Supporters (md+ only) */}
+					<div
+						className="w-full mx-auto mt-12 sm:mt-16 hidden md:flex md:flex-col md:items-center"
+						style={{ perspective: '1200px' }}
+					>
+						<div className="w-full bg-white rounded-2xl p-6 md:p-8 shadow-md border">
+							<h3 className="text-lg md:text-xl font-semibold text-gray-800 mb-4">Recognized and supported by</h3>
+							<div
+								className="w-full"
+								style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}
+								className="grid gap-6 items-center"
+							>
+								{recognitions.map((r, i) => (
+									<div key={i} className="flex items-center justify-center p-3">
+										<img
+											src={r.src}
+											alt={r.alt}
+											loading="lazy"
+											className="w-full max-h-14 md:max-h-20 object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-200"
 										/>
-									))}
-								</div>
+									</div>
+								))}
 							</div>
-						</div>
-
-						{/* Desktop grid - hidden on mobile */}
-						<div className="hidden md:grid grid-cols-1 md:grid-cols-2 gap-12">
-							<figure className="relative h-full w-full overflow-hidden rounded-2xl border p-4 border-gray-200 bg-white flex flex-col">
-								<div className="flex flex-col items-start gap-2 w-full relative z-10 mb-2">
-									<div className="flex flex-row items-center w-full">
-										<figcaption className="text-lg md:text-xl font-semibold text-gray-900 text-left">Beyond One Test </figcaption>
-									</div>
-									<blockquote className="text-sm md:text-base text-gray-700 text-left w-full">InzightEd brings together results from all your mock tests, updating after each one so you track true progress, not just your latest score.</blockquote>
-								</div>
-								<div className="w-full flex justify-center mt-2">
-									<div ref={longitudinalRef} className="w-full aspect-square md:aspect-auto md:h-96 rounded-2xl bg-blue-50 flex items-center justify-center">
-										{isLongitudinalInView && <LongitudinalInsightsAnimation />}
-									</div>
-								</div>
-							</figure>
-
-							<figure className="relative h-full w-full overflow-hidden rounded-2xl border p-4 border-gray-200 bg-white flex flex-col">
-								<div className="flex flex-col items-start gap-2 w-full relative z-10 mb-2">
-									<div className="flex flex-row items-center w-full">
-										<figcaption className="text-lg md:text-xl font-semibold text-gray-900 text-left">Hyper Precise Analysis</figcaption>
-									</div>
-									<blockquote className="text-sm md:text-base text-gray-700 text-left w-full">Insights drill down to topic and subtopic levels so you know exactly which chapters and subtopics need attention for focused, targeted improvement.</blockquote>
-								</div>
-								<div className="w-full flex justify-center mt-2">
-									<div ref={hyperPreciseRef} className="w-full aspect-square md:aspect-auto md:h-96 rounded-2xl bg-blue-50 flex items-center justify-center overflow-hidden">
-										{isHyperPreciseInView && <HyperPreciseAnalysisAnimation />}
-									</div>
-								</div>
-							</figure>
-						</div>
-					</div>
-
-					<div className="w-full flex flex-col justify-center items-center p-6 lg:p-12 relative">
-						<div ref={marqueeRef} className="relative w-full max-w-7xl flex flex-col gap-4 items-center justify-center scrollbar-hide">
-							{isMarqueeInView && (
-								<Marquee pauseOnHover className="[--duration:20s] w-full">
-									{featureCards.map((card, i) => (
-										<ReviewCard key={card.title || i} compact {...card} />
-									))}
-								</Marquee>
-							)}
 						</div>
 					</div>
 				</div>
@@ -287,4 +223,4 @@ const WhyInzighted = () => {
 	);
 };
 
-export default WhyInzighted;
+export default OverviewSection;

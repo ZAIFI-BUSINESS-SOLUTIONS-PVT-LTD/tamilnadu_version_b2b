@@ -8,18 +8,7 @@ import { Button } from '../../components/ui/button';
 
 const navItems = [
   { label: 'Home', id: 'home', testId: 'home-link', to: '/' },
-  {
-    label: 'Products',
-    id: 'products',
-    testId: 'products-link',
-    submenu: [
-      { label: 'InzightEd - For All Exams', to: 'https://app.inzighted.com', testId: 'product-all-exams' },
-      { label: 'InzightEd - Curated for NEET', to: 'https://neet.inzighted.com', testId: 'product-curated-neet' },
-      { label: 'InzightEd - For Institutions', to: '/auth', testId: 'product-for-institutions' },
-    ],
-  },
-  { label: 'Pricing', id: 'pricing', testId: 'pricing-link', to: '/pricing' }, // page
-  { label: 'Blog', id: 'blog', testId: 'blog-link', to: '/blog' }, // page
+  { label: 'Blog', id: 'blog', testId: 'blog-link', to: '/blog' },
   { label: 'FAQ', id: 'faq', testId: 'faq-link' }, // section
   { label: 'Contact Us', id: 'contact', testId: 'contact-link', to: '/contact' }, // page
 ];
@@ -311,15 +300,9 @@ const Header = () => {
 
                   <div className="p-6 border-t flex-shrink-0">
                     <div className="w-full flex flex-col gap-3">
-                      <Button asChild variant="default" size="lg" className="w-full focus:outline-none">
-                        <Link to="https://neet.inzighted.com/" role="button" aria-label="Login" data-testid="login-mobile-button">
-                          Login
-                        </Link>
-                      </Button>
-
                       <Button asChild variant="outline" size="lg" className="w-full focus:outline-none">
                         <Link to="/auth" role="button" aria-label="Go to Dashboard" data-testid="dashboard-mobile-button">
-                          Institute Login
+                          Login
                         </Link>
                       </Button>
                     </div>
@@ -418,11 +401,6 @@ const Header = () => {
             ))}
             <Button asChild variant="outline" className="focus:outline-none">
               <Link to="/auth" role="button" aria-label="Go to Dashboard" data-testid="dashboard-button">
-                Institute Login
-              </Link>
-            </Button>
-            <Button asChild variant="default" className="focus:outline-none">
-              <Link to="https://neet.inzighted.com/" role="button" aria-label="Go to Dashboard" data-testid="dashboard-button">
                 Login
               </Link>
             </Button>
