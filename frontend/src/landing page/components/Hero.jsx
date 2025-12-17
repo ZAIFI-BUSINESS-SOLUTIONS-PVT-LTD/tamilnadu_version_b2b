@@ -4,7 +4,8 @@ import { Link } from "react-router-dom";
 import { motion, useAnimation, AnimatePresence } from "framer-motion";
 import BG_FOREGROUND from "../../assets/landingpage-images/bg_001.webp";
 import DEMO_SCREEN from "../../assets/landingpage-images/demo-screenshot.webp";
-import { Play, X, Loader2, BadgeCheck } from "lucide-react";
+import { Play, X, Loader2, BadgeCheck, Mail, Phone } from "lucide-react";
+import BookDemoModal from './Book_Demo.jsx';
 import RotatingText from './animations/RotatingText.jsx';
 import ShinyButton from './animations/ShinyButton.jsx';
 
@@ -112,10 +113,10 @@ const HeroContent = () => {
       >
         <br />
         <span className="inline-block mt-3">
-          Prepare{" "}
+          We generate 1.5x better success{" "}
           <span className="inline">
             <RotatingText
-              texts={["Smarter", "Clearer", "Quicker"]}
+              texts={["Students", "Teachers", "Tech Companies", "Institutions", "Schools"]}
               mainClassName="inline-flex px-2 sm:px-2 md:px-3 bg-gradient-to-r from-blue-400 to-blue-600 text-white overflow-hidden rounded-lg pt-1"
               staggerFrom={"last"}
               initial={{ y: "100%" }}
@@ -127,9 +128,8 @@ const HeroContent = () => {
               rotationInterval={4000}
             />
           </span>
-          <br /><span className="text-blue-500">Free</span> mock tests,
         </span>
-        <br /><span className="text-blue-500">AI</span> powered evaluation for all your exam prep.
+        <br /><span className="text-blue-500"> Better decisions </span>from the data you already have.
       </motion.h1>
 
       {/* Subheading */}
@@ -137,7 +137,7 @@ const HeroContent = () => {
         className="text-lg md:text-xl text-gray-700 max-w-3xl mb-6"
         variants={childVariants}
       >
-        <span className="text-gray-600">Elevate your exam preparations with AI that helps you learn, not just score.</span>
+        <span className="text-gray-600">Elevate your results with AI and grow efficient.</span>
       </motion.p>
 
       {/* Call-to-action buttons */}
@@ -145,27 +145,15 @@ const HeroContent = () => {
         className="flex flex-col sm:flex-row gap-4 mb-6"
         variants={childVariants}
       >
-        <a href="https://app.inzighted.com/" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+        <a href="/auth" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
           <ShinyButton
             className="px-7 py-3 font-semibold rounded-lg shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-transform duration-200 bg-gradient-to-r from-blue-400 to-blue-600 text-white"
           >
-            InzightEd
+            Login
           </ShinyButton>
         </a>
-        <a href="https://neet.inzighted.com/" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
-          <ShinyButton
-            className="px-7 py-3 font-semibold rounded-lg shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-transform duration-200 bg-gradient-to-r from-blue-400 to-blue-600 text-white"
-          >
-            InzightEd - NEET
-          </ShinyButton>
-        </a>
-        <Link to="/contact" style={{ textDecoration: 'none' }}>
-          <span
-            className="inline-flex items-center justify-center px-7 py-3 font-semibold text-gray-700 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2"
-          >
-            For Institutes: Book a Demo
-          </span>
-        </Link>
+        {/* Book a Demo opens a modal to collect mobile + email */}
+        <HeroBookDemoButton />
       </motion.div>
 
       {/* Badges */}
@@ -175,16 +163,37 @@ const HeroContent = () => {
       >
         <div className="flex items-center gap-2">
           <BadgeCheck className="w-5 h-5 text-white fill-blue-500" />
-          Tested with Top Institutes
+          Trusted by top institutions across India
         </div>
         <div className="flex items-center gap-2">
           <BadgeCheck className="w-5 h-5 text-white fill-blue-500" />
-          85% improved scores
+          Adapt to AI seamlessly
         </div>
       </motion.div>
     </motion.div>
   );
 };
+
+// Button + Modal wrapper for Book a Demo
+const HeroBookDemoButton = () => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center justify-center px-7 py-3 font-semibold text-gray-700 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+      >
+        Book a Demo
+      </button>
+      <BookDemoModal open={open} onClose={() => setOpen(false)} />
+    </>
+  );
+};
+
+// BookDemoModal moved to separate file: ./Book_Demo.jsx
 
 // Component for the demo graphic and video modal
 const DemoGraphic = () => {

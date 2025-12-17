@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import BookDemoModal from './Book_Demo.jsx';
 import { Users, BarChart, UploadCloud, FileText, LayoutDashboard } from 'lucide-react';
 import { motion } from 'framer-motion';
 import SampleReport from '../../assets/landingpage-images/sample-report1.webp';
@@ -45,6 +46,8 @@ export const instituteFeatures = [
 const Value = () => {
   const features = instituteFeatures;
 
+  const [openDemoModal, setOpenDemoModal] = useState(false);
+
   // Animation variants
   const containerVariants = {
     hidden: { opacity: 0, y: 50 },
@@ -80,7 +83,7 @@ const Value = () => {
             <span className="bg-gradient-to-tr from-blue-600 via-fuchsia-500 to-orange-400 bg-clip-text text-transparent font-bold ">Curated options for Institutions</span>
           </div>
           <h2 id="institutes-heading" className="justify-center text-3xl md:text-6xl font-bold mb-6 text-gray-800">
-            Empower your <span className="text-blue-500">coaching institute</span> <br />with <span className="text-blue-500">AI-Powered Reports</span>
+            <span className="text-blue-500">What more </span> do you get?
           </h2>
           <p className="text-center text-xl text-gray-600 mt-4">
             Our solution is built on solid educational foundations and cutting-edge technology
@@ -192,25 +195,22 @@ const Value = () => {
 
         {/* Book a demo CTA - placed below the features grid */}
         <motion.div className="mt-16 flex justify-center" variants={childVariants}>
-          <a
+          <button
             id="book-demo"
-            href="/contact"
-            className="inline-flex items-center justify-center gap-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-semibold py-3 px-6 rounded-full shadow-xl transition-all duration-200"
+            type="button"
             onClick={(e) => {
-              // If there's a contact section on the page, smooth-scroll to it; otherwise this is a noop link
-              const target = document.querySelector('/contact');
-              if (target) {
-                e.preventDefault();
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }
+              e.preventDefault();
+              setOpenDemoModal(true);
             }}
+            className="inline-flex items-center justify-center gap-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-semibold py-3 px-6 rounded-full shadow-xl transition-all duration-200"
           >
             <span>Book a demo</span>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path fillRule="evenodd" d="M10.293 15.707a1 1 0 010-1.414L13.586 11H3a1 1 0 110-2h10.586l-3.293-3.293a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z" clipRule="evenodd" />
             </svg>
-          </a>
+          </button>
         </motion.div>
+        <BookDemoModal open={openDemoModal} onClose={() => setOpenDemoModal(false)} />
       </div>
     </motion.section>
   );
