@@ -17,6 +17,7 @@ const Testimonials = React.lazy(() => import("../components/whyinzighted"));
 const Process = React.lazy(() => import("../components/Process"));
 const Institutes = React.lazy(() => import("../components/Institutes"));
 const FAQ = React.lazy(() => import("../components/FAQ"));
+const Recognitions = React.lazy(() => import("../components/Recognitions"));
 
 // Main landing page: header, hero, all except contact, footer
 export function Index() {
@@ -112,6 +113,7 @@ export function Index() {
               prevents the footer from rendering below the hero briefly. */}
           <Features />
           <Testimonials />
+          <Recognitions />
           <WhyInzighted />
           <Process />
           <Institutes />

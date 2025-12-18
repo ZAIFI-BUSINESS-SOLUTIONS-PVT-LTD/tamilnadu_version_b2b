@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
-import { LinkedinLogo } from "@phosphor-icons/react";
-import { Phone, Mail, MapPin } from 'lucide-react';
+import { Phone, Mail, MapPin, Linkedin } from 'lucide-react';
 import Logo from '@/src/assets/images/logo-inverted.svg';
 
 const Footer = () => {
@@ -26,7 +25,7 @@ const Footer = () => {
               rel="noopener noreferrer"
               className="bg-gray-800 hover:bg-accent/80 transition-colors rounded-full p-3 md:p-2 shadow-lg border border-gray-700 hover:border-accent text-accent hover:text-white mt-2"
             >
-              <LinkedinLogo size={28} weight="fill" aria-hidden="true" />
+              <Linkedin size={28} aria-hidden="true" />
             </a>
           </div>
 
@@ -41,7 +40,6 @@ const Footer = () => {
                 */}
                 {[
                   { text: 'Home', href: '/' },
-                  { text: 'Pricing', href: '/pricing' },
                   { text: 'Contact', href: '/contact' },
                   { text: 'FAQ', href: '/faq' },
                 ].map((link, i) => (
@@ -81,7 +79,7 @@ const Footer = () => {
                   <span className="flex items-center justify-start w-8 h-8 aspect-square mr-3 bg-transparent rounded-full" aria-hidden="true">
                     <MapPin size={20} strokeWidth={2} className="text-accent" />
                   </span>
-                  <address className="not-italic text-sm md:text-base">Nehru Group of Institutions Technology Business Incubator (NGI TBI), Nehru Gardens, Thirumalayampalayam, Coimbatore, Tamil Nadu - 641 105</address>
+                  <address className="not-italic text-sm md:text-base">iTamilnadu Technology (iTNT) Hub, ANNA UNIVERSITY, Sir C V Raman Science Block 3rd, Campus, Kotturpuram, Chennai, Tamil Nadu 600025</address>
                 </li>
               </ul>
             </div>
