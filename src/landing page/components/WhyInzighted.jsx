@@ -6,14 +6,7 @@ import face4 from '../../assets/landingpage-images/faces/face4.jpg';
 import face5 from '../../assets/landingpage-images/faces/face5.jpg';
 import { motion, AnimatePresence } from "framer-motion";
 import { TrendingUp, Users, BadgeCheck, Target, Clock } from 'lucide-react';
-
-import amritaLogo from '../../assets/landingpage-images/recognitions/amrita.jpg';
-import ediLogo from '../../assets/landingpage-images/recognitions/EDI.jpeg';
-import msmeLogo from '../../assets/landingpage-images/recognitions/msme.jpg';
-import ngitbiLogo from '../../assets/landingpage-images/recognitions/ngitbi.jpg';
-import startupIndiaLogo from '../../assets/landingpage-images/recognitions/startup-india.jpg';
-import tamilpreneurLogo from '../../assets/landingpage-images/recognitions/tamilpreneur.png';
-import vibrantGujaratLogo from '../../assets/landingpage-images/recognitions/vibrantgujarat.jpg';
+import { useInView } from 'framer-motion';
 
 const avatarImages = [face1, face2, face3, face4, face5];
 
@@ -33,16 +26,6 @@ const benefits = [
 		title: "No Arguments",
 		description: "Bridge the gap between parents and teachers with data-driven discussions and eliminate misunderstandings."
 	}
-];
-
-const recognitions = [
-	{ src: amritaLogo, alt: 'Amrita Vishwa Vidyapeetham' },
-	{ src: ediLogo, alt: 'Entrepreneurship Development Institute' },
-	{ src: msmeLogo, alt: 'MSME (Govt of India)' },
-	{ src: ngitbiLogo, alt: 'NGI TBi' },
-	{ src: startupIndiaLogo, alt: 'Startup India' },
-	{ src: vibrantGujaratLogo, alt: 'Vibrant Gujarat' },
-	{ src: tamilpreneurLogo, alt: 'Tamilpreneur' },
 ];
 
 const introAnimation = {
@@ -87,7 +70,10 @@ const TiltCard = ({ children }) => {
 	);
 };
 
+
 const OverviewSection = () => {
+	const marqueeRef = useRef(null);
+	const isMarqueeInView = useInView(marqueeRef, { margin: '-100px 0px', once: true });
 	return (
 		<motion.section
 			className="pt-16 sm:pt-24 pb-6 md:pb-20 bg-blue-50 relative overflow-hidden"
@@ -189,34 +175,6 @@ const OverviewSection = () => {
 							</TiltCard>
 						</motion.div>
 					))}
-				</div>
-
-				<div>
-					{/* Achievements / Supporters (md+ only) */}
-					<div
-						className="w-full mx-auto mt-12 sm:mt-16 hidden md:flex md:flex-col md:items-center"
-						style={{ perspective: '1200px' }}
-					>
-						<div className="w-full bg-white rounded-2xl p-6 md:p-8 shadow-md border">
-							<h3 className="text-lg md:text-xl font-semibold text-gray-800 mb-4">Recognized and supported by</h3>
-							<div
-								className="w-full"
-								style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}
-								className="grid gap-6 items-center"
-							>
-								{recognitions.map((r, i) => (
-									<div key={i} className="flex items-center justify-center p-3">
-										<img
-											src={r.src}
-											alt={r.alt}
-											loading="lazy"
-											className="w-full max-h-14 md:max-h-20 object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-200"
-										/>
-									</div>
-								))}
-							</div>
-						</div>
-					</div>
 				</div>
 			</div>
 		</motion.section>

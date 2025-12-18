@@ -1,6 +1,5 @@
 import React, { useEffect } from "react";
-import { Phone, Mail, MapPin, Send } from "lucide-react";
-import { LinkedinLogo } from "@phosphor-icons/react";
+import { Phone, Mail, MapPin, Send, Linkedin } from "lucide-react";
 
 // Copilot: Ensure tel: and mailto: links exist with readable text.
 // We will send a contactPoint object to SEO.jsx, but still keep semantic markup here.
@@ -21,14 +20,14 @@ const contactInfo = [
 	{
 		icon: <MapPin className="w-5 h-5" />,
 		label: "Location",
-		value: "Nehru Group of Institutions Technology Business Incubator (NGI TBI), Nehru Gardens, Thirumalayampalayam, Coimbatore, Tamil Nadu - 641 105",
-		href: "https://www.google.com/maps/place/NGI+Technology+Business+Incubator/",
+		value: "iTamilnadu Technology (iTNT) Hub, ANNA UNIVERSITY, Sir C V Raman Science Block 3rd, Campus, Kotturpuram, Chennai, Tamil Nadu 600025",
+		href: "https://www.google.com/maps/place/Anna+University,+Chennai,+Tamil+Nadu",
 	},
 ];
 
 const socials = [
 	{
-		icon: <LinkedinLogo size={20} weight="fill" />,
+		icon: <Linkedin size={20} />,
 		href: "https://www.linkedin.com/company/zai-fi/?viewAsMember=true",
 		label: "LinkedIn",
 	},
@@ -63,10 +62,10 @@ const ContactUs = () => {
 			],
 			address: {
 				"@type": "PostalAddress",
-				streetAddress: "Nehru Group of Institutions Technology Business Incubator (NGI TBI), Nehru Gardens, Thirumalayampalayam",
-				addressLocality: "Coimbatore",
+				streetAddress: "iTamilnadu Technology (iTNT) Hub, ANNA UNIVERSITY, Sir C V Raman Science Block 3rd, Campus, Kotturpuram",
+				addressLocality: "Chennai",
 				addressRegion: "Tamil Nadu",
-				postalCode: "641105",
+				postalCode: "600025",
 				addressCountry: "IN"
 			}
 		};
@@ -126,7 +125,7 @@ const ContactUs = () => {
 
 						{/* Crawlable contact summary for search engines */}
 						<div className="sr-only" aria-hidden="true">
-							<p>Contact InzightEd: Phone +91 63859-21669, Email contact@zai-fi.com. Location: NGI TBI, Nehru Gardens, Thirumalayampalayam, Coimbatore, Tamil Nadu - 641 105.</p>
+							<p>Contact InzightEd: Phone +91 63859-21669, Email contact@zai-fi.com. Location: iTamilnadu Technology (iTNT) Hub, ANNA UNIVERSITY, Sir C V Raman Science Block 3rd, Campus, Kotturpuram, Chennai, Tamil Nadu 600025.</p>
 						</div>
 
 						<div>
