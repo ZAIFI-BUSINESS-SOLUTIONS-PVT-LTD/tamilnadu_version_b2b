@@ -1,3 +1,9 @@
+// prerender.mjs
+// Disabled: prerendering removed because SEO is not required for this frontend.
+console.log('prerender is disabled');
+
+// The following code has been disabled and replaced with a stub.
+// Original prerendering logic is no longer executed.
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
