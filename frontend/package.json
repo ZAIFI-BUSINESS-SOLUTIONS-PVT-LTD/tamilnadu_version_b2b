@@ -5,9 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node ./scripts/generate-sitemap.js",
-    "build": "npm run prebuild && vite build && vite build --ssr src/entry-server.jsx --outDir dist/server",
-    "postbuild": "node ./scripts/prerender.mjs",
+    "build": "vite build && vite build --ssr src/entry-server.jsx --outDir dist/server",
     "lint": "eslint .",
     "preview": "vite preview"
   },

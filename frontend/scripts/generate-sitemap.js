@@ -1,3 +1,6 @@
+// generate-sitemap.js
+// Disabled: sitemap generation removed because SEO is not required for this frontend.
+console.log('generate-sitemap is disabled');
 import fs from 'fs/promises';
 import path from 'path';
 import { pathToFileURL } from 'url';

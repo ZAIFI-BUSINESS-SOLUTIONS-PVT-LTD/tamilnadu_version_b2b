@@ -20,8 +20,8 @@ Top-level highlights (src/ contains the app source):
   - `components/` — UI primitives and reusable pieces (magicui, ui, etc.)
   - `utils/` and `lib/` — API helpers and utility functions
   - `assets/` — images and static assets used by the site
-- `public/` — static files served verbatim (favicon, robots, sitemap, etc.)
-- `scripts/` — build/prerender/sitemap helper scripts
+- `public/` — static files served verbatim (favicon, etc.)
+- `scripts/` — build helper scripts
 - `vite.config.js`, `tailwind.config.js`, `postcss.config.js` — build and styling configs
 
 File naming conventions
