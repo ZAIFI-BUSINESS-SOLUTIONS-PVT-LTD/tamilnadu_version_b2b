@@ -38,15 +38,6 @@ const LoginOptions = () => {
         </motion.div>
         <Card className="overflow-hidden">
           <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-5 relative">
-            <motion.button
-              onClick={() => navigate('..')}
-              className="absolute top-4 left-4 text-white hover:bg-white/10 p-2 rounded-full transition-colors"
-              aria-label="Go back"
-              variants={item}
-            >
-              <ArrowLeft size={18} />
-            </motion.button>
-
             <CardHeader className="p-0">
               <motion.div className="flex flex-col items-center text-center" variants={item}>
                 <div className="flex items-center mb-2">

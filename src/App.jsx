@@ -1,6 +1,5 @@
-import React, { Suspense } from "react";
-import { Routes, Route } from "react-router-dom";
-import { Index, Contact, PricingPage, BlogPage, BlogPostPage } from "./landing page/pages/index";
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
 import LoginOptions from './auth/loginoptions';
 import StudentLogin from './auth/student/studentlogin';
 import EducatorLogin from './auth/educator/educatorlogin';
@@ -12,7 +11,6 @@ import ErrorPage from "./auth/ErrorPage";
 import WaitingPage from "./auth/WaitingPage";
 import './App.css';
 import ScrollToTop from './dashboards/components/ScrollToTop';
-import PageLoader from './components/ui/PageLoader';
 import Report from './dashboards/educator/Report.jsx';
 import TeacherReport from './dashboards/educator/TeacherReport.jsx';
 import StudentReport from './dashboards/student/StudentReport.jsx';
@@ -52,18 +50,7 @@ function App() {
     <>
       <ScrollToTop />
       <Routes>
-        <Route
-          path="/"
-          element={
-            <Suspense fallback={<PageLoader />}>
-              <Index />
-            </Suspense>
-          }
-        />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/pricing" element={<PricingPage />} />
-        <Route path="/blog" element={<BlogPage />} />
-        <Route path="/blog/:slug" element={<BlogPostPage />} />
+        <Route path="/" element={<Navigate to="/auth" replace />} />
 
         <Route path="/report" element={<Report />} />
         <Route path="/teacher-report" element={<TeacherReport />} />
