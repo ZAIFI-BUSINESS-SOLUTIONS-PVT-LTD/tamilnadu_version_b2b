@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { FileText, Key, File, Spinner, ArrowLeft, ArrowRight, CheckCircle, DownloadSimple } from '@phosphor-icons/react';
+import { FileText, Key, File, Loader, ArrowLeft, ArrowRight, CheckCircle, Download } from 'lucide-react';
 import Modal from '../../components/ui/modal.jsx';
 import { validateAnswerKeyCSV, validateResponseSheetCSV, formatValidationErrors } from '../../../utils/csvValidation.js';
 import { toast } from 'react-hot-toast';
@@ -403,7 +403,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
               style={{ cursor: index < step ? 'pointer' : 'default' }}
               onClick={() => index < step && setStep(index)}
             >
-              {index < step ? <CheckCircle weight="fill" size={18} /> : (s.type === 'file' ? <s.icon size={18} /> : <FileText size={18} />)}
+              {index < step ? <CheckCircle size={18} className="text-white" /> : (s.type === 'file' ? <s.icon size={18} /> : <FileText size={18} />)}
             </div>
             <span
               className={`text-xs mt-1 ${index === step ? 'font-medium text-primary' : 'text-gray-500'}`}
