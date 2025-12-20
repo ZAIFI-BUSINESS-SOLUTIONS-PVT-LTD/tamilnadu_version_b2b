@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Line } from 'react-chartjs-2';
 import { Chart, LineElement, PointElement, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Filler } from 'chart.js';
-import { getInstitutionEducatorDashboardData, fetchInstitutionEducatorAllStudentResults } from '../../utils/api';
-import { Users, Calendar, HelpCircle, Sparkles, ChevronDown } from 'lucide-react';
+import { getInstitutionEducatorDashboardData, fetchInstitutionEducatorAllStudentResults, getTeachersByClass } from '../../utils/api';
+import { Users, Calendar, HelpCircle, Sparkles, BookOpen, Building, Percent } from 'lucide-react';
 import Carousel from '../components/ui/carousel';
 import Stat from '../components/ui/stat';
 import { Card } from '../../components/ui/card.jsx';
@@ -21,6 +21,9 @@ Chart.defaults.font.family = 'Tenorite, sans-serif';
 const ICON_MAPPING = {
   Users: <Users aria-hidden="true" className="text-gray-800" />,
   Calendar: <Calendar aria-hidden="true" className="text-gray-800" />,
+  BookOpen: <BookOpen aria-hidden="true" className="text-gray-800" />,
+  Building: <Building aria-hidden="true" className="text-gray-800" />,
+  Percent: <Percent aria-hidden="true" className="text-gray-800" />,
   Default: <HelpCircle aria-hidden="true" className="text-gray-800" />
 };
 
@@ -40,8 +43,12 @@ const formatStatValue = (value) => {
 };
 
 function IDashboard() {
-  const { selectedEducatorId } = useInstitution();
+  const { selectedEducatorId, setSelectedEducatorId, educators } = useInstitution();
   const navigate = useNavigate();
+  const sortedEducators = React.useMemo(() => {
+    if (!Array.isArray(educators)) return [];
+    return [...educators].sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
+  }, [educators]);
   const [dashboardData, setDashboardData] = useState({
     summaryCardsData: [],
     keyInsightsData: {},
@@ -54,6 +61,12 @@ function IDashboard() {
   const [rawResults, setRawResults] = useState([]);
   const [overallPerformance, setOverallPerformance] = useState('N/A');
   const [improvementRate, setImprovementRate] = useState('N/A');
+  const [instituteOverview, setInstituteOverview] = useState({
+    totalStudents: 0,
+    totalTeachers: 0,
+    totalClassrooms: 0,
+    overallAttendance: 'N/A'
+  });
 
   useEffect(() => {
     if (!selectedEducatorId) return;
@@ -138,7 +151,7 @@ function IDashboard() {
           setTestWiseAvgMarks(avgData);
           setRawResults(results.results);
         }
-      } catch (err) {
+      } catch {
         const dummyData = {
           Overall: [
             { test: 'Test 1', avg: 540, max: 650, min: 400 },
@@ -233,7 +246,7 @@ function IDashboard() {
     }
   }, [rawResults]);
 
-  const { summaryCardsData, keyInsightsData, isLoading, error } = dashboardData;
+  const { keyInsightsData, isLoading, error } = dashboardData;
 
   const attendanceData = useMemo(() => {
     let percentage = 'N/A';
@@ -267,6 +280,79 @@ function IDashboard() {
     return { percentage, change, direction };
   }, [rawResults]);
 
+  // Fetch institute-wide overview stats
+  useEffect(() => {
+    const fetchInstituteOverview = async () => {
+      try {
+        if (!educators || educators.length === 0) {
+          setInstituteOverview({
+            totalStudents: 0,
+            totalTeachers: 0,
+            totalClassrooms: educators ? educators.length : 0,
+            overallAttendance: 'N/A'
+          });
+          return;
+        }
+
+        let allStudents = new Set();
+        let allTeachers = new Set();
+        let totalClassrooms = educators.length;
+        let lastTestAttendanceCount = 0;
+        let totalStudentsForAttendance = 0;
+
+        // Fetch data for each educator to aggregate statistics
+        for (const educator of educators) {
+          try {
+            // Fetch student results for attendance calculation
+            const results = await fetchInstitutionEducatorAllStudentResults(educator.id);
+            if (results && Array.isArray(results.results)) {
+              // Count unique students
+              results.results.forEach(r => {
+                if (r.student_id) allStudents.add(r.student_id);
+              });
+
+              // Calculate attendance from the latest test
+              if (results.results.length > 0) {
+                const maxTestNum = Math.max(...results.results.map(r => r.test_num));
+                const lastTestResults = results.results.filter(r => r.test_num === maxTestNum);
+                const lastTestStudents = new Set(lastTestResults.map(r => r.student_id));
+                lastTestAttendanceCount += lastTestStudents.size;
+                totalStudentsForAttendance += new Set(results.results.map(r => r.student_id)).size;
+              }
+            }
+
+            // Fetch teachers for this class/educator using class_id
+            if (educator.class_id) {
+              const teachersResponse = await getTeachersByClass(educator.class_id);
+              if (teachersResponse && teachersResponse.success && Array.isArray(teachersResponse.data)) {
+                teachersResponse.data.forEach(teacher => {
+                  if (teacher.id) allTeachers.add(teacher.id);
+                });
+              }
+            }
+          } catch (error) {
+            console.error(`Error fetching data for educator ${educator.id}:`, error);
+          }
+        }
+
+        const overallAttendance = totalStudentsForAttendance > 0
+          ? `${Math.round((lastTestAttendanceCount / totalStudentsForAttendance) * 100)}%`
+          : 'N/A';
+
+        setInstituteOverview({
+          totalStudents: allStudents.size,
+          totalTeachers: allTeachers.size,
+          totalClassrooms: totalClassrooms,
+          overallAttendance: overallAttendance
+        });
+      } catch (error) {
+        console.error('Error fetching institute overview:', error);
+      }
+    };
+
+    fetchInstituteOverview();
+  }, [educators]);
+
   if (!selectedEducatorId) {
     return <div className="text-center py-8 mt-20">Please select an educator to view their dashboard.</div>;
   }
@@ -284,300 +370,377 @@ function IDashboard() {
   return (
     <UITooltipProvider>
       <div className="mt-12">
-        <div className="grid grid-cols-1 gap-4 sm:gap-8 lg:grid-cols-2">
-          <div className="flex flex-col gap-4 sm:gap-8">
-            <div className="grid grid-cols-1 gap-3 sm:gap-6 sm:grid-cols-2">
-              <Stat
-                icon={ICON_MAPPING.Users}
-                label="Recent Test Performance"
-                info={"Average total score in the latest test (as % of full marks)."}
-                value={formatStatValue(overallPerformance)}
-                badge={(() => {
-                  let rate = 0;
-                  if (improvementRate !== undefined && improvementRate !== null && improvementRate !== 'N/A') {
-                    const numeric = String(improvementRate).replace(/[^0-9.-]+/g, "");
-                    rate = parseFloat(numeric);
-                  }
-                  const isNegative = rate < 0;
-                  return (
+        {/* Institute Overview Section */}
+        <div className="mb-8 mt-8">
+          <div className="flex items-center mb-6">
+            <h2 className="text-3xl font-semibold text-gray-800">Institute Overview</h2>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <Stat
+              icon={ICON_MAPPING.Users}
+              label="Students Enrolled"
+              info={"Total number of students enrolled across all classrooms."}
+              value={formatStatValue(instituteOverview.totalStudents)}
+            />
+            <Stat
+              icon={ICON_MAPPING.BookOpen}
+              label="Teachers Assigned"
+              info={"Total number of educators assigned across all classrooms."}
+              value={formatStatValue(instituteOverview.totalTeachers)}
+            />
+            <Stat
+              icon={ICON_MAPPING.Building}
+              label="Classrooms Enrolled"
+              info={"Total number of classrooms with enrollment."}
+              value={formatStatValue(instituteOverview.totalClassrooms)}
+            />
+            <Stat
+              icon={ICON_MAPPING.Percent}
+              label="Overall Test Attendance"
+              info={"Overall attendance percentage across all classrooms in the latest test."}
+              value={instituteOverview.overallAttendance}
+            />
+          </div>
+        </div>
+        <div className='p-6 border rounded-2xl bg-white'>
+          <div className="hidden lg:flex lg:flex-row lg:items-center lg:justify-between mb-4 pb-4">
+            <div className="flex items-center">
+              <h2 className="text-3xl font-semibold text-gray-800">Classroom Performances</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-400 min-w-max pl-1">Classroom</span>
+              <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
+                <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-[220px] lg:w-auto text-start">
+                  <SelectValue placeholder="Select Classroom" />
+                </SelectTrigger>
+                <SelectContent side="bottom" align="start">
+                  {sortedEducators.map((edu) => (
+                    <SelectItem key={edu.id} value={String(edu.id)}>
+                      {edu.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="lg:hidden">
+            <div className="flex w-full bg-white px-3 border-b justify-between items-center rounded-xl">
+              <div className="text-left py-3">
+                <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+                <div className="mt-2">
+                  <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
+                    <SelectTrigger className="w-36">
+                      <SelectValue placeholder="Classroom" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sortedEducators.map((edu) => (
+                        <SelectItem key={edu.id} value={String(edu.id)}>
+                          {edu.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:gap-8 lg:grid-cols-2">
+            <div className="flex flex-col gap-4 sm:gap-8">
+              <div className="grid grid-cols-1 gap-3 sm:gap-6 sm:grid-cols-2">
+                <Stat
+                  icon={ICON_MAPPING.Users}
+                  label="Recent Test Performance"
+                  info={"Average total score in the latest test (as % of full marks)."}
+                  value={formatStatValue(overallPerformance)}
+                  badge={(() => {
+                    let rate = 0;
+                    if (improvementRate !== undefined && improvementRate !== null && improvementRate !== 'N/A') {
+                      const numeric = String(improvementRate).replace(/[^0-9.-]+/g, "");
+                      rate = parseFloat(numeric);
+                    }
+                    const isNegative = rate < 0;
+                    return (
+                      <UITooltip>
+                        <UITooltipTrigger asChild>
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${isNegative ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+                            {isNegative ? (
+                              <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 4v8M8 12l3-3M8 12l-3-3" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                            ) : (
+                              <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 12V4M8 4l-3 3M8 4l3 3" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                            )}
+                            <span className="whitespace-nowrap">{formatStatValue(improvementRate)}</span>
+                          </span>
+                        </UITooltipTrigger>
+                        <UITooltipContent sideOffset={6}>
+                          {isNegative ? "Drop compared to previous test (rounded %)." : "Improvement compared to previous test (rounded %)."}
+                        </UITooltipContent>
+                      </UITooltip>
+                    );
+                  })()}
+                />
+                <Stat
+                  icon={ICON_MAPPING.Calendar}
+                  label="Recent Test Attendance"
+                  info={"Percentage of students who attended the latest test."}
+                  value={`${attendanceData.percentage}%`}
+                  badge={attendanceData.direction && attendanceData.direction !== 'same' ? (
                     <UITooltip>
                       <UITooltipTrigger asChild>
                         <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${isNegative ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
-                          {isNegative ? (
-                            <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 4v8M8 12l3-3M8 12l-3-3" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                          ) : (
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold ml-1 sm:ml-2 text-xs sm:text-sm ${attendanceData.direction === 'up' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                          {attendanceData.direction === 'up' ? (
                             <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 12V4M8 4l-3 3M8 4l3 3" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                          ) : (
+                            <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 4v8M8 12l3-3M8 12l-3-3" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                           )}
-                          <span className="whitespace-nowrap">{formatStatValue(improvementRate)}</span>
+                          {attendanceData.change > 0 ? `+${attendanceData.change}` : attendanceData.change}
+                          {attendanceData.change === 1 || attendanceData.change === -1 ? ' student' : ' students'}
                         </span>
                       </UITooltipTrigger>
-                      <UITooltipContent sideOffset={6}>
-                        {isNegative ? "Drop compared to previous test (rounded %)." : "Improvement compared to previous test (rounded %)."}
-                      </UITooltipContent>
+                      <UITooltipContent sideOffset={6}>{attendanceData.direction === 'up' ? 'Attendance increased compared to the previous test.' : 'Attendance decreased compared to the previous test.'}</UITooltipContent>
                     </UITooltip>
-                  );
-                })()}
-              />
-              <Stat
-                icon={ICON_MAPPING.Calendar}
-                label="Attendance"
-                info={"Percentage of students who attended the latest test."}
-                value={`${attendanceData.percentage}%`}
-                badge={attendanceData.direction && attendanceData.direction !== 'same' ? (
-                  <UITooltip>
-                    <UITooltipTrigger asChild>
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold ml-1 sm:ml-2 text-xs sm:text-sm ${attendanceData.direction === 'up' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                        {attendanceData.direction === 'up' ? (
-                          <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 12V4M8 4l-3 3M8 4l3 3" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                        ) : (
-                          <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 4v8M8 12l3-3M8 12l-3-3" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                        )}
-                        {attendanceData.change > 0 ? `+${attendanceData.change}` : attendanceData.change}
-                        {attendanceData.change === 1 || attendanceData.change === -1 ? ' student' : ' students'}
-                      </span>
-                    </UITooltipTrigger>
-                    <UITooltipContent sideOffset={6}>{attendanceData.direction === 'up' ? 'Attendance increased compared to the previous test.' : 'Attendance decreased compared to the previous test.'}</UITooltipContent>
-                  </UITooltip>
-                ) : attendanceData.direction === 'same' ? (
-                  <UITooltip>
-                    <UITooltipTrigger asChild>
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-semibold ml-1 sm:ml-2 text-xs sm:text-sm">
-                        No change
-                      </span>
-                    </UITooltipTrigger>
-                    <UITooltipContent sideOffset={6}>No change in student attendance between the last two tests.</UITooltipContent>
-                  </UITooltip>
-                ) : null}
-              />
-            </div>
-
-            <div className="w-full">
-              <div className="w-full">
-                <Carousel
-                  sections={[
-                    {
-                      title: 'Quick Recommendations',
-                      items: keyInsightsData.quickRecommendations || [],
-                      tag: (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-                          <Sparkles size={12} />
-                          AI Generated
+                  ) : attendanceData.direction === 'same' ? (
+                    <UITooltip>
+                      <UITooltipTrigger asChild>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-semibold ml-1 sm:ml-2 text-xs sm:text-sm">
+                          No change
                         </span>
-                      ),
-                      tagTooltip: 'These are AI-generated quick recommendations for your class.',
-                    },
-                    {
-                      title: 'Key Strengths',
-                      items: keyInsightsData.keyStrengths || [],
-                      tag: (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-                          <Sparkles size={12} />
-                          AI Generated
-                        </span>
-                      ),
-                      tagTooltip: 'AI-generated strengths identified for your class.',
-                    },
-                    
-                    {
-                      title: 'Consistency Vulnerability',
-                      items: keyInsightsData.yetToDecide || [],
-                      tag: (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-                          <Sparkles size={12} />
-                          AI Generated
-                        </span>
-                      ),
-                      tagTooltip: 'Potential vulnerabilities in consistency, identified by AI.',
-                    },
-                  ]}
-                  height={330}
-                  className="!p-4 md:!p-6 lg:!p-8 !gap-4 md:!gap-6"
-                  emptyMessage="No Insights Available"
+                      </UITooltipTrigger>
+                      <UITooltipContent sideOffset={6}>No change in student attendance between the last two tests.</UITooltipContent>
+                    </UITooltip>
+                  ) : null}
                 />
               </div>
-            </div>
-          </div>
-          <Card className="rounded-2xl border border-gray-250 bg-gray-100 flex flex-col items-start justify-start sm:p-0 p-2">
-            <div className="w-full flex flex-col bg-white p-3 sm:p-6 rounded-2xl">
-              <div className="w-full flex justify-between items-center mb-0.5 sm:mb-1">
-                <span className="text-base sm:text-xl font-semibold text-primary text-left">Class Performance</span>
-                <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {subjectOptions.map(subject => (
-                      <SelectItem key={subject} value={subject}>
-                        {subject}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+
+              <div className="w-full">
+                <div className="w-full">
+                  <Carousel
+                    sections={[
+                      {
+                        title: 'Quick Recommendations',
+                        items: keyInsightsData.quickRecommendations || [],
+                        tag: (
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
+                            <Sparkles size={12} />
+                            AI Generated
+                          </span>
+                        ),
+                        tagTooltip: 'These are AI-generated quick recommendations for your class.',
+                      },
+                      {
+                        title: 'Key Strengths',
+                        items: keyInsightsData.keyStrengths || [],
+                        tag: (
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
+                            <Sparkles size={12} />
+                            AI Generated
+                          </span>
+                        ),
+                        tagTooltip: 'AI-generated strengths identified for your class.',
+                      },
+
+                      {
+                        title: 'Additional Focus Areas',
+                        items: keyInsightsData.yetToDecide || [],
+                        tag: (
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
+                            <Sparkles size={12} />
+                            AI Generated
+                          </span>
+                        ),
+                        tagTooltip: 'Potential vulnerabilities in consistency, identified by AI.',
+                      },
+                    ]}
+                    height={330}
+                    className="!p-4 md:!p-6 lg:!p-8 !gap-4 md:!gap-6"
+                    emptyMessage="No Insights Available"
+                  />
+                </div>
               </div>
+            </div>
+            <Card className="rounded-2xl border border-gray-250 bg-gray-100 flex flex-col items-start justify-start sm:p-0 p-2">
+              <div className="w-full flex flex-col bg-white p-3 sm:p-6 rounded-2xl">
+                <div className="w-full flex justify-between items-center mb-0.5 sm:mb-1">
+                  <span className="text-base sm:text-xl font-semibold text-primary text-left">Performance Trend</span>
+                  <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subjectOptions.map(subject => (
+                        <SelectItem key={subject} value={subject}>
+                          {subject}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <p className="text-gray-500 text-xs sm:text-sm mb-3 sm:mb-6">Average marks across all students</p>
+                <p className="text-gray-500 text-xs sm:text-sm mb-3 sm:mb-6">Average marks across all students</p>
 
-              <div className="flex flex-col items-center justify-center w-full mb-3 sm:mb-6 bg-white h-56 sm:h-80">
-                {(() => {
-                  const currentData = testWiseAvgMarks[selectedSubject] || [];
-                  const dataValues = currentData.map(d => d.avg);
-                  const maxValue = dataValues.length > 0 ? Math.max(...dataValues) : 50;
-                  const minValue = dataValues.length > 0 ? Math.min(...dataValues) : 0;
-                  const range = maxValue - minValue;
-                  const suggestedMax = Math.ceil((maxValue + range * 0.1) / 10) * 10;
-                  const stepSize = Math.ceil(range / 5 / 10) * 10 || 10;
+                <div className="flex flex-col items-center justify-center w-full mb-3 sm:mb-6 bg-white h-56 sm:h-80">
+                  {(() => {
+                    const currentData = testWiseAvgMarks[selectedSubject] || [];
+                    const dataValues = currentData.map(d => d.avg);
+                    const maxValue = dataValues.length > 0 ? Math.max(...dataValues) : 50;
+                    const minValue = dataValues.length > 0 ? Math.min(...dataValues) : 0;
+                    const range = maxValue - minValue;
+                    const suggestedMax = Math.ceil((maxValue + range * 0.1) / 10) * 10;
+                    const stepSize = Math.ceil(range / 5 / 10) * 10 || 10;
 
-                  return (
-                    <Line
-                      data={{
-                        labels: currentData.map(d => d.test),
-                        datasets: [
-                          {
-                            label: "Average Marks",
-                            data: dataValues,
-                            fill: true,
-                            backgroundColor: (context) => {
-                              const chart = context.chart;
-                              const { ctx, chartArea } = chart;
-                              if (!chartArea) return "rgba(37,99,235,0.15)";
-                              const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-                              gradient.addColorStop(0, "rgba(37,99,235,0.35)");
-                              gradient.addColorStop(1, "rgba(37,99,235,0.05)");
-                              return gradient;
-                            },
-                            borderColor: "#2563eb",
-                            borderWidth: 2,
-                            pointBackgroundColor: "#2563eb",
-                            pointRadius: 5,
-                            pointHoverRadius: 7,
-                            pointBorderWidth: 2,
-                            pointBorderColor: "#fff",
-                            tension: 0.45,
-                          },
-                        ],
-                      }}
-                      options={{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                          legend: {
-                            display: false,
-                          },
-                          tooltip: {
-                            enabled: true,
-                            backgroundColor: 'rgba(15,23,42,0.95)',
-                            titleColor: '#ffffff',
-                            bodyColor: '#e5e7eb',
-                            borderColor: 'rgba(255,255,255,0.06)',
-                            borderWidth: 0,
-                            padding: 8,
-                            cornerRadius: 6,
-                            displayColors: false,
-                            caretSize: 6,
-                            caretPadding: 6,
-                            titleFont: { family: 'Tenorite, sans-serif', size: 12, weight: '600' },
-                            bodyFont: { family: 'Tenorite, sans-serif', size: 12 },
-                            callbacks: {
-                              title: function (context) {
-                                return context[0].label;
+                    return (
+                      <Line
+                        data={{
+                          labels: currentData.map(d => d.test),
+                          datasets: [
+                            {
+                              label: "Average Marks",
+                              data: dataValues,
+                              fill: true,
+                              backgroundColor: (context) => {
+                                const chart = context.chart;
+                                const { ctx, chartArea } = chart;
+                                if (!chartArea) return "rgba(37,99,235,0.15)";
+                                const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                                gradient.addColorStop(0, "rgba(37,99,235,0.35)");
+                                gradient.addColorStop(1, "rgba(37,99,235,0.05)");
+                                return gradient;
                               },
-                              label: function (context) {
-                                const dataIndex = context.dataIndex;
-                                const dataPoint = currentData[dataIndex];
-                                if (dataPoint) {
-                                  return [
-                                    `Avg Score: ${dataPoint.avg}`,
-                                    `Max Score: ${dataPoint.max}`,
-                                    `Min Score: ${dataPoint.min}`,
-                                  ];
+                              borderColor: "#2563eb",
+                              borderWidth: 2,
+                              pointBackgroundColor: "#2563eb",
+                              pointRadius: 5,
+                              pointHoverRadius: 7,
+                              pointBorderWidth: 2,
+                              pointBorderColor: "#fff",
+                              tension: 0.45,
+                            },
+                          ],
+                        }}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                            legend: {
+                              display: false,
+                            },
+                            tooltip: {
+                              enabled: true,
+                              backgroundColor: 'rgba(15,23,42,0.95)',
+                              titleColor: '#ffffff',
+                              bodyColor: '#e5e7eb',
+                              borderColor: 'rgba(255,255,255,0.06)',
+                              borderWidth: 0,
+                              padding: 8,
+                              cornerRadius: 6,
+                              displayColors: false,
+                              caretSize: 6,
+                              caretPadding: 6,
+                              titleFont: { family: 'Tenorite, sans-serif', size: 12, weight: '600' },
+                              bodyFont: { family: 'Tenorite, sans-serif', size: 12 },
+                              callbacks: {
+                                title: function (context) {
+                                  return context[0].label;
+                                },
+                                label: function (context) {
+                                  const dataIndex = context.dataIndex;
+                                  const dataPoint = currentData[dataIndex];
+                                  if (dataPoint) {
+                                    return [
+                                      `Avg Score: ${dataPoint.avg}`,
+                                      `Max Score: ${dataPoint.max}`,
+                                      `Min Score: ${dataPoint.min}`,
+                                    ];
+                                  }
+                                  return '';
                                 }
-                                return '';
-                              }
+                              },
+                              mode: 'index',
+                              intersect: false,
                             },
-                            mode: 'index',
-                            intersect: false,
                           },
-                        },
-                        scales: {
-                          x: {
-                            title: { display: false },
-                            ticks: { color: "#6b7280", font: { family: 'Tenorite, sans-serif', size: 13 } },
-                            border: { width: 0 },
-                            grid: { display: false },
-                          },
-                          y: {
-                            title: { display: false },
-                            beginAtZero: true,
-                            max: suggestedMax,
-                            border: { width: 0 },
-                            ticks: {
-                              color: "#6b7280",
-                              font: { family: 'Tenorite, sans-serif', size: 13 },
-                              stepSize: stepSize,
+                          scales: {
+                            x: {
+                              title: { display: false },
+                              ticks: { color: "#6b7280", font: { family: 'Tenorite, sans-serif', size: 13 } },
+                              border: { width: 0 },
+                              grid: { display: false },
                             },
-                            grid: { color: "#f3f4f6" },
+                            y: {
+                              title: { display: false },
+                              beginAtZero: true,
+                              max: suggestedMax,
+                              border: { width: 0 },
+                              ticks: {
+                                color: "#6b7280",
+                                font: { family: 'Tenorite, sans-serif', size: 13 },
+                                stepSize: stepSize,
+                              },
+                              grid: { color: "#f3f4f6" },
+                            },
                           },
-                        },
-                      }}
-                      width={260}
-                      height={140}
-                    />
-                  );
-                })()}
+                        }}
+                        width={260}
+                        height={140}
+                      />
+                    );
+                  })()}
+                </div>
               </div>
-            </div>
 
-            <div className="w-full">
-              <div className="grid grid-cols-2 w-full pt-2 sm:pt-4 gap-x-4 sm:gap-x-12 justify-center">
-                {(() => {
-                  const currentData = testWiseAvgMarks[selectedSubject] || [];
-                  let highest = 0;
-                  let lowest = 0;
-                  if (currentData.length > 0) {
-                    highest = Math.max(...currentData.map(t => t.avg));
-                    lowest = Math.min(...currentData.map(t => t.avg));
-                  }
-                  return <>
-                    <div className="flex flex-col items-center border-r border-gray-200 pr-2 sm:pr-0">
-                      <span className="text-gray-500 text-xs sm:text-sm">Avg Highest Score</span>
-                      <div className="flex items-center">
-                        <span className="text-base sm:text-lg font-semibold">{highest}</span>
-                        <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500 ml-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M5 15l7-7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+              <div className="w-full">
+                <div className="grid grid-cols-2 w-full pt-2 sm:pt-4 gap-x-4 sm:gap-x-12 justify-center">
+                  {(() => {
+                    const currentData = testWiseAvgMarks[selectedSubject] || [];
+                    let highest = 0;
+                    let lowest = 0;
+                    if (currentData.length > 0) {
+                      highest = Math.max(...currentData.map(t => t.avg));
+                      lowest = Math.min(...currentData.map(t => t.avg));
+                    }
+                    return <>
+                      <div className="flex flex-col items-center border-r border-gray-200 pr-2 sm:pr-0">
+                        <span className="text-gray-500 text-xs sm:text-sm">Avg Highest Score</span>
+                        <div className="flex items-center">
+                          <span className="text-base sm:text-lg font-semibold">{highest}</span>
+                          <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500 ml-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5 15l7-7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex flex-col items-center">
-                      <span className="text-gray-500 text-xs sm:text-sm">Avg Lowest Score</span>
-                      <div className="flex items-center">
-                        <span className="text-base sm:text-lg font-semibold">{lowest}</span>
-                        <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-500 ml-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M19 9l-7 7-7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+                      <div className="flex flex-col items-center">
+                        <span className="text-gray-500 text-xs sm:text-sm">Avg Lowest Score</span>
+                        <div className="flex items-center">
+                          <span className="text-base sm:text-lg font-semibold">{lowest}</span>
+                          <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-500 ml-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M19 9l-7 7-7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </div>
                       </div>
-                    </div>
-                  </>;
-                })()}
+                    </>;
+                  })()}
+                </div>
               </div>
+            </Card>
+          </div>
+          <Card className="hidden md:block rounded-2xl border border-gray-250 bg-white w-full mt-4 sm:mt-8 p-3 sm:p-8">
+            <div className="flex items-center justify-between pb-2 sm:pb-6 border-b border-gray-200">
+              <h2 className="text-base sm:text-xl font-bold text-gray-800">Recent Test Results</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="border-gray-300"
+                onClick={() => navigate('/institution/students')}
+              >
+                See All
+              </Button>
             </div>
+            <EStudentListMock rawResults={rawResults} />
           </Card>
         </div>
-        <Card className="hidden md:block rounded-2xl border border-gray-250 bg-white w-full mt-4 sm:mt-8 p-3 sm:p-8">
-          <div className="flex items-center justify-between pb-2 sm:pb-6 border-b border-gray-200">
-            <h2 className="text-base sm:text-xl font-bold text-gray-800">Recent Test Results</h2>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="border-gray-300"
-              onClick={() => navigate('/institution/students')}
-            >
-              See All
-            </Button>
-          </div>
-          <EStudentListMock rawResults={rawResults} />
-        </Card>
       </div>
     </UITooltipProvider>
   );
