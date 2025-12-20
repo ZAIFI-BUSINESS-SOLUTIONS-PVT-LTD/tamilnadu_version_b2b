@@ -377,7 +377,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
               >
                 {isUploading ? (
                   <>
-                    <Spinner size={16} className="animate-spin mr-2" />
+                    <Loader size={16} className="animate-spin mr-2" />
                     Processing...
                   </>
                 ) : (
