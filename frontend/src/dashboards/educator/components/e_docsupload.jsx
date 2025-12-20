@@ -295,7 +295,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
                 className="btn btn-sm btn-ghost flex items-center gap-1"
                 aria-label="Download sample answer key"
               >
-                <DownloadSimple size={14} />
+                <Download size={14} />
                 <span className="text-xs hidden sm:inline">Sample answer key</span>
               </a>
             )}
@@ -307,7 +307,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
                 className="btn btn-base btn-ghost flex items-center gap-1"
                 aria-label="Download sample response sheet"
               >
-                <DownloadSimple size={14} />
+                <Download size={14} />
                 <span className="text-sm hidden sm:inline">Sample response sheet</span>
               </a>
             )}
