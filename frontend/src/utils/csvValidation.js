@@ -11,12 +11,12 @@
 const parseCSV = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    
+
     reader.onload = (e) => {
       try {
         const text = e.target.result;
         const lines = text.split(/\r?\n/).filter(line => line.trim());
-        
+
         if (lines.length === 0) {
           reject(new Error('CSV file is empty'));
           return;
@@ -26,7 +26,7 @@ const parseCSV = (file) => {
         const firstLine = lines[0];
         const delimiter = firstLine.includes('\t') ? '\t' : ',';
         const headerParts = firstLine.split(delimiter).map(h => h.trim().toLowerCase());
-        
+
         // Filter out empty headers and map to standard names
         const headers = [];
         const headerIndices = [];
@@ -45,33 +45,33 @@ const parseCSV = (file) => {
             }
           }
         });
-        
+
         // Parse data rows
         const rawRows = [];
         const rows = [];
-        
+
         for (let i = 1; i < lines.length; i++) {
           const values = lines[i].split(delimiter).map(v => v.trim());
           rawRows.push(values);
-          
+
           const rowObj = {};
           headers.forEach((header, hIdx) => {
             const valueIndex = headerIndices[hIdx];
             rowObj[header] = values[valueIndex] || '';
           });
-          
+
           // Only add row if it has data
           if (rowObj.question_number || rowObj.answer) {
             rows.push(rowObj);
           }
         }
-        
+
         resolve({ headers, rows, rawRows });
       } catch (error) {
         reject(new Error(`Failed to parse CSV: ${error.message}`));
       }
     };
-    
+
     reader.onerror = () => reject(new Error('Failed to read file'));
     reader.readAsText(file);
   });
@@ -116,7 +116,7 @@ export const validateAnswerKeyCSV = async (file, options = {}) => {
     // Check required headers
     const requiredHeaders = ['question_number', 'answer'];
     const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
-    
+
     if (missingHeaders.length > 0) {
       errors.push({
         type: 'header',
@@ -128,7 +128,7 @@ export const validateAnswerKeyCSV = async (file, options = {}) => {
     // Track question numbers for duplicate detection
     const questionNumbers = new Set();
     const duplicates = new Set();
-    
+
     // Validate each row
     rows.forEach((row, index) => {
       const rowNumber = index + 2; // +2 because index 0 is row 1 (after header)
@@ -181,12 +181,14 @@ export const validateAnswerKeyCSV = async (file, options = {}) => {
         // - An integer for numeric answers
         // - We'll accept both formats
         const trimmedAnswer = answer.trim();
-        
-        // Check if it's a single letter (A-D) or a number
+
+        // Check if it's a single letter (A-D), a whole number, a float-integer like 1.0-4.0, or 'grace'
         const isSingleChar = /^[A-Da-d]$/.test(trimmedAnswer);
         const isNumber = /^\d+$/.test(trimmedAnswer);
-        
-        if (!isSingleChar && !isNumber) {
+        const isFloat1to4 = /^[1-4](?:\.0+)?$/.test(trimmedAnswer); // 1.0, 2.00, etc.
+        const isGrace = /^grace$/i.test(trimmedAnswer);
+
+        if (!isSingleChar && !isNumber && !isFloat1to4 && !isGrace) {
           errors.push({
             type: 'answer',
             row: rowNumber,
@@ -278,7 +280,7 @@ export const validateResponseSheetCSV = async (responseFile, answerKeyFile, opti
     // Parse header
     const delimiter = lines[0].includes('\t') ? '\t' : ',';
     const headerParts = lines[0].split(delimiter).map(h => h.trim());
-    
+
     // Check headers not null
     if (headerParts.every(h => !h || h === '')) {
       errors.push({ type: 'header', message: 'All headers are null or empty' });
@@ -287,7 +289,7 @@ export const validateResponseSheetCSV = async (responseFile, answerKeyFile, opti
 
     // First column is question number, remaining columns are student IDs
     const studentIds = headerParts.slice(1).filter(h => h && h !== '');
-    
+
     if (studentIds.length === 0) {
       errors.push({ type: 'header', message: 'No student ID columns found in header' });
       return { valid: false, errors, warnings, summary: {} };
@@ -309,7 +311,7 @@ export const validateResponseSheetCSV = async (responseFile, answerKeyFile, opti
     if (expectedQuestionCount !== undefined && expectedQuestionCount !== null && expectedQuestionCount > 0) {
       const expectedCount = parseInt(expectedQuestionCount, 10);
       console.log(`Comparing: dataRowCount=${dataRowCount} vs expectedCount=${expectedCount}`);
-      
+
       if (dataRowCount !== expectedCount) {
         const errorMsg = `Question count mismatch: Expected ${expectedCount} questions, but found ${dataRowCount} rows in CSV`;
         console.log('COUNT MISMATCH ERROR:', errorMsg);
@@ -326,17 +328,26 @@ export const validateResponseSheetCSV = async (responseFile, answerKeyFile, opti
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(delimiter).map(v => v.trim());
       const questionNumber = values[0] || `Row ${i + 1}`;
-      
+
       // Validate each student's response for this question
       for (let j = 1; j < values.length && j <= studentIds.length; j++) {
         const response = values[j];
         const studentId = studentIds[j - 1];
-        
+
         // Skip empty responses (blank answers allowed)
         if (!response || response === '') continue;
-        
-        // Validate response: must be 1-4 or A-D only
-        const isValidResponse = /^[1-4A-Da-d]$/.test(response);
+
+        // Validate response: accept
+        // - integers 1-4
+        // - float integers like 1.0, 2.0, 3.0, 4.0 (optional trailing zeros)
+        // - single letters A-D (case-insensitive)
+        // - the value "grace" (case-insensitive)
+        // Empty responses are skipped above and considered valid
+        const trimmedResp = (response || '').toString().trim();
+        const isNumeric1to4 = /^[1-4](?:\.0+)?$/.test(trimmedResp);
+        const isLetterAtoD = /^[A-Da-d]$/.test(trimmedResp);
+        const isGrace = /^grace$/i.test(trimmedResp);
+        const isValidResponse = isNumeric1to4 || isLetterAtoD || isGrace;
         if (!isValidResponse) {
           errors.push({
             type: 'invalid_response',
@@ -386,7 +397,7 @@ export const validateResponseSheetCSV = async (responseFile, answerKeyFile, opti
  */
 export const formatValidationErrors = (errors) => {
   if (errors.length === 0) return '';
-  
+
   // Group errors by type
   const grouped = errors.reduce((acc, error) => {
     const type = error.type || 'general';
