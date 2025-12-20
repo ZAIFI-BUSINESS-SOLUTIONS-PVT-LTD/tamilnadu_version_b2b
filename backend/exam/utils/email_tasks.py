@@ -3,6 +3,7 @@ from django.core.mail import EmailMultiAlternatives
 from celery import shared_task
 from django.template.loader import render_to_string
 import logging
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +15,9 @@ def send_password_reset_email(self, to_email: str, reset_link: str, recipient_na
     Uses Django's `EmailMultiAlternatives` and a simple HTML/text template.
     """
     try:
+        start_ts = timezone.now()
+        logger.info("send_password_reset_email started for %s at %s", to_email, start_ts)
+
         subject = "Inzighted: Password reset instructions"
         from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@inzighted.com")
 
@@ -29,7 +33,8 @@ def send_password_reset_email(self, to_email: str, reset_link: str, recipient_na
         msg = EmailMultiAlternatives(subject, text_body, from_email, [to_email])
         msg.attach_alternative(html_body, "text/html")
         msg.send(fail_silently=False)
-        logger.info(f"Password reset email enqueued/sent to {to_email}")
+        end_ts = timezone.now()
+        logger.info("Password reset email sent to %s (task start %s end %s)", to_email, start_ts, end_ts)
     except Exception as exc:
         logger.exception("Failed to send password reset email")
         raise self.retry(exc=exc)

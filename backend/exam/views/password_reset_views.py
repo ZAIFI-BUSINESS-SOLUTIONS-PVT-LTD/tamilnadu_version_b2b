@@ -12,6 +12,7 @@ from exam.models.password_reset import PasswordResetRequest
 from exam.utils.email_tasks import send_password_reset_email
 import hmac
 import logging
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +73,8 @@ def forgot_password(request):
             reset_link = raw_token
 
         recipient_name = getattr(user, "name", "")
+        # Log enqueue time for diagnostics
+        logging.getLogger(__name__).info("Enqueuing password reset email for %s at %s", email, timezone.now())
         send_password_reset_email.delay(email, reset_link, recipient_name)
 
     # Always respond with generic message

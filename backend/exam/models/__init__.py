@@ -12,7 +12,7 @@ from .question_paper import QuestionPaper
 from .response import StudentResponse
 from .analysis import QuestionAnalysis
 
-from .result import Result
+from .result import Result, StudentResult
 
 
 

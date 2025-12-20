@@ -17,8 +17,40 @@ const tenantConfig = {
 
 // Get tenant URLs based on origin
 const getTenantUrls = (origin) => {
-  const tenant = tenantConfig[origin] || tenantConfig['https://inzighted.com']; // default to inzighted.com
-  return tenant;
+  // Log the origin for debugging
+  console.log('[getTenantUrls] Received origin:', origin);
+  
+  // Normalize origin (remove trailing slashes)
+  let normalizedOrigin = origin;
+  if (normalizedOrigin) {
+    normalizedOrigin = normalizedOrigin.replace(/\/$/, ''); // Remove trailing slash
+    
+    // Check if origin is a local development server (localhost or local IP with port)
+    if (normalizedOrigin.includes('localhost:') || normalizedOrigin.includes('127.0.0.1:') || 
+        normalizedOrigin.match(/http:\/\/\d+\.\d+\.\d+\.\d+:\d+/)) {
+      console.log('[getTenantUrls] Detected local development server, using origin directly');
+      return {
+        frontend: normalizedOrigin,
+        backend: process.env.PDF_TAMIL_BACKEND_URL || 'https://tamilnaduapi.inzighted.com/api'
+      };
+    }
+    
+    // Check if origin contains tamilnadu (case-insensitive)
+    if (normalizedOrigin.toLowerCase().includes('tamilnadu')) {
+      console.log('[getTenantUrls] Detected TamilNadu tenant by keyword match');
+      return tenantConfig['https://tamilnadu.inzighted.com'];
+    }
+  }
+  
+  // Check for exact match
+  if (tenantConfig[normalizedOrigin]) {
+    console.log('[getTenantUrls] Found exact match for origin:', normalizedOrigin);
+    return tenantConfig[normalizedOrigin];
+  }
+  
+  // Default to TamilNadu for unknown origins
+  console.log('[getTenantUrls] Using default tenant (tamilnadu.inzighted.com) for origin:', normalizedOrigin);
+  return tenantConfig['https://tamilnadu.inzighted.com'];
 };
 
 const config = {
@@ -34,6 +66,8 @@ const config = {
           'http://localhost:3000',
           'http://localhost:3001', 
           'http://localhost:5173',
+          'http://13.219.64.187:5173',
+          'http://13.219.64.187:3000',
           'https://inzighted.com',
           'https://tamilnadu.inzighted.com'
         ],
@@ -89,7 +123,7 @@ const config = {
   // Tenant Configuration
   tenants: {
     config: tenantConfig,
-    defaultOrigin: 'https://inzighted.com'
+    defaultOrigin: 'https://tamilnadu.inzighted.com'
   },
 
   // AWS S3 Configuration

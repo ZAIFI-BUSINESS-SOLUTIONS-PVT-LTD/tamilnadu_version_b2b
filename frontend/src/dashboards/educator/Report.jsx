@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList, ComposedChart, Line
 } from "recharts";
-import { fetchEducatorStudentInsights, fetcheducatorstudent, fetchEducatorAllStudentResults } from "../../utils/api";
+import { fetchEducatorStudentInsights, fetcheducatorstudent, fetchEducatorAllStudentResults, fetchInstitutionStudents, fetchInstitutionAllStudentResults, fetchInstitutionStudentInsights } from "../../utils/api";
 
 // --- Dummy chart data constants for educator reports ---
 const DUMMY_SUBJECT_TOTALS = [
@@ -79,9 +79,17 @@ export default function Report() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // Extract all URL parameters first
     const query = new URLSearchParams(window.location.search);
     const studentId = query.get("studentId");
     const test = query.get("testId");
+    const educatorId = query.get("educatorId"); // Get educatorId for institution view
+    
+    // Check if this is an institution view (educatorId present)
+    const isInstitutionView = !!educatorId;
+    
+    console.log('[Report] URL Parameters:', { studentId, test, educatorId, isInstitutionView });
+    
     let testNum = 0;
     if (test && test !== "Overall") {
       testNum = Number(test);
@@ -99,25 +107,47 @@ export default function Report() {
       return;
     }
 
-    // Fetch all report data in parallel (educator endpoints)
+    // Fetch all report data in parallel
     const fetchAllData = async () => {
       try {
-        // Fetch student details (educator endpoint)
-        const studentsList = await fetcheducatorstudent();
-        const studentDetails = (studentsList.students || []).find(s => String(s.student_id) === String(studentId)) || {};
+        console.log('[Report] Using endpoints:', isInstitutionView ? 'INSTITUTION' : 'EDUCATOR');
+        
+        // Fetch student details (use institution-wide endpoint if educatorId present)
+        let studentsList;
+        if (isInstitutionView) {
+          console.log('[Report] Fetching institution students list');
+          studentsList = await fetchInstitutionStudents();
+        } else {
+          console.log('[Report] Fetching educator students list');
+          studentsList = await fetcheducatorstudent();
+        }
+        const studentsArray = Array.isArray(studentsList) ? studentsList : (Array.isArray(studentsList.students) ? studentsList.students : []);
+        const studentDetails = studentsArray.find(s => String(s.student_id) === String(studentId)) || {};
         if (!studentDetails.student_id) throw new Error("Student not found in educator's list");
 
-        // Fetch dashboard/insights (educator endpoint)
-        const dashboard = await fetchEducatorStudentInsights(studentId, testNum);
-        console.log('fetchEducatorStudentInsights data:', dashboard);
+        // Fetch dashboard/insights (use institution-wide endpoint if educatorId present)
+        let dashboard;
+        if (isInstitutionView) {
+          console.log('[Report] Fetching institution student insights for educatorId:', educatorId);
+          dashboard = await fetchInstitutionStudentInsights(studentId, testNum, educatorId);
+        } else {
+          console.log('[Report] Fetching educator student insights');
+          dashboard = await fetchEducatorStudentInsights(studentId, testNum);
+        }
+        console.log('Fetched student insights data:', dashboard);
         if (dashboard?.error) throw new Error(dashboard.error);
 
         // Use SWOT from EducatorStudentInsights (dashboard)
         const swotRaw = dashboard.swot || {};
         const swotData = transformSwotData(swotRaw);
 
-        // Fetch all student results for educator (for number of tests attended & subject marks)
-        const allResults = await fetchEducatorAllStudentResults();
+        // Fetch all student results (use institution-wide endpoint if educatorId present)
+        let allResults;
+        if (isInstitutionView) {
+          allResults = await fetchInstitutionAllStudentResults();
+        } else {
+          allResults = await fetchEducatorAllStudentResults();
+        }
         // Filter results for this student
         let studentResultsArr = [];
         if (Array.isArray(allResults?.results)) {
@@ -322,23 +352,35 @@ export default function Report() {
         }
         setStudentChartData({ subjectTotals, errorData, trendData: trendDataWithTotal, performanceTrend });
         setError(null);
+        
+        // Set PDF ready flag immediately after setting data
+        console.log('[Report] Data loaded successfully, setting __PDF_READY__');
+        if (typeof window !== 'undefined') {
+          window.__PDF_READY__ = true;
+        }
       } catch (err) {
         // Debug: Log error object
         console.error("[Report] Error loading report data (educator endpoints):", err);
         setError(err.message || "Failed to load report data");
         setReportData(null);
         setStudentChartData(null);
+        
+        // Still set PDF ready even on error so it doesn't timeout
+        if (typeof window !== 'undefined') {
+          window.__PDF_READY__ = true;
+        }
       }
     };
 
     fetchAllData();
   }, []);
 
-  useEffect(() => {
-    if (reportData && studentChartData) {
-      window.__PDF_READY__ = true;
-    }
-  }, [reportData, studentChartData]);
+  // Remove this useEffect - we set __PDF_READY__ directly in fetchAllData now
+  // useEffect(() => {
+  //   if (reportData && studentChartData) {
+  //     window.__PDF_READY__ = true;
+  //   }
+  // }, [reportData, studentChartData]);
 
   if (error) {
     return (

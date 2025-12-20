@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { getEducatorDashboardData, fetchEducatorSWOT, fetchEducatorAllStudentResults, fetcheducatordetail } from "../../utils/api";
+import { getEducatorDashboardData, fetchEducatorSWOT, fetchEducatorAllStudentResults, fetcheducatordetail, fetchInstitutionTeacherDashboard, fetchInstitutionTeacherSWOT, fetchInstitutionAllStudentResults } from "../../utils/api";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList, ReferenceLine, PieChart, Pie, Cell } from "recharts";
 import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
 
@@ -40,16 +40,21 @@ export default function TeacherReport() {
     const [swot, setSwot] = useState(null);
     const [error, setError] = useState(null);
     const [testId, setTestId] = useState(null);
+    const [educatorId, setEducatorId] = useState(null);
     const [studentResults, setStudentResults] = useState([]);
 
     // Fetch educator user data
     const { userData: educatorInfo, isLoading: isEducatorLoading } = useUserData(fetcheducatordetail, { name: '', inst: '' });
 
-    // Extract testId from query params once on mount
+    // Extract testId and educatorId from query params once on mount
     useEffect(() => {
         const query = new URLSearchParams(window.location.search);
         setTestId(query.get("testId"));
+        setEducatorId(query.get("educatorId"));
     }, []);
+
+    // Check if this is institution view
+    const isInstitutionView = !!educatorId;
 
     // Fetch dashboard data when we have a testId
     useEffect(() => {
@@ -58,7 +63,12 @@ export default function TeacherReport() {
         let mounted = true;
         (async () => {
             try {
-                const dash = await getEducatorDashboardData(testId);
+                let dash;
+                if (isInstitutionView) {
+                    dash = await fetchInstitutionTeacherDashboard(educatorId, testId);
+                } else {
+                    dash = await getEducatorDashboardData(testId);
+                }
                 if (!mounted) return;
                 setDashboard(dash);
                 setError(null);
@@ -73,7 +83,7 @@ export default function TeacherReport() {
         return () => {
             mounted = false;
         };
-    }, [testId]);
+    }, [testId, educatorId, isInstitutionView]);
 
     // Fetch SWOT data when we have a testId
     useEffect(() => {
@@ -82,7 +92,12 @@ export default function TeacherReport() {
         let mounted = true;
         (async () => {
             try {
-                const swotData = await fetchEducatorSWOT(testId);
+                let swotData;
+                if (isInstitutionView) {
+                    swotData = await fetchInstitutionTeacherSWOT(educatorId, testId);
+                } else {
+                    swotData = await fetchEducatorSWOT(testId);
+                }
                 if (!mounted) return;
                 // API may return an object with a `swot` key or the raw payload
                 const raw = swotData && swotData.swot ? swotData.swot : swotData;
@@ -96,7 +111,7 @@ export default function TeacherReport() {
         return () => {
             mounted = false;
         };
-    }, [testId]);
+    }, [testId, educatorId, isInstitutionView]);
 
     // Fetch and normalize all student results data
     useEffect(() => {
@@ -104,7 +119,12 @@ export default function TeacherReport() {
 
         (async () => {
             try {
-                const results = await fetchEducatorAllStudentResults(testId);
+                let results;
+                if (isInstitutionView) {
+                    results = await fetchInstitutionAllStudentResults();
+                } else {
+                    results = await fetchEducatorAllStudentResults(testId);
+                }
                 // API may return an array or an object like { results: [...] }
                 let arr = [];
                 if (Array.isArray(results)) {
@@ -122,7 +142,7 @@ export default function TeacherReport() {
                 setStudentResults([]);
             }
         })();
-    }, [testId]);
+    }, [testId, educatorId, isInstitutionView]);
     // Derive subject-wise buckets (strengths/weaknesses/opportunities)
     const { subjectData, sortedSubjectList } = useMemo(() => {
         const data = {};

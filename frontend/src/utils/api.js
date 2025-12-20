@@ -290,7 +290,7 @@ export const fetchEducatorAllStudentResults = async () => {
 /**
  * Generate PDF Report for Student (Teacher View)
  */
-export const generatePdfReport = async (studentId, testId, classId = null) => {
+export const generatePdfReport = async (studentId, testId, classId = null, educatorId = null) => {
   try {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -300,7 +300,10 @@ export const generatePdfReport = async (studentId, testId, classId = null) => {
     if (classId) {
       url += `&classId=${encodeURIComponent(classId)}`;
     }
-    console.log('generatePdfReport called with:', { studentId, testId, classId, finalUrl: url });
+    if (educatorId) {
+      url += `&educatorId=${encodeURIComponent(educatorId)}`;
+    }
+    console.log('generatePdfReport called with:', { studentId, testId, classId, educatorId, finalUrl: url });
     const response = await fetch(
       url,
       {
@@ -325,7 +328,7 @@ export const generatePdfReport = async (studentId, testId, classId = null) => {
 /**
  * Generate Bulk PDF Reports as a Zip File for Multiple Students
  */
-export const generateBulkPdfReportsZip = async (studentIds, testId, classId = null) => {
+export const generateBulkPdfReportsZip = async (studentIds, testId, classId = null, educatorId = null) => {
   try {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -335,7 +338,10 @@ export const generateBulkPdfReportsZip = async (studentIds, testId, classId = nu
     if (classId) {
       body.classId = classId;
     }
-    console.log('generateBulkPdfReportsZip called with:', { studentIds, testId, classId, body });
+    if (educatorId) {
+      body.educatorId = educatorId;
+    }
+    console.log('generateBulkPdfReportsZip called with:', { studentIds, testId, classId, educatorId, body });
     const response = await fetch(
       `${PDF_SERVICE_URL}/generate-bulk-pdf`,
       {
@@ -745,6 +751,168 @@ export const fetchInstitutionEducatorStudents = async (educatorId) => {
   } catch (error) {
     console.error('Error fetching student name:', error);
     return [];
+  }
+};
+
+/**
+ * Fetch Institution Educator Student Insights (for PDF reports)
+ */
+export const fetchInstitutionEducatorStudentInsights = async (educatorId, studentId, testNum) => {
+  try {
+    const token = localStorage.getItem('token');
+    console.log('[API] fetchInstitutionEducatorStudentInsights →', { educatorId, studentId, testNum });
+    
+    const response = await axios.post(
+      `${API_BASE_URL}/institution/educator/${educatorId}/students/insights/`,
+      {
+        student_id: studentId,
+        test_num: testNum
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching institution educator student insights:', error);
+    return { error: 'Failed to fetch student insights' };
+  }
+};
+
+/**
+ * Fetch Institution Student Insights (direct, institution-wide access)
+ */
+export const fetchInstitutionStudentInsights = async (studentId, testNum, educatorId = null) => {
+  try {
+    const token = localStorage.getItem('token');
+    console.log('[API] fetchInstitutionStudentInsights →', { studentId, testNum, educatorId });
+    
+    const body = {
+      student_id: studentId,
+      test_num: testNum
+    };
+    
+    if (educatorId) {
+      body.educator_id = educatorId;
+    }
+    
+    const response = await axios.post(
+      `${API_BASE_URL}/institution/students/insights/`,
+      body,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching institution student insights:', error);
+    return { error: 'Failed to fetch student insights' };
+  }
+};
+
+/**
+ * Fetch All Students in Institution (institution-wide)
+ */
+export const fetchInstitutionStudents = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_BASE_URL}/institution/students/`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching institution students:', error);
+    return { error: 'Failed to fetch students' };
+  }
+};
+
+/**
+ * Fetch All Student Results in Institution
+ */
+export const fetchInstitutionAllStudentResults = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_BASE_URL}/institution/students/results/`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching institution student results:', error);
+    return { error: 'Failed to fetch results' };
+  }
+};
+
+/**
+ * Fetch Institution Teacher Dashboard (for PDF reports)
+ */
+export const fetchInstitutionTeacherDashboard = async (educatorId, testId) => {
+  try {
+    const token = localStorage.getItem('token');
+    console.log('[API] fetchInstitutionTeacherDashboard →', { educatorId, testId });
+    
+    const response = await axios.get(
+      `${API_BASE_URL}/institution/teacher/dashboard/`,
+      {
+        params: {
+          educator_id: educatorId,
+          testId: testId
+        },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching institution teacher dashboard:', error);
+    return { error: 'Failed to fetch teacher dashboard' };
+  }
+};
+
+/**
+ * Fetch Institution Teacher SWOT (for PDF reports)
+ */
+export const fetchInstitutionTeacherSWOT = async (educatorId, testId) => {
+  try {
+    const token = localStorage.getItem('token');
+    console.log('[API] fetchInstitutionTeacherSWOT →', { educatorId, testId });
+    
+    const response = await axios.get(
+      `${API_BASE_URL}/institution/teacher/swot/`,
+      {
+        params: {
+          educator_id: educatorId,
+          testId: testId
+        },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching institution teacher SWOT:', error);
+    return { error: 'Failed to fetch teacher SWOT' };
   }
 };
 

@@ -63,11 +63,17 @@ urlpatterns = [
 
     # Institution APIs (Manager viewing educators and their students)
     path('api/institution/educators/', institution_views.get_institution_educators, name='get_institution_educators'),
+    path('api/institution/students/', institution_views.get_institution_students, name='get_institution_students'),
+    path('api/institution/students/insights/', institution_views.get_institution_student_insights, name='get_institution_student_insights'),
+    path('api/institution/students/results/', institution_views.get_institution_all_student_results, name='get_institution_all_student_results'),
+    path('api/institution/teacher/dashboard/', institution_views.get_institution_teacher_dashboard, name='get_institution_teacher_dashboard'),
+    path('api/institution/teacher/swot/', institution_views.get_institution_teacher_swot, name='get_institution_teacher_swot'),
     path('api/institution/educator/<int:educator_id>/dashboard/', institution_views.get_institution_educator_dashboard, name='get_institution_educator_dashboard'),
     path('api/institution/educator/<int:educator_id>/students/results/', institution_views.get_institution_educator_students_result, name='get_institution_educator_students_result'),
     path('api/institution/educator/<int:educator_id>/swot/', institution_views.get_institution_educator_swot, name='get_institution_educator_swot'),
     path('api/institution/educator/<int:educator_id>/swot/tests/', institution_views.list_institution_educator_swot_tests, name='list_institution_educator_swot_tests'),
     path('api/institution/educator/<int:educator_id>/students/', institution_views.get_institution_educator_students, name='get_institution_educator_students'),
+    path('api/institution/educator/<int:educator_id>/students/insights/', institution_views.get_institution_educator_student_insights, name='get_institution_educator_student_insights'),
     # IMPORTANT: More specific routes must come before generic ones
     path('api/institution/educator/<int:educator_id>/students/create/', institution_views.create_institution_student, name='create_institution_student'),
     path('api/institution/educator/<int:educator_id>/students/reupload-responses/', institution_views.reupload_institution_student_responses, name='reupload_institution_student_responses'),

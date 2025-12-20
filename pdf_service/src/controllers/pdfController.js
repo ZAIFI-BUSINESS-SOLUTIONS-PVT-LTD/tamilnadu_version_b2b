@@ -8,6 +8,7 @@ export const generatePdf = async (req, res) => {
   // Accept multiple possible param names for classId (camelCase, snake_case, lowercase)
   const { studentId, testId } = req.query;
   const classId = req.query.classId || req.query.class_id || req.query.class || req.query.classid || req.query.classID;
+  const educatorId = req.query.educatorId || req.query.educator_id || req.query.educator || null;
   // Extract JWT token from Authorization header if present
   let jwtToken = undefined;
   const authHeader = req.headers.authorization;
@@ -16,11 +17,21 @@ export const generatePdf = async (req, res) => {
   }
   
   // Get origin from request headers
-  const origin = req.headers.origin || config.tenants.defaultOrigin;
+  // Priority: 1. origin header, 2. referer header, 3. default
+  let origin = req.headers.origin || req.headers.referer || config.tenants.defaultOrigin;
+  // If we have referer, extract the origin part (protocol + hostname)
+  if (!req.headers.origin && req.headers.referer) {
+    try {
+      const refererUrl = new URL(req.headers.referer);
+      origin = `${refererUrl.protocol}//${refererUrl.hostname}`;
+    } catch (err) {
+      // Invalid referer, use as-is
+    }
+  }
   
   try {
-    logger.info('PDF generation request received', { studentId, testId, classId, origin });
-    const result = await pdfService.generatePdf(studentId, testId, jwtToken, origin, classId);
+    logger.info('PDF generation request received', { studentId, testId, classId, origin, headers: { origin: req.headers.origin, referer: req.headers.referer } });
+    const result = await pdfService.generatePdf(studentId, testId, jwtToken, origin, classId, educatorId);
     
     // Handle S3 streaming if PDF exists in S3
     if (result.fromS3 && result.s3Key) {
@@ -57,6 +68,7 @@ export const generateBulkPdfZip = async (req, res) => {
   // Accept classId in different body formats
   const { studentIds, testId } = req.body;
   const classId = req.body.classId || req.body.class_id || req.body.class || req.body.classid || req.body.classID;
+  const educatorId = req.body.educatorId || req.body.educator_id || req.body.educator || null;
   let jwtToken = undefined;
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -67,11 +79,19 @@ export const generateBulkPdfZip = async (req, res) => {
   }
   
   // Get origin from request headers
-  const origin = req.headers.origin || config.tenants.defaultOrigin;
+  let origin = req.headers.origin || req.headers.referer || config.tenants.defaultOrigin;
+  if (!req.headers.origin && req.headers.referer) {
+    try {
+      const refererUrl = new URL(req.headers.referer);
+      origin = `${refererUrl.protocol}//${refererUrl.hostname}`;
+    } catch (err) {
+      // Invalid referer, use as-is
+    }
+  }
   
   try {
     logger.info('Bulk PDF zip generation request received', { studentCount: studentIds.length, testId, classId, origin });
-    const zipFilePath = await pdfService.generateBulkPdfZip(studentIds, testId, jwtToken, origin, classId);
+    const zipFilePath = await pdfService.generateBulkPdfZip(studentIds, testId, jwtToken, origin, classId, educatorId);
     const zipFilename = zipFilePath.split(path.sep).pop();
     const stat = fs.statSync(zipFilePath);
     res.setHeader('Content-Type', 'application/zip');
@@ -106,11 +126,20 @@ export const generateStudentSelfPdf = async (req, res) => {
   }
   
   // Get origin from request headers
-  const origin = req.headers.origin || config.tenants.defaultOrigin;
+  let origin = req.headers.origin || req.headers.referer || config.tenants.defaultOrigin;
+  if (!req.headers.origin && req.headers.referer) {
+    try {
+      const refererUrl = new URL(req.headers.referer);
+      origin = `${refererUrl.protocol}//${refererUrl.hostname}`;
+    } catch (err) {
+      // Invalid referer, use as-is
+    }
+  }
   
   try {
-    logger.info('Student self-report PDF generation request received', { testId, classId, origin });
-    const result = await pdfService.generateStudentSelfPdf(testId, jwtToken, origin, classId);
+    logger.info('Student self-report PDF generation request received', { testId, classId, origin, headers: { origin: req.headers.origin, referer: req.headers.referer } });
+    const educatorId = req.query.educatorId || req.query.educator_id || req.query.educator || null;
+    const result = await pdfService.generateStudentSelfPdf(testId, jwtToken, origin, classId, educatorId);
     
     // Handle S3 streaming if PDF exists in S3
     if (result.fromS3 && result.s3Key) {
@@ -149,11 +178,20 @@ export const generateTeacherSelfPdf = async (req, res) => {
   }
   
   // Get origin from request headers
-  const origin = req.headers.origin || config.tenants.defaultOrigin;
+  let origin = req.headers.origin || req.headers.referer || config.tenants.defaultOrigin;
+  if (!req.headers.origin && req.headers.referer) {
+    try {
+      const refererUrl = new URL(req.headers.referer);
+      origin = `${refererUrl.protocol}//${refererUrl.hostname}`;
+    } catch (err) {
+      // Invalid referer, use as-is
+    }
+  }
   
   try {
-    logger.info('Teacher self-report PDF generation request received', { testId, classId, origin });
-    const result = await pdfService.generateTeacherSelfPdf(testId, jwtToken, origin, classId);
+    logger.info('Teacher self-report PDF generation request received', { testId, classId, origin, headers: { origin: req.headers.origin, referer: req.headers.referer } });
+    const educatorId = req.query.educatorId || req.query.educator_id || req.query.educator || null;
+    const result = await pdfService.generateTeacherSelfPdf(testId, jwtToken, origin, classId, educatorId);
     
     // Handle S3 streaming if PDF exists in S3
     if (result.fromS3 && result.s3Key) {

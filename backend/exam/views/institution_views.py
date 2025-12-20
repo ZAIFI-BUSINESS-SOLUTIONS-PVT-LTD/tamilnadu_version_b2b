@@ -331,6 +331,469 @@ def get_institution_educator_students(request, educator_id):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+def get_institution_educator_student_insights(request, educator_id):
+    """
+    Fetch student insights for a specific student under an educator (institution view).
+    This is used when generating PDF reports from institution dashboard.
+    
+    Args:
+        educator_id: The ID of the educator
+        
+    Request body:
+        student_id: The student ID
+        test_num: The test number (0 for overall)
+        
+    Returns: Student insights including SWOT and overview data
+    """
+    try:
+        # Get the logged-in manager
+        manager_email = request.user.email
+        manager = Manager.objects.filter(email=manager_email).first()
+        
+        if not manager:
+            return Response({"error": "Manager not found"}, status=404)
+        
+        # Get the educator and verify they belong to the same institution
+        educator = Educator.objects.filter(id=educator_id).first()
+        
+        if not educator:
+            return Response({"error": "Educator not found"}, status=404)
+        
+        if educator.institution != manager.institution:
+            return Response({"error": "Unauthorized: Educator does not belong to your institution"}, status=403)
+        
+        # Get request parameters
+        student_id = request.data.get("student_id")
+        test_num = request.data.get("test_num", 0)
+        
+        if not student_id:
+            return Response({"error": "student_id is required"}, status=400)
+        
+        # Verify student belongs to educator's class
+        class_id = educator.class_id
+        student = Student.objects.filter(student_id=student_id, class_id=class_id).first()
+        
+        if not student:
+            return Response({"error": "Student not found in educator's class"}, status=404)
+        
+        # Fetch SWOT data
+        swot_data = {}
+        swot_record = SWOT.objects.filter(
+            user_id=student_id,
+            class_id=class_id,
+            test_num=test_num,
+            swot_parameter="swot"
+        ).first()
+        
+        if swot_record:
+            try:
+                swot_data = json.loads(swot_record.swot_value)
+            except json.JSONDecodeError:
+                logger.warning(f"Failed to parse SWOT data for student {student_id}")
+                swot_data = {}
+        
+        # Fetch overview data
+        overview_data = {}
+        overview_record = Overview.objects.filter(
+            student_id=student_id,
+            class_id=class_id,
+            test_num=test_num
+        ).first()
+        
+        if overview_record:
+            overview_data = {
+                "correct": overview_record.correct,
+                "incorrect": overview_record.incorrect,
+                "left_out": overview_record.left_out,
+                "attended": overview_record.attended,
+                "accuracy": overview_record.accuracy,
+                "total_questions": overview_record.total_questions
+            }
+        
+        return Response({
+            "swot": swot_data,
+            "overview": overview_data,
+            "student_id": student_id,
+            "class_id": class_id,
+            "test_num": test_num
+        }, status=200)
+        
+    except Exception as e:
+        logger.exception(f"Error in get_institution_educator_student_insights: {str(e)}")
+        return Response({"error": str(e)}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def get_institution_student_insights(request):
+    """
+    Fetch student insights directly using institution JWT (for PDF generation).
+    Institution JWT has access to all students under all educators in the institution.
+    
+    Request body:
+        student_id: The student ID
+        test_num: The test number (0 for overall)
+        educator_id: Optional - the educator ID (used for validation)
+        
+    Returns: Student insights including SWOT and overview data
+    """
+    try:
+        # Get the logged-in manager
+        manager_email = request.user.email
+        manager = Manager.objects.filter(email=manager_email).first()
+        
+        if not manager:
+            return Response({"error": "Manager not found"}, status=404)
+        
+        # Get request parameters
+        student_id = request.data.get("student_id")
+        test_num = request.data.get("test_num", 0)
+        educator_id = request.data.get("educator_id")
+        
+        if not student_id:
+            return Response({"error": "student_id is required"}, status=400)
+        
+        # Find student and verify they belong to an educator in this institution
+        student = Student.objects.filter(student_id=student_id).first()
+        
+        if not student:
+            return Response({"error": "Student not found"}, status=404)
+        
+        # Verify student's class belongs to an educator in this institution
+        educator = Educator.objects.filter(class_id=student.class_id).first()
+        
+        if not educator:
+            return Response({"error": "No educator found for student's class"}, status=404)
+        
+        if educator.institution != manager.institution:
+            return Response({"error": "Unauthorized: Student does not belong to your institution"}, status=403)
+        
+        # If educator_id is provided, verify it matches
+        if educator_id and str(educator.id) != str(educator_id):
+            # Check if the provided educator_id also belongs to this institution
+            provided_educator = Educator.objects.filter(id=educator_id).first()
+            if not provided_educator or provided_educator.institution != manager.institution:
+                return Response({"error": "Provided educator does not belong to your institution"}, status=403)
+        
+        # Fetch SWOT data
+        swot_data = {}
+        swot_record = SWOT.objects.filter(
+            user_id=student_id,
+            class_id=student.class_id,
+            test_num=test_num,
+            swot_parameter="swot"
+        ).first()
+        
+        if swot_record:
+            try:
+                swot_data = json.loads(swot_record.swot_value)
+            except json.JSONDecodeError:
+                logger.warning(f"Failed to parse SWOT data for student {student_id}")
+                swot_data = {}
+        
+        # Fetch overview data
+        overview_records = Overview.objects.filter(user_id=student_id, class_id=student.class_id)
+        
+        summary_map = {
+            'OP': ('Overall Performance', 'ChartLine'),
+            'TT': ('Tests Taken', 'ClipboardText'),
+            'IR': ('Improvement Rate', 'TrendUp'),
+            'CS': ('Consistency Score', 'Archive'),
+        }
+
+        summaryCardsData = [
+            {
+                "title": label,
+                "value": f"{r.metric_value}%" if key == 'OP' else r.metric_value,
+                "icon": icon
+            }
+            for r in overview_records
+            if (key := r.metric_name) in summary_map
+            for label, icon in [summary_map[key]]
+        ]
+        
+        # Key insights data (KS, AI, QR, CV)
+        metric_dict = {r.metric_name: r.metric_value for r in overview_records}
+
+        keyInsightsData = {
+            "keyStrengths": json.loads(metric_dict.get('KS', '[]')),
+            "areasForImprovement": json.loads(metric_dict.get('AI', '[]')),
+            "quickRecommendations": json.loads(metric_dict.get('QR', '[]')),
+            "yetToDecide": json.loads(metric_dict.get('CV', '[]')),
+        }
+        
+        overview_data = {
+            "summaryCardsData": summaryCardsData,
+            "keyInsightsData": keyInsightsData,
+        }
+        
+        return Response({
+            "swot": swot_data,
+            "overview": overview_data,
+            "student_id": student_id,
+            "class_id": student.class_id,
+            "test_num": test_num
+        }, status=200)
+        
+    except Exception as e:
+        logger.exception(f"Error in get_institution_student_insights: {str(e)}")
+        return Response({"error": str(e)}, status=500)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_institution_students(request):
+    """
+    Fetch all students in the institution (for PDF report validation).
+    
+    Returns: List of all students across all educators in the institution
+    """
+    try:
+        # Get the logged-in manager
+        manager_email = request.user.email
+        manager = Manager.objects.filter(email=manager_email).first()
+        
+        if not manager:
+            return Response({"error": "Manager not found"}, status=404)
+        
+        institution = manager.institution
+        
+        if not institution:
+            return Response({"error": "Manager has no assigned institution"}, status=400)
+        
+        # Get all educators in this institution
+        educators = Educator.objects.filter(institution=institution)
+        class_ids = [e.class_id for e in educators]
+        
+        # Fetch all students in these classes
+        students = Student.objects.filter(class_id__in=class_ids).values('student_id', 'name', 'dob', 'class_id')
+        
+        # Add institution to each student's data
+        students_with_inst = [
+            {**student, 'inst': institution}
+            for student in students
+        ]
+        
+        return Response({"students": students_with_inst}, status=200)
+        
+    except Exception as e:
+        logger.exception(f"Error in get_institution_students: {str(e)}")
+        return Response({"error": str(e)}, status=500)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_institution_all_student_results(request):
+    """
+    Fetch all student results across all educators in the institution.
+    
+    Returns: Results for all students in the institution
+    """
+    try:
+        # Get the logged-in manager
+        manager_email = request.user.email
+        manager = Manager.objects.filter(email=manager_email).first()
+        
+        if not manager:
+            return Response({"error": "Manager not found"}, status=404)
+        
+        institution = manager.institution
+        
+        if not institution:
+            return Response({"error": "Manager has no assigned institution"}, status=400)
+        
+        # Get all educators in this institution
+        educators = Educator.objects.filter(institution=institution)
+        class_ids = [e.class_id for e in educators]
+        
+        # Fetch all results for students in these classes
+        results = Result.objects.filter(class_id__in=class_ids).values(
+            'student_id', 'test_num', 'class_id',
+            'phy_score', 'chem_score', 'bot_score', 'zoo_score', 'bio_score',
+            'phy_correct', 'chem_correct', 'bot_correct', 'zoo_correct', 'bio_correct',
+            'phy_attended', 'chem_attended', 'bot_attended', 'zoo_attended', 'bio_attended',
+            'phy_total', 'chem_total', 'bot_total', 'zoo_total', 'bio_total'
+        )
+        
+        return Response({"results": list(results)}, status=200)
+        
+    except Exception as e:
+        logger.exception(f"Error in get_institution_all_student_results: {str(e)}")
+        return Response({"error": str(e)}, status=500)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def get_institution_teacher_dashboard(request):
+    """
+    Fetch teacher dashboard data for institution (class_id from educator).
+    Institution JWT has access to all educators, so we need educator_id or class_id.
+    
+    Query params (GET) or body (POST):
+        educator_id: The educator ID to get dashboard for
+        testId: The test ID/number (optional, 0 or 'Overall' for overall)
+        
+    Returns: Teacher dashboard data (same structure as educator dashboard)
+    """
+    try:
+        # Get the logged-in manager
+        manager_email = request.user.email
+        manager = Manager.objects.filter(email=manager_email).first()
+        
+        if not manager:
+            return Response({"error": "Manager not found"}, status=404)
+        
+        institution = manager.institution
+        
+        if not institution:
+            return Response({"error": "Manager has no assigned institution"}, status=400)
+        
+        # Get educator_id from query params or body
+        if request.method == 'GET':
+            educator_id = request.GET.get('educator_id') or request.GET.get('educatorId')
+            test_id = request.GET.get('testId') or request.GET.get('test_id') or '0'
+        else:
+            educator_id = request.data.get('educator_id') or request.data.get('educatorId')
+            test_id = request.data.get('testId') or request.data.get('test_id') or '0'
+        
+        if not educator_id:
+            return Response({"error": "educator_id is required"}, status=400)
+        
+        # Verify educator belongs to this institution
+        educator = Educator.objects.filter(id=educator_id).first()
+        
+        if not educator:
+            return Response({"error": "Educator not found"}, status=404)
+        
+        if educator.institution != institution:
+            return Response({"error": "Unauthorized: Educator does not belong to your institution"}, status=403)
+        
+        # Use educator's class_id and email for the dashboard
+        class_id = educator.class_id
+        educator_email = educator.email
+        
+        # Parse test_id
+        test_num = 0
+        if test_id and test_id != 'Overall':
+            try:
+                if isinstance(test_id, str) and 'Test' in test_id:
+                    test_num = int(test_id.split()[-1])
+                else:
+                    test_num = int(test_id)
+            except (ValueError, IndexError):
+                test_num = 0
+        
+        # Fetch dashboard data from Overview model (similar to educator endpoint)
+        from exam.models import Overview as OverviewModel
+        
+        overview_record = OverviewModel.objects.filter(
+            student_id=educator_email,
+            class_id=class_id,
+            test_num=test_num
+        ).first()
+        
+        dashboard_data = {}
+        if overview_record:
+            dashboard_data = {
+                "correct": overview_record.correct,
+                "incorrect": overview_record.incorrect,
+                "left_out": overview_record.left_out,
+                "attended": overview_record.attended,
+                "accuracy": overview_record.accuracy,
+                "total_questions": overview_record.total_questions
+            }
+        
+        return Response(dashboard_data, status=200)
+        
+    except Exception as e:
+        logger.exception(f"Error in get_institution_teacher_dashboard: {str(e)}")
+        return Response({"error": str(e)}, status=500)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def get_institution_teacher_swot(request):
+    """
+    Fetch teacher SWOT data for institution.
+    
+    Query params (GET) or body (POST):
+        educator_id: The educator ID
+        testId: The test ID (optional, 0 or 'Overall' for overall)
+        
+    Returns: SWOT data for the educator/teacher
+    """
+    try:
+        # Get the logged-in manager
+        manager_email = request.user.email
+        manager = Manager.objects.filter(email=manager_email).first()
+        
+        if not manager:
+            return Response({"error": "Manager not found"}, status=404)
+        
+        institution = manager.institution
+        
+        if not institution:
+            return Response({"error": "Manager has no assigned institution"}, status=400)
+        
+        # Get educator_id from query params or body
+        if request.method == 'GET':
+            educator_id = request.GET.get('educator_id') or request.GET.get('educatorId')
+            test_id = request.GET.get('testId') or request.GET.get('test_id') or '0'
+        else:
+            educator_id = request.data.get('educator_id') or request.data.get('educatorId')
+            test_id = request.data.get('testId') or request.data.get('test_id') or '0'
+        
+        if not educator_id:
+            return Response({"error": "educator_id is required"}, status=400)
+        
+        # Verify educator belongs to this institution
+        educator = Educator.objects.filter(id=educator_id).first()
+        
+        if not educator:
+            return Response({"error": "Educator not found"}, status=404)
+        
+        if educator.institution != institution:
+            return Response({"error": "Unauthorized: Educator does not belong to your institution"}, status=403)
+        
+        class_id = educator.class_id
+        educator_email = educator.email
+        
+        # Parse test_id
+        test_num = 0
+        if test_id and test_id != 'Overall':
+            try:
+                if isinstance(test_id, str) and 'Test' in test_id:
+                    test_num = int(test_id.split()[-1])
+                else:
+                    test_num = int(test_id)
+            except (ValueError, IndexError):
+                test_num = 0
+        
+        # Fetch SWOT record
+        swot_record = SWOT.objects.filter(
+            user_id=educator_email,
+            class_id=class_id,
+            test_num=test_num,
+            swot_parameter="swot"
+        ).first()
+        
+        swot_data = {}
+        if swot_record:
+            try:
+                swot_data = json.loads(swot_record.swot_value)
+            except json.JSONDecodeError:
+                logger.warning(f"Failed to parse SWOT data for educator {educator_email}")
+                swot_data = {}
+        
+        return Response({"swot": swot_data}, status=200)
+        
+    except Exception as e:
+        logger.exception(f"Error in get_institution_teacher_swot: {str(e)}")
+        return Response({"error": str(e)}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def create_institution_student(request, educator_id):
     """
     Create a new student for the educator's class (institution manager action).

@@ -270,7 +270,7 @@ class PdfService {
     }
   }
 
-  async generatePdf(studentId, testId, jwtToken, origin, classId = null) {
+  async generatePdf(studentId, testId, jwtToken, origin, classId = null, educatorId = null) {
     if (!this.isInitialized) {
       await this.initialize();
     }
@@ -350,7 +350,10 @@ class PdfService {
       // Build report URL using tenant-specific frontend URL
       // Format testId as "Test N" if it's just a number
       const formattedTestId = /^\d+$/.test(String(testId)) ? `Test ${testId}` : testId;
-      const reportURL = `${tenantUrls.frontend}/report?studentId=${encodeURIComponent(studentId)}&testId=${encodeURIComponent(formattedTestId)}`;
+      let reportURL = `${tenantUrls.frontend}/report?studentId=${encodeURIComponent(studentId)}&testId=${encodeURIComponent(formattedTestId)}`;
+      if (educatorId) {
+        reportURL += `&educatorId=${encodeURIComponent(educatorId)}`;
+      }
       logger.debug('Navigating to report URL', { url: reportURL, origin, frontendHost: new URL(tenantUrls.frontend).hostname, rawTestId: testId, formattedTestId });
 
       // Navigate to the page
@@ -449,7 +452,7 @@ class PdfService {
    * @param {string} classId - Optional class ID for S3 upload
    * @returns {Promise<string>} - Path to the generated zip file
    */
-  async generateBulkPdfZip(studentIds, testId, jwtToken, origin, classId = null) {
+  async generateBulkPdfZip(studentIds, testId, jwtToken, origin, classId = null, educatorId = null) {
     if (!this.isInitialized) {
       await this.initialize();
     }
@@ -471,7 +474,7 @@ class PdfService {
 
       for (const studentId of studentIds) {
         try {
-          const { filePath, filename } = await this.generatePdf(studentId, testId, jwtToken, origin, classId);
+          const { filePath, filename } = await this.generatePdf(studentId, testId, jwtToken, origin, classId, educatorId);
           archive.file(filePath, { name: filename });
         } catch (err) {
           logger.warn('Failed to generate PDF for student', { studentId, error: err.message });
@@ -579,7 +582,7 @@ class PdfService {
    * @param {string} origin
    * @param {string} classId - Optional class ID for S3 upload
    */
-  async generateStudentSelfPdf(testId, jwtToken, origin, classId = null) {
+  async generateStudentSelfPdf(testId, jwtToken, origin, classId = null, educatorId = null) {
     if (!this.isInitialized) {
       await this.initialize();
     }
@@ -644,7 +647,10 @@ class PdfService {
       await page.setViewport({ width: 1200, height: 800 });
       // Format testId as "Test N" if it's just a number
       const formattedTestId = /^\d+$/.test(String(sanitizedTestId)) ? `Test ${sanitizedTestId}` : sanitizedTestId;
-      const reportURL = `${tenantUrls.frontend}/student-report?testId=${encodeURIComponent(formattedTestId)}`;
+      let reportURL = `${tenantUrls.frontend}/student-report?testId=${encodeURIComponent(formattedTestId)}`;
+      if (educatorId) {
+        reportURL += `&educatorId=${encodeURIComponent(educatorId)}`;
+      }
       logger.debug('Navigating to student self-report URL', { url: reportURL, rawTestId: sanitizedTestId, formattedTestId });
       await page.goto(reportURL, {
         waitUntil: 'networkidle0',
@@ -688,7 +694,7 @@ class PdfService {
    * @param {string} origin
    * @param {string} classId - Optional class ID for S3 upload
    */
-  async generateTeacherSelfPdf(testId, jwtToken, origin, classId = null) {
+  async generateTeacherSelfPdf(testId, jwtToken, origin, classId = null, educatorId = null) {
     if (!this.isInitialized) {
       await this.initialize();
     }
@@ -753,7 +759,10 @@ class PdfService {
       await page.setViewport({ width: 1200, height: 800 });
       // Format testId as "Test N" if it's just a number
       const formattedTestId = /^\d+$/.test(String(sanitizedTestId)) ? `Test ${sanitizedTestId}` : sanitizedTestId;
-      const reportURL = `${tenantUrls.frontend}/teacher-report?testId=${encodeURIComponent(formattedTestId)}`;
+      let reportURL = `${tenantUrls.frontend}/teacher-report?testId=${encodeURIComponent(formattedTestId)}`;
+      if (educatorId) {
+        reportURL += `&educatorId=${encodeURIComponent(educatorId)}`;
+      }
       logger.debug('Navigating to teacher self-report URL', { url: reportURL, rawTestId: sanitizedTestId, formattedTestId });
       await page.goto(reportURL, {
         waitUntil: 'networkidle0',
