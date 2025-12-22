@@ -184,6 +184,36 @@ class PdfService {
   }
 
   /**
+   * Download PDF buffer from S3
+   * @param {string} s3Key - S3 key to download
+   * @returns {Promise<Buffer>} PDF buffer
+   */
+  async downloadFromS3(s3Key) {
+    if (!this.s3Client || !config.aws.s3Enabled) {
+      throw new Error('S3 client not available');
+    }
+
+    try {
+      const getObjectResponse = await this.s3Client.send(new GetObjectCommand({
+        Bucket: config.aws.bucketName,
+        Key: s3Key
+      }));
+
+      // Convert stream to buffer
+      const chunks = [];
+      for await (const chunk of getObjectResponse.Body) {
+        chunks.push(chunk);
+      }
+      const buffer = Buffer.concat(chunks);
+      logger.debug('PDF downloaded from S3', { s3Key, size: `${(buffer.length / 1024).toFixed(2)}KB` });
+      return buffer;
+    } catch (error) {
+      logger.error('Failed to download PDF from S3', { s3Key, error: error.message });
+      throw error;
+    }
+  }
+
+  /**
    * Decode JWT token to extract user information
    * @param {string} token - JWT token
    * @returns {Object|null} Decoded token payload or null if invalid
@@ -360,17 +390,6 @@ class PdfService {
       await page.goto(reportURL, {
         waitUntil: 'networkidle0',
         timeout: config.pdf.timeout
-      // Ensure frontend code that reads token from localStorage (axios calls)
-      // has access to the JWT when Puppeteer loads the page.
-      if (jwtToken) {
-        try {
-          await page.evaluateOnNewDocument((token) => {
-            try { localStorage.setItem('token', token); } catch (e) { /* noop */ }
-          }, jwtToken);
-        } catch (err) {
-          logger.warn('Failed to inject token into localStorage', { error: err.message });
-        }
-      }
       });
 
       // Wait for React app to be ready
@@ -485,8 +504,26 @@ class PdfService {
 
       for (const studentId of studentIds) {
         try {
-          const { filePath, filename } = await this.generatePdf(studentId, testId, jwtToken, origin, classId, educatorId);
-          archive.file(filePath, { name: filename });
+          const result = await this.generatePdf(studentId, testId, jwtToken, origin, classId, educatorId);
+          
+          // Handle PDF from S3 (already exists)
+          if (result.fromS3 && result.s3Key) {
+            try {
+              const pdfBuffer = await this.downloadFromS3(result.s3Key);
+              archive.append(pdfBuffer, { name: result.filename });
+              logger.debug('Added S3-cached PDF to zip', { studentId, s3Key: result.s3Key });
+            } catch (s3Err) {
+              logger.warn('Failed to download PDF from S3 for zip', { studentId, s3Key: result.s3Key, error: s3Err.message });
+            }
+          } else if (result.filePath) {
+            // Handle newly generated PDF (has local filePath)
+            archive.file(result.filePath, { name: result.filename });
+          } else if (result.buffer) {
+            // Handle PDF buffer directly
+            archive.append(result.buffer, { name: result.filename });
+          } else {
+            logger.warn('No valid PDF data to add to zip', { studentId });
+          }
         } catch (err) {
           logger.warn('Failed to generate PDF for student', { studentId, error: err.message });
         }

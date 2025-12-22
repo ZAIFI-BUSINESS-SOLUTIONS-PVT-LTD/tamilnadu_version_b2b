@@ -151,6 +151,9 @@ def get_student_swot(request):
         test_num = request.data.get("test_num")
         if test_num is None:
             return Response({"error": "Missing 'test_num' in request body"}, status=400)
+        # Debug: log received test_num and its type to help frontend/backend mismatch debugging
+        logger.info(f"get_student_swot called for student={student_id} raw_test_num={request.data.get('test_num')} type={type(request.data.get('test_num'))}")
+
         # Filter records using test_num and student/class info
         class_id = student.class_id
         record = SWOT.objects.filter(
@@ -161,6 +164,7 @@ def get_student_swot(request):
         ).first()
 
         if not record:
+            logger.info(f"get_student_swot: no SWOT record found for student={student_id} class={class_id} test_num={test_num}")
             return Response({"error": "SWOT record not found"}, status=404)
 
         return Response({

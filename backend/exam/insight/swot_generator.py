@@ -8,6 +8,8 @@ from exam.llm_call.prompts import swot_test_prompts as t_prompts
 from exam.models.swot import SWOT
 import re
 
+import pandas as pd
+
 from exam.graph_utils.knowledge_graph_manager import KnowledgeGraphManager
 import logging
 import sentry_sdk
@@ -136,7 +138,16 @@ def generate_all_test_swot_with_AI(db_name):
             future_to_metric = {}
             for metric_key, metric_data in all_metric_results.items():
                 # Check if metric_data is empty or all subjects have empty data
-                if not metric_data or all(not v or (isinstance(v, list) and len(v) == 0) for v in metric_data.values()):
+                # Handle both list and DataFrame values
+                def is_empty_value(v):
+                    if isinstance(v, pd.DataFrame):
+                        return v.empty
+                    elif isinstance(v, list):
+                        return len(v) == 0
+                    else:
+                        return not v
+                
+                if not metric_data or all(is_empty_value(v) for v in metric_data.values()):
                     # Use fallback message for empty data
                     logger.info(f"📭 No qualifying topics for {metric_key} - using fallback message")
                     insights_by_metric[metric_key] = {}
@@ -202,13 +213,21 @@ def generate_swot_data_with_AI(db_name, test_num):
         }
         
         insights_by_metric = {}
-        insights_by_metric = {}
         with ThreadPoolExecutor() as executor:
             future_to_metric = {}
             for metric_key, (analysis_key, prompt) in metric_prompt_mapping.items():
                 metric_data = results[analysis_key]
                 # Check if metric_data is empty or all subjects have empty data
-                if not metric_data or all(not v or (isinstance(v, list) and len(v) == 0) for v in metric_data.values()):
+                # Handle both list and DataFrame values
+                def is_empty_value(v):
+                    if isinstance(v, pd.DataFrame):
+                        return v.empty
+                    elif isinstance(v, list):
+                        return len(v) == 0
+                    else:
+                        return not v
+                
+                if not metric_data or all(is_empty_value(v) for v in metric_data.values()):
                     # Use fallback message for empty data
                     logger.info(f"📭 No qualifying topics for {metric_key} (test {test_num}) - using fallback message")
                     insights_by_metric[metric_key] = {}
