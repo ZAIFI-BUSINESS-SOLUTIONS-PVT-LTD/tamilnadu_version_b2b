@@ -607,7 +607,7 @@ export const fetcheducatorstudent = async () => {
 /**
  * Generate PDF Report for Teacher Self-Download
  */
-export const generateTeacherSelfPdfReport = async (testId, classId = null) => {
+export const generateTeacherSelfPdfReport = async (testId, classId = null, educatorId = null) => {
   try {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -616,6 +616,9 @@ export const generateTeacherSelfPdfReport = async (testId, classId = null) => {
     let url = `${PDF_SERVICE_URL}/generate-teacher-pdf?testId=${encodeURIComponent(testId)}`;
     if (classId) {
       url += `&classId=${encodeURIComponent(classId)}`;
+    }
+    if (educatorId) {
+      url += `&educatorId=${encodeURIComponent(educatorId)}`;
     }
     const response = await fetch(
       url,

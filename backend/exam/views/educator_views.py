@@ -13,22 +13,54 @@ from exam.models.swot import SWOT
 from exam.models.test_metadata import TestMetadata
 import logging
 import sentry_sdk
+import re
 
 logger = logging.getLogger(__name__)
 
 UPLOAD_DIR = "uploads/"
 
+# Helper to parse test_num from various formats (e.g., "Test 2" -> 2, "2" -> 2)
+def parse_test_num(test_input):
+    """Parse test_num from string formats like 'Test 2', 'test 2', '2', etc."""
+    if test_input is None:
+        return None
+    
+    # If already an integer, return it
+    if isinstance(test_input, int):
+        return test_input
+    
+    # Convert to string and try to extract number
+    test_str = str(test_input).strip()
+    
+    # Try direct integer conversion first
+    try:
+        return int(test_str)
+    except ValueError:
+        pass
+    
+    # Try to extract number from "Test N" or "test N" format
+    match = re.search(r'\d+', test_str)
+    if match:
+        return int(match.group())
+    
+    # If nothing works, return None
+    return None
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_educator_details(request):
     try:
-
         educator_email = request.user.email
         educator = Educator.objects.filter(email=educator_email).first()
-        name=educator.name
-        class_id=educator.class_id
+        
+        if not educator:
+            # Return empty/default data instead of error for non-educators
+            return JsonResponse({'name': '', "class_id": '', "inst": ''}, status=200)
+        
+        name = educator.name
+        class_id = educator.class_id
         inst = educator.institution
-        return JsonResponse({'name': name, "class_id":class_id, "inst": inst}, status=200)
+        return JsonResponse({'name': name, "class_id": class_id, "inst": inst}, status=200)
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -256,8 +288,10 @@ def get_educator_swot(request):
         if not educator:
             return Response({"error": "Student not found"}, status=404)
 
-        # Get test_num from the POST data
-        test_num = request.data.get("test_num")
+        # Get test_num from the POST data and parse it
+        test_num = parse_test_num(request.data.get("test_num"))
+        if test_num is None:
+            return Response({"error": "Invalid test_num format"}, status=400)
         
 
         # Filter records using test_num and student/class info
@@ -286,19 +320,18 @@ def get_educatorstudent_insights(request):
     try:
         # Extract form data from request.data instead of query_params
         student_id = request.data.get("student_id")
-        test_num = request.data.get("test_num")
+        test_num_raw = request.data.get("test_num")
         
-        logger.debug(f"[DEBUG] Received request data: student_id={student_id}, test_num={test_num}")
-        #print(f"[DEBUG] Received request data: student_id={student_id}, test_num={test_num}")
+        logger.debug(f"[DEBUG] Received request data: student_id={student_id}, test_num={test_num_raw}")
+        #print(f"[DEBUG] Received request data: student_id={student_id}, test_num={test_num_raw}")
 
-        if not student_id or test_num is None:
+        if not student_id or test_num_raw is None:
             return Response({"error": "Both 'student_id' and 'test_num' are required."}, status=400)
 
-        # Convert test_num to integer if it's not already
-        try:
-            test_num = int(test_num)
-        except (ValueError, TypeError):
-            return Response({"error": "test_num must be a valid integer"}, status=400)
+        # Parse test_num from various formats (e.g., "Test 2" -> 2)
+        test_num = parse_test_num(test_num_raw)
+        if test_num is None:
+            return Response({"error": "Invalid test_num format"}, status=400)
 
         # Fetch student
         student = Student.objects.filter(student_id=student_id).first()

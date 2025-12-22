@@ -360,6 +360,17 @@ class PdfService {
       await page.goto(reportURL, {
         waitUntil: 'networkidle0',
         timeout: config.pdf.timeout
+      // Ensure frontend code that reads token from localStorage (axios calls)
+      // has access to the JWT when Puppeteer loads the page.
+      if (jwtToken) {
+        try {
+          await page.evaluateOnNewDocument((token) => {
+            try { localStorage.setItem('token', token); } catch (e) { /* noop */ }
+          }, jwtToken);
+        } catch (err) {
+          logger.warn('Failed to inject token into localStorage', { error: err.message });
+        }
+      }
       });
 
       // Wait for React app to be ready

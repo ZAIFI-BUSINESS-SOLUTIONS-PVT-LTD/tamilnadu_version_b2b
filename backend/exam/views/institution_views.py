@@ -24,6 +24,33 @@ from io import TextIOWrapper
 
 logger = logging.getLogger(__name__)
 
+# Helper to parse test_num from various formats (e.g., "Test 2" -> 2, "2" -> 2)
+def parse_test_num(test_input):
+    """Parse test_num from string formats like 'Test 2', 'test 2', '2', etc."""
+    if test_input is None:
+        return None
+    
+    # If already an integer, return it
+    if isinstance(test_input, int):
+        return test_input
+    
+    # Convert to string and try to extract number
+    test_str = str(test_input).strip()
+    
+    # Try direct integer conversion first
+    try:
+        return int(test_str)
+    except ValueError:
+        pass
+    
+    # Try to extract number from "Test N" or "test N" format
+    match = re.search(r'\d+', test_str)
+    if match:
+        return int(match.group())
+    
+    # If nothing works, return None
+    return None
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -211,11 +238,12 @@ def get_institution_educator_swot(request, educator_id):
         if educator.institution != manager.institution:
             return Response({"error": "Unauthorized: Educator does not belong to your institution"}, status=403)
         
-        # Get test_num from request body
-        test_num = request.data.get("test_num")
+        # Get test_num from request body and parse it
+        test_num_raw = request.data.get("test_num")
+        test_num = parse_test_num(test_num_raw)
         
         if test_num is None:
-            return Response({"error": "test_num is required"}, status=400)
+            return Response({"error": "Invalid test_num format"}, status=400)
         
         # Get educator's email and class_id
         educator_email = educator.email
@@ -364,7 +392,8 @@ def get_institution_educator_student_insights(request, educator_id):
         
         # Get request parameters
         student_id = request.data.get("student_id")
-        test_num = request.data.get("test_num", 0)
+        test_num_raw = request.data.get("test_num", 0)
+        test_num = parse_test_num(test_num_raw)
         
         if not student_id:
             return Response({"error": "student_id is required"}, status=400)
@@ -447,7 +476,8 @@ def get_institution_student_insights(request):
         
         # Get request parameters
         student_id = request.data.get("student_id")
-        test_num = request.data.get("test_num", 0)
+        test_num_raw = request.data.get("test_num", 0)
+        test_num = parse_test_num(test_num_raw)
         educator_id = request.data.get("educator_id")
         
         if not student_id:
@@ -672,36 +702,43 @@ def get_institution_teacher_dashboard(request):
         class_id = educator.class_id
         educator_email = educator.email
         
-        # Parse test_id
-        test_num = 0
-        if test_id and test_id != 'Overall':
-            try:
-                if isinstance(test_id, str) and 'Test' in test_id:
-                    test_num = int(test_id.split()[-1])
-                else:
-                    test_num = int(test_id)
-            except (ValueError, IndexError):
-                test_num = 0
-        
-        # Fetch dashboard data from Overview model (similar to educator endpoint)
+        # Fetch dashboard data from Overview model (same pattern as educator endpoint)
         from exam.models import Overview as OverviewModel
+        import json
         
-        overview_record = OverviewModel.objects.filter(
-            student_id=educator_email,
-            class_id=class_id,
-            test_num=test_num
-        ).first()
+        records = OverviewModel.objects.filter(user_id=educator_email, class_id=class_id)
         
-        dashboard_data = {}
-        if overview_record:
-            dashboard_data = {
-                "correct": overview_record.correct,
-                "incorrect": overview_record.incorrect,
-                "left_out": overview_record.left_out,
-                "attended": overview_record.attended,
-                "accuracy": overview_record.accuracy,
-                "total_questions": overview_record.total_questions
+        summary_map = {
+            'OP': ('Overall Performance', 'ChartLine'),
+            'TT': ('Tests Taken', 'ClipboardText'),
+            'IR': ('Improvement Rate', 'TrendUp'),
+            'CS': ('Consistency Score', 'Archive'),
+        }
+        
+        summaryCardsData = [
+            {
+                "title": label,
+                "value": f"{r.metric_value}%" if key == 'OP' else r.metric_value,
+                "icon": icon
             }
+            for r in records
+            if (key := r.metric_name) in summary_map
+            for label, icon in [summary_map[key]]
+        ]
+        
+        metric_dict = {r.metric_name: r.metric_value for r in records}
+        
+        keyInsightsData = {
+            "keyStrengths": json.loads(metric_dict.get('KS', '[]')),
+            "areasForImprovement": json.loads(metric_dict.get('AI', '[]')),
+            "quickRecommendations": json.loads(metric_dict.get('QR', '[]')),
+            "yetToDecide": json.loads(metric_dict.get('CV', '[]')),
+        }
+        
+        dashboard_data = {
+            "summaryCardsData": summaryCardsData,
+            "keyInsightsData": keyInsightsData
+        }
         
         return Response(dashboard_data, status=200)
         

@@ -42,6 +42,11 @@ export default function TeacherReport() {
     const [testId, setTestId] = useState(null);
     const [educatorId, setEducatorId] = useState(null);
     const [studentResults, setStudentResults] = useState([]);
+    
+    // Track loading state for all data sources
+    const [dashboardLoaded, setDashboardLoaded] = useState(false);
+    const [swotLoaded, setSwotLoaded] = useState(false);
+    const [resultsLoaded, setResultsLoaded] = useState(false);
 
     // Fetch educator user data
     const { userData: educatorInfo, isLoading: isEducatorLoading } = useUserData(fetcheducatordetail, { name: '', inst: '' });
@@ -49,100 +54,118 @@ export default function TeacherReport() {
     // Extract testId and educatorId from query params once on mount
     useEffect(() => {
         const query = new URLSearchParams(window.location.search);
-        setTestId(query.get("testId"));
-        setEducatorId(query.get("educatorId"));
+        const extractedTestId = query.get("testId");
+        const extractedEducatorId = query.get("educatorId");
+        console.log('[TeacherReport] URL Parameters:', { 
+            extractedTestId, 
+            extractedEducatorId, 
+            fullSearch: window.location.search 
+        });
+        setTestId(extractedTestId);
+        setEducatorId(extractedEducatorId);
     }, []);
 
     // Check if this is institution view
     const isInstitutionView = !!educatorId;
 
-    // Fetch dashboard data when we have a testId
+    // Unified data fetch for dashboard, SWOT and student results
     useEffect(() => {
         if (!testId) return;
 
         let mounted = true;
-        (async () => {
+        console.log('[TeacherReport] Fetching all report data...', { testId, isInstitutionView });
+
+        const fetchAllData = async () => {
             try {
+                // Dashboard
                 let dash;
                 if (isInstitutionView) {
                     dash = await fetchInstitutionTeacherDashboard(educatorId, testId);
                 } else {
-                    dash = await getEducatorDashboardData(testId);
+                    dash = { summaryCardsData: [] };
                 }
+
                 if (!mounted) return;
                 setDashboard(dash);
-                setError(null);
-            } catch (err) {
-                if (!mounted) return;
-                setError("Failed to load teacher report data");
-            } finally {
-                if (typeof window !== "undefined") window.__PDF_READY__ = true;
-            }
-        })();
 
-        return () => {
-            mounted = false;
-        };
-    }, [testId, educatorId, isInstitutionView]);
-
-    // Fetch SWOT data when we have a testId
-    useEffect(() => {
-        if (!testId) return;
-
-        let mounted = true;
-        (async () => {
-            try {
+                // SWOT
                 let swotData;
                 if (isInstitutionView) {
                     swotData = await fetchInstitutionTeacherSWOT(educatorId, testId);
                 } else {
-                    swotData = await fetchEducatorSWOT(testId);
+                    try {
+                        swotData = await fetchEducatorSWOT(testId);
+                    } catch (err) {
+                        console.warn('[TeacherReport] SWOT data not available, will skip:', err);
+                        swotData = null;
+                    }
                 }
                 if (!mounted) return;
-                // API may return an object with a `swot` key or the raw payload
                 const raw = swotData && swotData.swot ? swotData.swot : swotData;
                 setSwot(transformSwotData(raw));
-            } catch (err) {
-                if (!mounted) return;
-                setSwot(null);
-            }
-        })();
 
-        return () => {
-            mounted = false;
-        };
-    }, [testId, educatorId, isInstitutionView]);
-
-    // Fetch and normalize all student results data
-    useEffect(() => {
-        if (!testId) return;
-
-        (async () => {
-            try {
+                // Student results
                 let results;
                 if (isInstitutionView) {
                     results = await fetchInstitutionAllStudentResults();
                 } else {
-                    results = await fetchEducatorAllStudentResults(testId);
+                    results = await fetchEducatorAllStudentResults();
                 }
-                // API may return an array or an object like { results: [...] }
+                if (!mounted) return;
                 let arr = [];
                 if (Array.isArray(results)) {
                     arr = results;
                 } else if (results && Array.isArray(results.results)) {
                     arr = results.results;
                 } else if (results && Array.isArray(results.data)) {
-                    // some endpoints use `data` key
                     arr = results.data;
                 }
                 console.log("Normalized student results array (length=" + arr.length + "):", arr);
                 setStudentResults(arr);
+
+                setError(null);
             } catch (err) {
-                console.error("Failed to fetch student results:", err);
-                setStudentResults([]);
+                console.error('[TeacherReport] Error fetching report data:', err);
+                // Keep partial data where possible; surface an error message for debugging
+                setError(err.message || 'Failed to load teacher report data');
+            } finally {
+                // Always mark ready for PDF generation (matches StudentReport pattern)
+                if (typeof window !== 'undefined') {
+                    console.log('[TeacherReport] Setting __PDF_READY__ (finally)');
+                    window.__PDF_READY__ = true;
+                }
+                if (mounted) {
+                    setDashboardLoaded(true);
+                    setSwotLoaded(true);
+                    setResultsLoaded(true);
+                }
             }
-        })();
+        };
+
+        fetchAllData();
+
+        return () => { mounted = false; };
     }, [testId, educatorId, isInstitutionView]);
+    
+    // Set __PDF_READY__ flag only when all data is loaded OR if there's an error
+    useEffect(() => {
+        if (dashboardLoaded && swotLoaded && resultsLoaded) {
+            console.log('[TeacherReport] All data loaded, setting __PDF_READY__');
+            if (typeof window !== 'undefined') {
+                window.__PDF_READY__ = true;
+            }
+        }
+    }, [dashboardLoaded, swotLoaded, resultsLoaded]);
+    
+    // Also set __PDF_READY__ on error to prevent PDF service timeout
+    useEffect(() => {
+        if (error) {
+            console.log('[TeacherReport] Error occurred, setting __PDF_READY__');
+            if (typeof window !== 'undefined') {
+                window.__PDF_READY__ = true;
+            }
+        }
+    }, [error]);
     // Derive subject-wise buckets (strengths/weaknesses/opportunities)
     const { subjectData, sortedSubjectList } = useMemo(() => {
         const data = {};
@@ -340,12 +363,17 @@ export default function TeacherReport() {
 
     // Quick failure / loading states
     if (error) {
-        if (typeof window !== "undefined") window.__PDF_READY__ = true;
         return <div className="p-8 text-center text-red-600">{error}</div>;
     }
 
-    if (!dashboard) {
+    // Show loading only if testId exists but dashboard hasn't loaded yet
+    if (testId && !dashboard && !dashboardLoaded) {
         return <div className="p-8 text-center text-gray-600">Generating teacher report...</div>;
+    }
+    
+    // If no testId yet, show minimal loading
+    if (!testId) {
+        return <div className="p-8 text-center text-gray-600">Loading...</div>;
     }
 
     const summaryCards = dashboard?.summaryCardsData || [];
