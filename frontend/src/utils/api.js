@@ -920,6 +920,32 @@ export const fetchInstitutionTeacherSWOT = async (educatorId, testId) => {
 };
 
 /**
+ * Fetch Test Student Performance (Institution View)
+ * Returns detailed question-level data for all students who attended a specific test
+ */
+export const fetchInstitutionTestStudentPerformance = async (educatorId, testNum) => {
+  try {
+    const token = localStorage.getItem('token');
+    console.log('[API] fetchInstitutionTestStudentPerformance →', { educatorId, testNum });
+    
+    const response = await axios.get(
+      `${API_BASE_URL}/institution/educator/${educatorId}/test/${testNum}/student-performance/`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching test student performance:', error);
+    return { error: error.response?.data?.error || 'Failed to fetch test performance data' };
+  }
+};
+
+/**
  * Create a new student (Institution View)
  */
 export const createInstitutionStudent = async (educatorId, payload) => {

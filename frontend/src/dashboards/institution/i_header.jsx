@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlignLeft, Home, User, FileText, Target, UploadCloud, ChevronRight, ChevronDown } from 'lucide-react';
+import { AlignLeft, Home, User, FileText, Target, UploadCloud, ChevronRight, ChevronDown, BarChart3 } from 'lucide-react';
 import { useInstitution } from './index.jsx';
 import DesktopSidebar from '../components/header/DesktopSidebar.jsx';
 import UserDropdown from '../components/header/UserDropDown.jsx';
@@ -38,6 +38,12 @@ const InstitutionHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
       icon: <User size={20} />,
       text: 'Classrooms',
       activePattern: /^\/institution\/students/
+    },
+    {
+      to: '/institution/test-performance',
+      icon: <BarChart3 size={20} />,
+      text: 'Test Performance',
+      activePattern: /^\/institution\/test-performance/
     },
     {
       to: '/institution/upload',

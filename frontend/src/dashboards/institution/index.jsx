@@ -90,3 +90,4 @@ export const IDashboard = () => {
 export { default as IAnalysis } from './i_analysis.jsx';
 export { default as IStudentDetails } from './i_studentdetails.jsx';
 export { default as IUpload } from './i_upload.jsx';
+export { default as ITestPerformance } from './i_testperformance.jsx';
