@@ -38,10 +38,7 @@ CORS_ALLOW_CREDENTIALS = True
 
 # === Proxy SSL Configuration (for ALB/ACM) ===
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-CSRF_TRUSTED_ORIGINS = [
-    'https://tamilnaduapi.inzighted.com',
-    'https://tamilnadu.inzighted.com',
-]
+CSRF_TRUSTED_ORIGINS = _parse_env_list('CSRF_TRUSTED_ORIGINS') or []
 SECURE_SSL_REDIRECT = False  # ALB handles HTTPS redirect
 
 # === Email Configuration (from environment) ===

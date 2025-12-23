@@ -123,7 +123,7 @@ const config = {
   // Tenant Configuration
   tenants: {
     config: tenantConfig,
-    defaultOrigin: 'https://tamilnadu.inzighted.com'
+    defaultOrigin: process.env.PDF_TENANTS_DEFAULT_ORIGIN || 'https://tamilnadu.inzighted.com'
   },
 
   // AWS S3 Configuration
