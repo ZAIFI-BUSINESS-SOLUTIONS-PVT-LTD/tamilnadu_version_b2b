@@ -1,26 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  TextAlignLeft,
-  House,
-  UploadSimple,
-  Student,
-  Files,
-  CaretDown,
-  CaretRight,
-  ChalkboardTeacher,
+  AlignLeft,
+  Home,
+  User,
+  FileText,
+  ChevronDown,
+  ChevronRight,
+  GraduationCap,
   Target,
+  MessageCircle,
   List
-} from "@phosphor-icons/react";
-import { useUserData } from '../components/hooks/z_header/z_useUserData';
-import { fetcheducatordetail, fetchAvailableSwotTests_Educator, fetcheducatorstudent } from '../../utils/api';
-import HeaderBase from '../shared/header/HeaderBase.jsx';
-import UserDropdown from '../shared/header/UserDropDown.jsx';
-import DesktopSidebar from '../shared/header/DesktopSidebar.jsx';
-import MobileSidebar from '../shared/header/MobileDock.jsx';
+} from "lucide-react";
+import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
+import { fetcheducatordetail, fetchAvailableSwotTests_Educator, fetcheducatorstudent } from '../../utils/api.js';
+import UserDropdown from '../components/header/UserDropDown.jsx';
+import DesktopSidebar from '../components/header/DesktopSidebar.jsx';
 import TeacherReportModal from './components/e_teacherreport.jsx';
 import StudentReportModal from './components/e_studentreport.jsx';
-import Logo from '../../assets/images/logo.svg';
+import FeedbackModal from '../components/feedback/FeedbackModal.jsx';
+import EducatorHeaderMobile from './e_header-mobile.jsx';
 
 /**
  * EducatorHeader Component
@@ -38,12 +37,10 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
   // Fetch educator user data using a custom hook
   const { userData: educatorInfo, isLoading } = useUserData(fetcheducatordetail, { name: '', inst: '' });
 
-  // State for controlling the visibility of the mobile sidebar
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
   // States for controlling the visibility of report modals
   const [showStudentReportModal, setShowStudentReportModal] = useState(false);
   const [showTeacherReportModal, setShowTeacherReportModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   // State for controlling the collapsed state of the 'Reports' section in the sidebar
   const [isReportsCollapsed, setIsReportsCollapsed] = useState(true);
@@ -68,25 +65,19 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
   const sidebarItems = [
     {
       to: '/educator/dashboard',
-      icon: <House weight="regular" size={20} />,
+      icon: <Home size={20} />,
       text: 'Home',
       activePattern: /^\/educator\/dashboard/
     },
     {
-      to: '/educator/upload',
-      icon: <UploadSimple weight="regular" size={20} />,
-      text: 'Upload',
-      activePattern: /^\/educator\/upload/
-    },
-    {
       to: '/educator/swot',
-      icon: <Target weight="regular" size={20} />,
-      text: 'SWOT',
+      icon: <Target size={20} />,
+      text: 'Analysis',
       activePattern: /^\/educator\/swot/
     },
     {
       to: '/educator/students',
-      icon: <Student weight="regular" size={20} />,
+      icon: <User size={20} />,
       text: 'Students',
       activePattern: /^\/educator\/students/
     },
@@ -105,12 +96,12 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
    */
   const reportItems = [
     {
-      icon: <Student size={20} />,
+      icon: <User size={20} />,
       text: 'Student Report',
       onClick: () => setShowStudentReportModal(true)
     },
     {
-      icon: <ChalkboardTeacher size={20} />,
+      icon: <GraduationCap size={20} />,
       text: 'Teacher Report',
       onClick: () => setShowTeacherReportModal(true)
     }
@@ -122,7 +113,7 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
    */
   const additionalItems = [
     {
-      icon: <Files size={20} weight={isReportsCollapsed ? 'regular' : 'fill'} />,
+      icon: <FileText size={20} />,
       text: 'Reports',
       isParent: true,
       isCollapsed: isReportsCollapsed,
@@ -134,10 +125,11 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
           setIsReportsCollapsed(!isReportsCollapsed);
         }
       },
-      caretIcon: isReportsCollapsed ? <CaretRight size={16} /> : <CaretDown size={16} />,
-  // Always provide the children for mobile dock popups. Desktop will respect `isCollapsed`.
-  children: reportItems
-    }
+      caretIcon: isReportsCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />,
+      // Always provide the children for mobile dock popups. Desktop will respect `isCollapsed`.
+      children: reportItems
+    },
+    // Feedback moved into user dropdown
   ];
 
   /**
@@ -200,39 +192,9 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
       {showTeacherReportModal && (
         <TeacherReportModal onClose={() => setShowTeacherReportModal(false)} />
       )}
-
-      {/* Mobile Header (visible on small screens) */}
-      <HeaderBase isMobile>
-        <div className="flex items-center justify-between w-full py-3">
-          {/* App Logo for Mobile (left aligned) */}
-          <div className="flex items-center">
-            <img
-              src={Logo}
-              alt="InzightEd Logo"
-              className="h-7 pt-1"
-            />
-          </div>
-
-          {/* Mobile Notification and User Dropdown */}
-          <div className="flex items-center gap-3">
-            {/* User Dropdown for Mobile */}
-            <UserDropdown
-              userInfo={educatorInfo}
-              onLogout={handleLogout}
-              type="educator"
-            />
-          </div>
-        </div>
-      </HeaderBase>
-
-      {/* Mobile Sidebar Component */}
-      <MobileSidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        items={sidebarItems}
-        additionalItems={additionalItems}
-        onLogout={handleLogout}
-      />
+      {showFeedbackModal && (
+        <FeedbackModal onClose={() => setShowFeedbackModal(false)} userType="educator" />
+      )}
 
       {/* Desktop Layout (visible on medium and larger screens) */}
       <div className="hidden md:flex">
@@ -247,9 +209,9 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
 
         {/* Desktop Header Bar */}
         <header
-          className="bg-white fixed top-0 right-0 z-30 h-20 flex items-center justify-between transition-all duration-300 px-8 border-b border-gray-200" // Added border-b for better separation
+          className="bg-white fixed top-0 right-0 z-30 h-20 flex items-center justify-between transition-all duration-300 px-8 border-b border-gray-200"
           style={{
-            left: isSidebarCollapsed ? "5rem" : "16rem", // Adjusts based on sidebar collapse state
+            left: isSidebarCollapsed ? "5rem" : "16rem",
           }}
         >
           <div className="flex items-center gap-4">
@@ -259,13 +221,13 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
               className="btn btn-sm h-10 w-10 btn-square bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 flex items-center justify-center transition-colors"
               aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
-              <TextAlignLeft size={20} />
+              <AlignLeft size={20} />
             </button>
 
             {/* Greeting and Current Date */}
             <div className="flex flex-col">
               <h1 className="text-2xl font-semibold text-gray-800 font-poppins">
-                {getGreeting()}, <span className="text-blue-600">{isLoading ? "Educator" : educatorInfo.name.split(' ')[0]}</span>
+                {getGreeting()}, <span className="text-blue-600">{isLoading ? "Educator" : (educatorInfo?.name?.split?.(' ')[0] ?? 'Educator')}</span>
               </h1>
               <p className="text-sm text-gray-500">
                 {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -274,9 +236,6 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Notifications Bell Icon and Dropdown (Desktop) */}
-            {/* notifications removed from desktop header */}
-
             {/* Separator */}
             <div className="h-8 w-px bg-gray-200 mx-1"></div>
 
@@ -285,12 +244,16 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
               <UserDropdown
                 userInfo={educatorInfo}
                 onLogout={handleLogout}
+                onFeedback={() => setShowFeedbackModal(true)}
                 type="educator"
               />
             </div>
           </div>
         </header>
       </div>
+
+      {/* Mobile Header component (kept separate) */}
+      <EducatorHeaderMobile />
     </>
   );
 };

@@ -2,13 +2,33 @@ import React, { useEffect, useState } from 'react';
 import { fetchEducatorAllStudentResults, fetcheducatorstudent } from '../../../utils/api';
 import Table from '../../components/ui/table.jsx';
 
-const EStudentListMock = () => {
-    const [rawResults, setRawResults] = useState([]);
-    const [loading, setLoading] = useState(true);
+// Accept optional props so parent components (like Institution dashboard)
+// can supply `rawResults` and `studentNameMap` directly and avoid the
+// educator-scoped API calls which require an educator token.
+const EStudentListMock = ({ rawResults: propRawResults = null, studentNameMap: propStudentNameMap = null }) => {
+    const [rawResults, setRawResults] = useState(propRawResults || []);
+    const [loading, setLoading] = useState(!propRawResults);
     const [error, setError] = useState(null);
-    const [studentNameMap, setStudentNameMap] = useState({});
+    const [studentNameMap, setStudentNameMap] = useState(propStudentNameMap || {});
 
     useEffect(() => {
+        // If parent supplied results, skip fetching from educator endpoints.
+        if (propRawResults) {
+            setRawResults(propRawResults);
+            // Build a simple name map from provided results to avoid educator name API call
+            try {
+                const map = {};
+                propRawResults.forEach(r => {
+                    if (r.student_id && r.student_name) map[r.student_id] = r.student_name;
+                });
+                if (Object.keys(map).length) setStudentNameMap(map);
+            } catch (e) {
+                // ignore
+            }
+            setLoading(false);
+            return;
+        }
+
         const fetchResults = async () => {
             try {
                 const results = await fetchEducatorAllStudentResults();
@@ -25,25 +45,29 @@ const EStudentListMock = () => {
             }
         };
 
-
-        const fetchNames = async () => {
-            try {
-                const res = await fetcheducatorstudent();
-                if (res && Array.isArray(res.students)) {
-                    const map = {};
-                    res.students.forEach(s => {
-                        map[s.student_id] = s.name;
-                    });
-                    setStudentNameMap(map);
+        // If parent supplied names map, skip fetching names.
+        if (propStudentNameMap) {
+            setStudentNameMap(propStudentNameMap);
+        } else {
+            const fetchNames = async () => {
+                try {
+                    const res = await fetcheducatorstudent();
+                    if (res && Array.isArray(res.students)) {
+                        const map = {};
+                        res.students.forEach(s => {
+                            map[s.student_id] = s.name;
+                        });
+                        setStudentNameMap(map);
+                    }
+                } catch (err) {
+                    console.error("Error fetching student names:", err);
                 }
-            } catch (err) {
-                console.error("Error fetching student names:", err);
-            }
-        };
+            };
+            fetchNames();
+        }
 
         fetchResults();
-        fetchNames();
-    }, []);
+    }, [propRawResults, propStudentNameMap]);
 
     if (loading) {
         return (
@@ -92,11 +116,11 @@ const EStudentListMock = () => {
         { field: 'student_name', label: 'Student Name', sortable: false, headerClass: 'text-left' },
         { field: 'phy_score', label: 'Physics', sortable: false, headerClass: 'text-center' },
         { field: 'chem_score', label: 'Chemistry', sortable: false, headerClass: 'text-center' },
+        { field: 'bio_score', label: 'Biology', sortable: false, headerClass: 'text-center' },
         { field: 'bot_score', label: 'Botany', sortable: false, headerClass: 'text-center' },
         { field: 'zoo_score', label: 'Zoology', sortable: false, headerClass: 'text-center' },
-        { field: 'bio_score', label: 'Biology', sortable: false, headerClass: 'text-center' },
         { field: 'total_score', label: 'Total', sortable: false, headerClass: 'text-center' },
-        { field: 'improvement_rate', label: 'Improvement Rate', sortable: false, headerClass: 'text-center' },
+        { field: 'improvement_rate', label: 'Score Improvement', sortable: false, headerClass: 'text-center' },
     ];
 
     // Build a map of previous test scores for each student
@@ -135,11 +159,11 @@ const EStudentListMock = () => {
             <tr key={test.student_id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-left">{test.student_id}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-left">{studentNameMap[test.student_id] || test.student_name || `Student ${test.student_id}`}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.phy_score}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.chem_score}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.bot_score}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.zoo_score}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.bio_score ?? 0}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.phy_score || "-"}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.chem_score || "-"}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.bio_score || "-"}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.bot_score || "-"}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.zoo_score || "-"}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.total_score}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{badge}</td>
             </tr>

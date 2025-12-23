@@ -93,7 +93,7 @@ def analyse_questions(class_id, test_num, subject):
         status_obj.logs += f"✅ Analysis complete for {current_subject}\n"
         status_obj.save()
 
-    status_obj.status = "Successful"
+    # Do not mark the test as Successful here; downstream dashboard update will mark final completion
     status_obj.logs += f"✅ Analysis, feedback, and error data stored successfully for class {class_id}, test {test_num}.\n"
     status_obj.save()
     logger.info(f"✅ Analysis, feedback, and error data stored successfully for class {class_id}, test {test_num}.")

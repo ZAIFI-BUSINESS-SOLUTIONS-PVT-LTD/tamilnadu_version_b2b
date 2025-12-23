@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList, ComposedChart, Line
 } from "recharts";
-import { fetchEducatorStudentInsights, fetcheducatorstudent, fetchEducatorAllStudentResults } from "../../utils/api";
+import { fetchEducatorStudentInsights, fetcheducatorstudent, fetchEducatorAllStudentResults, fetchInstitutionStudents, fetchInstitutionAllStudentResults, fetchInstitutionStudentInsights } from "../../utils/api";
 
 // --- Dummy chart data constants for educator reports ---
 const DUMMY_SUBJECT_TOTALS = [
@@ -79,9 +79,17 @@ export default function Report() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // Extract all URL parameters first
     const query = new URLSearchParams(window.location.search);
     const studentId = query.get("studentId");
     const test = query.get("testId");
+    const educatorId = query.get("educatorId"); // Get educatorId for institution view
+    
+    // Check if this is an institution view (educatorId present)
+    const isInstitutionView = !!educatorId;
+    
+    console.log('[Report] URL Parameters:', { studentId, test, educatorId, isInstitutionView });
+    
     let testNum = 0;
     if (test && test !== "Overall") {
       testNum = Number(test);
@@ -99,25 +107,47 @@ export default function Report() {
       return;
     }
 
-    // Fetch all report data in parallel (educator endpoints)
+    // Fetch all report data in parallel
     const fetchAllData = async () => {
       try {
-        // Fetch student details (educator endpoint)
-        const studentsList = await fetcheducatorstudent();
-        const studentDetails = (studentsList.students || []).find(s => String(s.student_id) === String(studentId)) || {};
+        console.log('[Report] Using endpoints:', isInstitutionView ? 'INSTITUTION' : 'EDUCATOR');
+        
+        // Fetch student details (use institution-wide endpoint if educatorId present)
+        let studentsList;
+        if (isInstitutionView) {
+          console.log('[Report] Fetching institution students list');
+          studentsList = await fetchInstitutionStudents();
+        } else {
+          console.log('[Report] Fetching educator students list');
+          studentsList = await fetcheducatorstudent();
+        }
+        const studentsArray = Array.isArray(studentsList) ? studentsList : (Array.isArray(studentsList.students) ? studentsList.students : []);
+        const studentDetails = studentsArray.find(s => String(s.student_id) === String(studentId)) || {};
         if (!studentDetails.student_id) throw new Error("Student not found in educator's list");
 
-        // Fetch dashboard/insights (educator endpoint)
-        const dashboard = await fetchEducatorStudentInsights(studentId, testNum);
-        console.log('fetchEducatorStudentInsights data:', dashboard);
+        // Fetch dashboard/insights (use institution-wide endpoint if educatorId present)
+        let dashboard;
+        if (isInstitutionView) {
+          console.log('[Report] Fetching institution student insights for educatorId:', educatorId);
+          dashboard = await fetchInstitutionStudentInsights(studentId, testNum, educatorId);
+        } else {
+          console.log('[Report] Fetching educator student insights');
+          dashboard = await fetchEducatorStudentInsights(studentId, testNum);
+        }
+        console.log('Fetched student insights data:', dashboard);
         if (dashboard?.error) throw new Error(dashboard.error);
 
         // Use SWOT from EducatorStudentInsights (dashboard)
         const swotRaw = dashboard.swot || {};
         const swotData = transformSwotData(swotRaw);
 
-        // Fetch all student results for educator (for number of tests attended & subject marks)
-        const allResults = await fetchEducatorAllStudentResults();
+        // Fetch all student results (use institution-wide endpoint if educatorId present)
+        let allResults;
+        if (isInstitutionView) {
+          allResults = await fetchInstitutionAllStudentResults();
+        } else {
+          allResults = await fetchEducatorAllStudentResults();
+        }
         // Filter results for this student
         let studentResultsArr = [];
         if (Array.isArray(allResults?.results)) {
@@ -131,9 +161,7 @@ export default function Report() {
             if (!testAverages[testNum]) {
               testAverages[testNum] = { total: 0, count: 0 };
             }
-            // Sum all subject scores dynamically
-            const total = (result.phy_score ?? 0) + (result.chem_score ?? 0) + 
-                         (result.bot_score ?? 0) + (result.zoo_score ?? 0) + (result.bio_score ?? 0);
+            const total = (result.phy_score ?? 0) + (result.chem_score ?? 0) + (result.bot_score ?? 0) + (result.zoo_score ?? 0) + (result.bio_score ?? 0);
             testAverages[testNum].total += total;
             testAverages[testNum].count += 1;
           });
@@ -152,135 +180,70 @@ export default function Report() {
             testData = studentResultsArr.reduce((a, b) => (a.test_num > b.test_num ? a : b));
           }
           if (testData) {
-            // Build subjectMarks dynamically based on which subjects have data
-            subjectMarks = {
-              Physics: testData.phy_score,
-              Chemistry: testData.chem_score
+            // Detect if Biology fields exist in results and include dynamically
+            const hasBiologyInResults = ('bio_score' in testData) || ('bio_total' in testData) || ('bio_attended' in testData);
+            const subjectsList = ['Physics', 'Chemistry', 'Botany', 'Zoology'];
+            if (hasBiologyInResults) subjectsList.splice(2, 0, 'Biology'); // insert Biology after Chemistry
+
+            // Map of subject -> field suffix used in result objects
+            const fieldMap = {
+              Physics: 'phy',
+              Chemistry: 'chem',
+              Botany: 'bot',
+              Zoology: 'zoo',
+              Biology: 'bio'
             };
-            // Add Biology OR Botany/Zoology based on what's present
-            if ((testData.bio_score ?? 0) > 0 || (testData.bio_total ?? 0) > 0) {
-              subjectMarks.Biology = testData.bio_score;
-            }
-            if ((testData.bot_score ?? 0) > 0 || (testData.bot_total ?? 0) > 0) {
-              subjectMarks.Botany = testData.bot_score;
-            }
-            if ((testData.zoo_score ?? 0) > 0 || (testData.zoo_total ?? 0) > 0) {
-              subjectMarks.Zoology = testData.zoo_score;
-            }
-            subjectStats = {
-              Physics: {
-                correct: testData.phy_correct || 0,
-                attended: testData.phy_attended || 0,
-                total: testData.phy_total || 0,
-                incorrect: (testData.phy_attended || 0) - (testData.phy_correct || 0),
-                skipped: (testData.phy_total || 0) - (testData.phy_attended || 0)
-              },
-              Chemistry: {
-                correct: testData.chem_correct || 0,
-                attended: testData.chem_attended || 0,
-                total: testData.chem_total || 0,
-                incorrect: (testData.chem_attended || 0) - (testData.chem_correct || 0),
-                skipped: (testData.chem_total || 0) - (testData.chem_attended || 0)
-              },
-              Botany: {
-                correct: testData.bot_correct || 0,
-                attended: testData.bot_attended || 0,
-                total: testData.bot_total || 0,
-                incorrect: (testData.bot_attended || 0) - (testData.bot_correct || 0),
-                skipped: (testData.bot_total || 0) - (testData.bot_attended || 0)
-              },
-              Zoology: {
-                correct: testData.zoo_correct || 0,
-                attended: testData.zoo_attended || 0,
-                total: testData.zoo_total || 0,
-                incorrect: (testData.zoo_attended || 0) - (testData.zoo_correct || 0),
-                skipped: (testData.zoo_total || 0) - (testData.zoo_attended || 0)
-              }
-            };
-            // Add Biology stats if present
-            if ((testData.bio_score ?? 0) > 0 || (testData.bio_total ?? 0) > 0) {
-              subjectStats.Biology = {
-                correct: testData.bio_correct || 0,
-                attended: testData.bio_attended || 0,
-                total: testData.bio_total || 0,
-                incorrect: (testData.bio_attended || 0) - (testData.bio_correct || 0),
-                skipped: (testData.bio_total || 0) - (testData.bio_attended || 0)
+
+            // Build subjectMarks and subjectStats dynamically based on subjectsList
+            subjectMarks = {};
+            subjectStats = {};
+            subjectsList.forEach(subj => {
+              const key = fieldMap[subj];
+              if (!key) return;
+              subjectMarks[subj] = testData[`${key}_score`];
+              const correct = testData[`${key}_correct`] || 0;
+              const attended = testData[`${key}_attended`] || 0;
+              const total = testData[`${key}_total`] || 0;
+              subjectStats[subj] = {
+                correct,
+                attended,
+                total,
+                incorrect: attended - correct,
+                skipped: total - attended
               };
-            }
+            });
             selectedTestInfo = {
-              totalMarks: (testData.phy_score ?? 0) + (testData.chem_score ?? 0) + 
-                         (testData.bot_score ?? 0) + (testData.zoo_score ?? 0) + (testData.bio_score ?? 0),
+              totalMarks: Object.values(subjectMarks).reduce((s, v) => s + (Number(v) || 0), 0),
               testNum: testData.test_num
             };
           }
         }
 
         // Create summary data for subject-wise correct/incorrect/skipped
-        let summaryData = [
-          { subject: "Physics", ...subjectStats.Physics },
-          { subject: "Chemistry", ...subjectStats.Chemistry },
-          { subject: "Botany", ...subjectStats.Botany },
-          { subject: "Zoology", ...subjectStats.Zoology }
-        ];
-        // Add Biology if present
-        if (subjectStats.Biology) {
-          summaryData.push({ subject: "Biology", ...subjectStats.Biology });
-        }
-        // Filter out subjects with no data
-        summaryData = summaryData.filter(s => s.total > 0);
+        // Build summaryData dynamically based on subjectStats keys (includes Biology when present)
+        let summaryData = Object.keys(subjectStats).map(subj => ({ subject: subj, ...subjectStats[subj] }));
         // If testId is 'Overall', use last test's values for Top Metrics
         if (test === "Overall" && studentResultsArr.length > 0) {
           const lastTest = studentResultsArr.reduce((a, b) => (a.test_num > b.test_num ? a : b));
-          const lastStats = {
-            Physics: {
-              correct: lastTest.phy_correct || 0,
-              attended: lastTest.phy_attended || 0,
-              total: lastTest.phy_total || 0,
-              incorrect: (lastTest.phy_attended || 0) - (lastTest.phy_correct || 0),
-              skipped: (lastTest.phy_total || 0) - (lastTest.phy_attended || 0)
-            },
-            Chemistry: {
-              correct: lastTest.chem_correct || 0,
-              attended: lastTest.chem_attended || 0,
-              total: lastTest.chem_total || 0,
-              incorrect: (lastTest.chem_attended || 0) - (lastTest.chem_correct || 0),
-              skipped: (lastTest.chem_total || 0) - (lastTest.chem_attended || 0)
-            },
-            Botany: {
-              correct: lastTest.bot_correct || 0,
-              attended: lastTest.bot_attended || 0,
-              total: lastTest.bot_total || 0,
-              incorrect: (lastTest.bot_attended || 0) - (lastTest.bot_correct || 0),
-              skipped: (lastTest.bot_total || 0) - (lastTest.bot_attended || 0)
-            },
-            Zoology: {
-              correct: lastTest.zoo_correct || 0,
-              attended: lastTest.zoo_attended || 0,
-              total: lastTest.zoo_total || 0,
-              incorrect: (lastTest.zoo_attended || 0) - (lastTest.zoo_correct || 0),
-              skipped: (lastTest.zoo_total || 0) - (lastTest.zoo_attended || 0)
-            }
-          };
-          // Add Biology if present
-          if ((lastTest.bio_score ?? 0) > 0 || (lastTest.bio_total ?? 0) > 0) {
-            lastStats.Biology = {
-              correct: lastTest.bio_correct || 0,
-              attended: lastTest.bio_attended || 0,
-              total: lastTest.bio_total || 0,
-              incorrect: (lastTest.bio_attended || 0) - (lastTest.bio_correct || 0),
-              skipped: (lastTest.bio_total || 0) - (lastTest.bio_attended || 0)
+          // Build lastStats dynamically (include Biology if present in lastTest)
+          const availableSubjects = ['Physics', 'Chemistry', 'Botany', 'Zoology'];
+          if ('bio_total' in lastTest || 'bio_score' in lastTest) availableSubjects.splice(2, 0, 'Biology');
+          const lastStats = {};
+          const fieldMap = { Physics: 'phy', Chemistry: 'chem', Botany: 'bot', Zoology: 'zoo', Biology: 'bio' };
+          availableSubjects.forEach(subj => {
+            const k = fieldMap[subj];
+            const correct = lastTest[`${k}_correct`] || 0;
+            const attended = lastTest[`${k}_attended`] || 0;
+            const total = lastTest[`${k}_total`] || 0;
+            lastStats[subj] = {
+              correct,
+              attended,
+              total,
+              incorrect: attended - correct,
+              skipped: total - attended
             };
-          }
-          summaryData = [
-            { subject: "Physics", ...lastStats.Physics },
-            { subject: "Chemistry", ...lastStats.Chemistry },
-            { subject: "Botany", ...lastStats.Botany },
-            { subject: "Zoology", ...lastStats.Zoology }
-          ];
-          if (lastStats.Biology) {
-            summaryData.push({ subject: "Biology", ...lastStats.Biology });
-          }
-          summaryData = summaryData.filter(s => s.total > 0);
+          });
+          summaryData = availableSubjects.map(subj => ({ subject: subj, ...lastStats[subj] }));
         }
         // Keep a copy of the raw dashboard on window for debugging/fallback
         try { window.__lastDashboard = dashboard; } catch (e) { /* ignore */ }
@@ -302,54 +265,43 @@ export default function Report() {
         // Subject Totals (aggregate per subject)
         let subjectTotals = [];
         if (Object.keys(subjectMarks).length > 0) {
-          // Use subjectMarks from latest/selected test for the bar chart - dynamically build from available subjects
-          subjectTotals = Object.entries(subjectMarks)
-            .filter(([_, score]) => score != null && score > 0)
-            .map(([subject, total]) => ({ subject, total }));
+          // Use subjectMarks from latest/selected test for the bar chart
+          subjectTotals = Object.keys(subjectMarks).map(subj => ({ subject: subj, total: subjectMarks[subj] ?? 0 }));
         } else if (Array.isArray(dashboard.subjectWiseDataMapping)) {
-          const totals = { Physics: 0, Chemistry: 0, Botany: 0, Zoology: 0, Biology: 0 };
+          const totals = { Physics: 0, Chemistry: 0, Botany: 0, Zoology: 0 };
           dashboard.subjectWiseDataMapping.forEach(row => {
             totals.Physics += row.Physics || 0;
             totals.Chemistry += row.Chemistry || 0;
             totals.Botany += row.Botany || 0;
             totals.Zoology += row.Zoology || 0;
-            totals.Biology += row.Biology || 0;
           });
-          subjectTotals = Object.entries(totals)
-            .filter(([_, total]) => total > 0)
-            .map(([subject, total]) => ({ subject, total }));
+          subjectTotals = Object.entries(totals).map(([subject, total]) => ({ subject, total }));
         } else {
           subjectTotals = DUMMY_SUBJECT_TOTALS;
         }
         // Error Data (if available, else fallback)
         const errorData = dashboard.errorDistribution || dashboard.errorData || DUMMY_ERROR_DATA;
-        // Trend Data (last 5 tests, grouped bar per test, with all subjects)
+        // Trend Data (last 5 tests, grouped bar per test, 4 subjects)
         let trendData = [];
         if (studentResultsArr.length > 0) {
           // Sort by test_num ascending
           const sortedTests = [...studentResultsArr].sort((a, b) => a.test_num - b.test_num);
           // Take last 5
           const last5 = sortedTests.slice(-5);
+          // Build trend entries dynamically based on which subjects are present in results
+          // Detect if any test has bio fields
+          const hasBio = last5.some(t => ('bio_score' in t) || ('bio_total' in t));
+          const subjectsForTrend = ['Physics', 'Chemistry', 'Botany', 'Zoology'];
+          if (hasBio) subjectsForTrend.splice(2, 0, 'Biology');
           trendData = last5.map(test => {
-            const dataPoint = {
-              name: `Test ${test.test_num}`,
-              Physics: test.phy_score ?? 0,
-              Chemistry: test.chem_score ?? 0
-            };
-            // Add Biology OR Botany/Zoology based on presence
-            if ((test.bio_score ?? 0) > 0 || (test.bio_total ?? 0) > 0) {
-              dataPoint.Biology = test.bio_score ?? 0;
-            }
-            if ((test.bot_score ?? 0) > 0 || (test.bot_total ?? 0) > 0) {
-              dataPoint.Botany = test.bot_score ?? 0;
-            }
-            if ((test.zoo_score ?? 0) > 0 || (test.zoo_total ?? 0) > 0) {
-              dataPoint.Zoology = test.zoo_score ?? 0;
-            }
-            // Calculate total from all present subjects
-            dataPoint.total = (test.phy_score ?? 0) + (test.chem_score ?? 0) + 
-                             (test.bot_score ?? 0) + (test.zoo_score ?? 0) + (test.bio_score ?? 0);
-            return dataPoint;
+            const entry = { name: `Test ${test.test_num}` };
+            subjectsForTrend.forEach(subj => {
+              const map = { Physics: 'phy', Chemistry: 'chem', Botany: 'bot', Zoology: 'zoo', Biology: 'bio' };
+              const key = map[subj];
+              entry[subj] = test[`${key}_score`] ?? 0;
+            });
+            entry.total = subjectsForTrend.reduce((s, subj) => s + (entry[subj] ?? 0), 0);
+            return entry;
           });
         } else if (dashboard.performanceTrendDataMapping?.subjects) {
           // fallback to old logic if needed
@@ -363,23 +315,16 @@ export default function Report() {
               const test = (subj.tests || []).find(t => t.name === testName);
               entry[subj.name] = test ? test.value : 0;
             });
-            // Calculate total from all present subjects
-            entry.total = (entry.Physics ?? 0) + (entry.Chemistry ?? 0) + 
-                         (entry.Botany ?? 0) + (entry.Zoology ?? 0) + (entry.Biology ?? 0);
+            entry.total = (entry.Physics ?? 0) + (entry.Chemistry ?? 0) + (entry.Botany ?? 0) + (entry.Zoology ?? 0);
             return entry;
           });
         } else {
-          trendData = DUMMY_TREND_DATA.slice(-5).map(row => ({
-            ...row,
-            total: (row.Physics ?? 0) + (row.Chemistry ?? 0) + (row.Botany ?? 0) + 
-                   (row.Zoology ?? 0) + (row.Biology ?? 0)
-          }));
+          trendData = DUMMY_TREND_DATA.slice(-5).map(row => ({ ...row, total: (row.Physics ?? 0) + (row.Chemistry ?? 0) + (row.Botany ?? 0) + (row.Zoology ?? 0) }));
         }
         // Add total marks to each trendData entry
         const trendDataWithTotal = trendData.map(entry => ({
           ...entry,
-          total: (entry.Physics ?? 0) + (entry.Chemistry ?? 0) + (entry.Botany ?? 0) + 
-                 (entry.Zoology ?? 0) + (entry.Biology ?? 0)
+          total: Object.keys(entry).reduce((s, k) => (k === 'name' ? s : s + (Number(entry[k]) || 0)), 0)
         }));
         // Performance Trend: last 5 tests, student total vs class average
         let performanceTrend = [];
@@ -387,8 +332,7 @@ export default function Report() {
           const sortedStudentTests = [...studentResultsArr].sort((a, b) => a.test_num - b.test_num);
           const last5 = sortedStudentTests.slice(-5);
           performanceTrend = last5.map(test => {
-            const total = (test.phy_score ?? 0) + (test.chem_score ?? 0) + 
-                         (test.bot_score ?? 0) + (test.zoo_score ?? 0) + (test.bio_score ?? 0);
+            const total = (test.phy_score ?? 0) + (test.chem_score ?? 0) + (test.bot_score ?? 0) + (test.zoo_score ?? 0) + (test.bio_score ?? 0);
             const avg = testAverages[test.test_num] ? testAverages[test.test_num].total / testAverages[test.test_num].count : 0;
             return {
               name: `Test ${test.test_num}`,
@@ -408,23 +352,35 @@ export default function Report() {
         }
         setStudentChartData({ subjectTotals, errorData, trendData: trendDataWithTotal, performanceTrend });
         setError(null);
+        
+        // Set PDF ready flag immediately after setting data
+        console.log('[Report] Data loaded successfully, setting __PDF_READY__');
+        if (typeof window !== 'undefined') {
+          window.__PDF_READY__ = true;
+        }
       } catch (err) {
         // Debug: Log error object
         console.error("[Report] Error loading report data (educator endpoints):", err);
         setError(err.message || "Failed to load report data");
         setReportData(null);
         setStudentChartData(null);
+        
+        // Still set PDF ready even on error so it doesn't timeout
+        if (typeof window !== 'undefined') {
+          window.__PDF_READY__ = true;
+        }
       }
     };
 
     fetchAllData();
   }, []);
 
-  useEffect(() => {
-    if (reportData && studentChartData) {
-      window.__PDF_READY__ = true;
-    }
-  }, [reportData, studentChartData]);
+  // Remove this useEffect - we set __PDF_READY__ directly in fetchAllData now
+  // useEffect(() => {
+  //   if (reportData && studentChartData) {
+  //     window.__PDF_READY__ = true;
+  //   }
+  // }, [reportData, studentChartData]);
 
   if (error) {
     return (
@@ -487,6 +443,7 @@ export default function Report() {
   const PATTERNS = {
     Physics: 'pattern-physics',
     Chemistry: 'pattern-chemistry',
+    Biology: 'pattern-biology',
     Botany: 'pattern-botany',
     Zoology: 'pattern-zoology',
     Total: 'pattern-total'
@@ -521,7 +478,12 @@ export default function Report() {
   // (e.g., if Physics has 50 marks available, ensure Y axis at least covers 50)
   const subjectMaxFromSummary = Math.max(0, ...summaryData.map(s => s.total ?? 0));
   // Only consider per-subject marks (exclude the summed `total` which can be much larger)
-  const dataTrendMax = Math.max(0, ...safeTrendData.map(d => Math.max(d.Physics ?? 0, d.Chemistry ?? 0, d.Botany ?? 0, d.Zoology ?? 0, d.Biology ?? 0)));
+  const dataTrendMax = Math.max(0, ...safeTrendData.map(d => {
+    return Object.keys(d).reduce((m, k) => {
+      if (k === 'name' || k === 'total') return m;
+      return Math.max(m, Number(d[k]) || 0);
+    }, 0);
+  }));
   // Base on the largest available marks for a subject (from summaryData) or observed subject values
   const baseTrendMax = Math.max(subjectMaxFromSummary, dataTrendMax);
   // Add padding so axis isn't tight to the bars (user requested subject max + 100)
@@ -540,15 +502,39 @@ export default function Report() {
 
   // Calculate improvement rate for last test compared to previous test
   let improvementRate = null;
-  if (selectedTestInfo && Array.isArray(studentResultsArr) && studentResultsArr.length > 1) {
+  if (selectedTestInfo && Array.isArray(studentResultsArr) && studentResultsArr.length > 0) {
     const sortedTests = [...studentResultsArr].sort((a, b) => a.test_num - b.test_num);
-    const lastTest = sortedTests[sortedTests.length - 1];
-    const prevTest = sortedTests[sortedTests.length - 2];
-    if (lastTest && prevTest) {
-      const lastTotal = (lastTest.phy_score ?? 0) + (lastTest.chem_score ?? 0) + (lastTest.bot_score ?? 0) + (lastTest.zoo_score ?? 0) + (lastTest.bio_score ?? 0);
-      const prevTotal = (prevTest.phy_score ?? 0) + (prevTest.chem_score ?? 0) + (prevTest.bot_score ?? 0) + (prevTest.zoo_score ?? 0) + (prevTest.bio_score ?? 0);
-      if (prevTotal > 0) {
-        improvementRate = (((lastTotal - prevTotal) / prevTotal) * 100).toFixed(2);
+    const scoreKeys = ['phy', 'chem', 'bot', 'zoo', 'bio'];
+
+    // Determine which comparison to make:
+    // - If viewing Overall (no specific test), compare last two tests (as before)
+    // - If viewing a specific test, compare that test to the most recent earlier test (if any)
+    const query = new URLSearchParams(window.location.search);
+    const tparam = query.get('testId');
+    const isOverallView = (!tparam || tparam === 'Overall' || tparam === '0') || (!Number.isNaN(Number(tparam)) && Number(tparam) === 0);
+
+    if (isOverallView) {
+      if (sortedTests.length > 1) {
+        const lastTest = sortedTests[sortedTests.length - 1];
+        const prevTest = sortedTests[sortedTests.length - 2];
+        const lastTotal = scoreKeys.reduce((s, k) => s + (Number(lastTest[`${k}_score`] ?? 0)), 0);
+        const prevTotal = scoreKeys.reduce((s, k) => s + (Number(prevTest[`${k}_score`] ?? 0)), 0);
+        if (prevTotal > 0) improvementRate = (((lastTotal - prevTotal) / prevTotal) * 100).toFixed(2);
+      }
+    } else {
+      // Specific test view: find the test with test_num equal to selectedTestInfo.testNum
+      const selNum = Number(selectedTestInfo.testNum || 0);
+      const selTest = sortedTests.find(t => Number(t.test_num) === selNum);
+      if (selTest) {
+        // Find the most recent test before selected (max test_num < selNum)
+        const earlier = sortedTests.filter(t => Number(t.test_num) < selNum);
+        if (earlier.length > 0) {
+          const prevTest = earlier[earlier.length - 1];
+          const selTotal = scoreKeys.reduce((s, k) => s + (Number(selTest[`${k}_score`] ?? 0)), 0);
+          const prevTotal = scoreKeys.reduce((s, k) => s + (Number(prevTest[`${k}_score`] ?? 0)), 0);
+          if (prevTotal > 0) improvementRate = (((selTotal - prevTotal) / prevTotal) * 100).toFixed(2);
+        }
+        // If no earlier test exists (e.g., Test 1), improvementRate stays null
       }
     }
   }
@@ -559,18 +545,48 @@ export default function Report() {
   const strengthPoints = Array.isArray(keyInsights.keyStrengths) ? keyInsights.keyStrengths.slice(0, 2) : [];
   const recommendations = [...improvementPoints, ...strengthPoints];
 
-  // Re-organize SWOT by subject so UI can render subject-centric cards
-  const SUBJECTS = ["Physics", "Chemistry", "Botany", "Zoology"];
-  const CATEGORIES = ["Weaknesses", "Opportunities", "Strengths"];
+  // Re-organize SWOT by subject so UI can render subject-centric cards.
+  // Derive subjects dynamically from the swotData so the report handles
+  // different payload shapes (Overall vs per-test). Preserve preferred
+  // ordering when possible.
+  const PREFERRED_SUBJECT_ORDER = ["Physics", "Chemistry", "Biology", "Botany", "Zoology"];
+  const CATEGORIES = ["Weaknesses", "Strengths"];
   const CATEGORY_LABELS = {
     Weaknesses: "Focus Zone",
-    Opportunities: "Edge Zone",
     Strengths: "Steady Zone"
   };
-  const subjectsSwot = SUBJECTS.reduce((acc, s) => {
-    acc[s] = { Strengths: [], Weaknesses: [], Opportunities: [] };
-    return acc;
-  }, {});
+
+  // Collect subjects present in the SWOT payload
+  const subjectsSet = new Set();
+  if (swotData && typeof swotData === 'object') {
+    CATEGORIES.forEach(cat => {
+      const arr = swotData[cat] || [];
+      if (Array.isArray(arr)) {
+        arr.forEach(item => {
+          const subj = item.subject || item.subject_name || null;
+          if (subj) subjectsSet.add(subj);
+        });
+      }
+    });
+  }
+
+  // Build ordered subjects list; fallback to the common four if none found
+  let derivedSubjects = Array.from(subjectsSet);
+  if (derivedSubjects.length === 0) {
+    derivedSubjects = ["Physics", "Chemistry", "Botany", "Zoology"];
+  } else {
+    const ordered = PREFERRED_SUBJECT_ORDER.filter(s => derivedSubjects.includes(s));
+    const remainder = derivedSubjects.filter(s => !PREFERRED_SUBJECT_ORDER.includes(s));
+    derivedSubjects = ordered.concat(remainder);
+  }
+
+  // Initialize mapping for each derived subject
+  const subjectsSwot = {};
+  derivedSubjects.forEach(s => {
+    subjectsSwot[s] = { Strengths: [], Weaknesses: [], Threats: [] };
+  });
+
+  // Populate the mapping from swotData
   if (swotData && typeof swotData === 'object') {
     CATEGORIES.forEach(cat => {
       const arr = swotData[cat] || [];
@@ -578,8 +594,8 @@ export default function Report() {
         arr.forEach(item => {
           const subj = item.subject || item.subject_name || null;
           const topics = Array.isArray(item.topics) ? item.topics : [];
-          if (subj) {
-            if (!subjectsSwot[subj]) subjectsSwot[subj] = { Strengths: [], Weaknesses: [], Opportunities: [], Threats: [] };
+            if (subj) {
+            if (!subjectsSwot[subj]) subjectsSwot[subj] = { Strengths: [], Weaknesses: [], Threats: [] };
             subjectsSwot[subj][cat] = (subjectsSwot[subj][cat] || []).concat(topics);
           }
         });
@@ -601,6 +617,12 @@ export default function Report() {
             {/* Dense diagonal hatch for total bars */}
             <path d="M0,5 L5,0" stroke="#000" strokeWidth="0.3" />
             <path d="M1,6 L6,1" stroke="#000" strokeWidth="0.3" />
+          </pattern>
+          <pattern id="pattern-biology" patternUnits="userSpaceOnUse" width="6" height="6">
+            <rect width="6" height="6" fill="#ffffff" />
+            {/* Small diagonal dots for biology */}
+            <circle cx="2" cy="2" r="0.8" fill="#000" />
+            <circle cx="5" cy="5" r="0.8" fill="#000" />
           </pattern>
           <pattern id="pattern-chemistry" patternUnits="userSpaceOnUse" width="6" height="6">
             <rect width="6" height="6" fill="#ffffff" />
@@ -652,27 +674,69 @@ export default function Report() {
           </div>
         )}
 
-        {/* Top Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
-          {summaryData.map(({ subject, correct, incorrect, skipped }, idx) => (
-            <div key={idx} className="border border-gray-200 bg-white p-4 rounded-lg">
-              <span className="text-lg font-bold text-black block mb-2">{subject}</span>
-              <div className="space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-sm text-black">Correct:</span>
-                  <span className="text-sm font-semibold text-black">{correct}</span>
+        {/* Top Metrics (dynamic subjects) - always single row full width */}
+        <div className="grid grid-flow-col auto-cols-fr gap-6 w-full">
+          {(() => {
+            // Build a lookup for summaryData by subject for quick access
+            const summaryMap = (summaryData || []).reduce((acc, cur) => {
+              if (cur && cur.subject) acc[cur.subject] = cur;
+              return acc;
+            }, {});
+
+            // Determine if this view is the Overall (test 0) view
+            const tq = new URLSearchParams(window.location.search);
+            const tparam = tq.get('testId');
+            let isOverallView = false;
+            if (!tparam || tparam === 'Overall' || tparam === '0') isOverallView = true;
+            else {
+              const parsed = parseInt(String(tparam).replace(/^Test\s*/i, ''), 10);
+              if (!Number.isNaN(parsed) && parsed === 0) isOverallView = true;
+            }
+
+            // For Overall: show only subjects that appear in summaryData (available in results)
+            // Otherwise use derivedSubjects (from SWOT) so dropdown/report subject order is preserved
+            let metricsSubjects = [];
+            if (isOverallView) {
+              // Only include subjects that actually have data (non-zero total/attended/correct)
+              const availableFromSummary = (summaryData || []).filter(s => {
+                const has = (Number(s.total || 0) > 0) || (Number(s.attended || 0) > 0) || (Number(s.correct || 0) > 0);
+                return has && s.subject;
+              }).map(s => s.subject);
+              // Preserve preferred ordering when possible
+              const ordered = PREFERRED_SUBJECT_ORDER.filter(s => availableFromSummary.includes(s));
+              const remainder = availableFromSummary.filter(s => !PREFERRED_SUBJECT_ORDER.includes(s));
+              metricsSubjects = ordered.concat(remainder);
+              // If nothing available from summary (edge case), fallback to derivedSubjects
+              if (!metricsSubjects.length) {
+                metricsSubjects = (derivedSubjects && derivedSubjects.length) ? derivedSubjects : ["Physics", "Chemistry", "Botany", "Zoology"];
+              }
+            } else {
+              metricsSubjects = (derivedSubjects && derivedSubjects.length) ? derivedSubjects : ["Physics", "Chemistry", "Botany", "Zoology"];
+            }
+
+            return metricsSubjects.map((subject, idx) => {
+              const entry = summaryMap[subject] || { subject, correct: 0, incorrect: 0, skipped: 0 };
+              return (
+                <div key={String(subject) + '-' + idx} className="border border-gray-200 bg-white p-4 rounded-lg">
+                  <span className="text-lg font-bold text-black block mb-2">{entry.subject}</span>
+                  <div className="space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-black">Correct:</span>
+                      <span className="text-sm font-semibold text-black">{entry.correct ?? 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-black">Incorrect:</span>
+                      <span className="text-sm font-semibold text-black">{entry.incorrect ?? 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-black">Skipped:</span>
+                      <span className="text-sm font-semibold text-black">{entry.skipped ?? 0}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-black">Incorrect:</span>
-                  <span className="text-sm font-semibold text-black">{incorrect}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-black">Skipped:</span>
-                  <span className="text-sm font-semibold text-black">{skipped}</span>
-                </div>
-              </div>
-            </div>
-          ))}
+              );
+            });
+          })()}
         </div>
 
         {/* Student vs Class Performance Trend */}
@@ -719,12 +783,17 @@ export default function Report() {
                 {/* Custom legend that uses SVG patterns for print-friendly swatches */}
                 <Legend isAnimationActive={false} content={({ payload }) => {
                   if (!payload) return null;
-                  const order = ['Physics', 'Chemistry', 'Botany', 'Zoology'];
-                  const ordered = [...payload].sort((a, b) => order.indexOf(a.dataKey) - order.indexOf(b.dataKey));
+                  // Determine available keys from payload
+                  const available = payload.map(p => p.dataKey);
+                  // Use preferred subject order when possible, then append any extras
+                  const preferredOrder = PREFERRED_SUBJECT_ORDER.filter(s => available.includes(s));
+                  const remainder = available.filter(a => !PREFERRED_SUBJECT_ORDER.includes(a));
+                  const orderedKeys = preferredOrder.concat(remainder);
+                  // Map payload entries into the ordered sequence
+                  const ordered = orderedKeys.map(k => payload.find(p => p.dataKey === k)).filter(Boolean);
                   return (
                     <ul style={{ listStyle: 'none', padding: 0, display: 'flex', justifyContent: 'center', margin: 0 }}>
                       {ordered.map((entry, i) => {
-                        // map dataKey to pattern id
                         const patternId = PATTERNS[entry.dataKey] || '';
                         return (
                           <li key={`lg-${i}`} style={{ display: 'flex', alignItems: 'center', marginRight: 20 }}>
@@ -738,46 +807,26 @@ export default function Report() {
                     </ul>
                   );
                 }} />
-                <Bar
-                  dataKey="Physics"
-                  fill={`url(#${PATTERNS.Physics})`}
-                  stroke="#000000"
-                  strokeWidth={1}
-                  radius={[5, 5, 0, 0]}
-                  isAnimationActive={false}
-                >
-                  <LabelList dataKey="Physics" position="top" fill="#000000" fontSize={10} fontWeight={600} isAnimationActive={false} />
-                </Bar>
-                <Bar
-                  dataKey="Chemistry"
-                  fill={`url(#${PATTERNS.Chemistry})`}
-                  stroke="#000000"
-                  strokeWidth={1}
-                  radius={[5, 5, 0, 0]}
-                  isAnimationActive={false}
-                >
-                  <LabelList dataKey="Chemistry" position="top" fill="#000000" fontSize={10} fontWeight={600} isAnimationActive={false} />
-                </Bar>
-                <Bar
-                  dataKey="Botany"
-                  fill={`url(#${PATTERNS.Botany})`}
-                  stroke="#000000"
-                  strokeWidth={1}
-                  radius={[5, 5, 0, 0]}
-                  isAnimationActive={false}
-                >
-                  <LabelList dataKey="Botany" position="top" fill="#000000" fontSize={10} fontWeight={600} isAnimationActive={false} />
-                </Bar>
-                <Bar
-                  dataKey="Zoology"
-                  fill={`url(#${PATTERNS.Zoology})`}
-                  stroke="#000000"
-                  strokeWidth={1}
-                  radius={[5, 5, 0, 0]}
-                  isAnimationActive={false}
-                >
-                  <LabelList dataKey="Zoology" position="top" fill="#000000" fontSize={10} fontWeight={600} isAnimationActive={false} />
-                </Bar>
+                {
+                  // Render bars dynamically based on keys available in trendData entries
+                  (() => {
+                    const first = Array.isArray(trendData) && trendData.length ? trendData[0] : null;
+                    const barSubjects = first ? Object.keys(first).filter(k => k !== 'name' && k !== 'total') : ['Physics', 'Chemistry', 'Botany', 'Zoology'];
+                    return barSubjects.map((subj, i) => (
+                      <Bar
+                        key={`bar-${subj}-${i}`}
+                        dataKey={subj}
+                        fill={`url(#${PATTERNS[subj] || ''})`}
+                        stroke="#000000"
+                        strokeWidth={1}
+                        radius={[5, 5, 0, 0]}
+                        isAnimationActive={false}
+                      >
+                        <LabelList dataKey={subj} position="top" fill="#000000" fontSize={10} fontWeight={600} isAnimationActive={false} />
+                      </Bar>
+                    ));
+                  })()
+                }
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -796,28 +845,80 @@ export default function Report() {
         {/* Subject-centric SWOT (Physics / Chemistry / Botany / Zoology) */}
         <div>
           <h2 className="text-xl font-bold text-center mt-20 mb-10">Test Analysis</h2>
-          <div className="grid grid-cols-2 gap-4">
-            {SUBJECTS.map(subject => (
-              <div key={subject} className="border border-gray-200 bg-white p-4 rounded-lg">
-                <h3 className="font-bold mb-2 text-lg uppercase">{subject}</h3>
-                <div className="space-y-3 text-sm">
-                  {CATEGORIES.map(cat => (
-                    <div key={cat}>
-                      <div className="font-semibold text-sm mb-1">{CATEGORY_LABELS[cat]}</div>
-                      {subjectsSwot[subject] && subjectsSwot[subject][cat] && subjectsSwot[subject][cat].length ? (
-                        <ul className="list-disc list-inside ml-4 space-y-1">
-                          {subjectsSwot[subject][cat].map((topic, idx) => (
-                            <li key={idx} className="whitespace-pre-wrap text-gray-700">{topic}</li>
+          <div className="grid grid-cols-2 gap-3">
+            {/* If Biology, Botany and Zoology all exist and this is the Overall test,
+                render Biology as a full-width card at the end to avoid disturbing
+                the 2x2 grid layout. */}
+            {
+              (() => {
+                const query = new URLSearchParams(window.location.search);
+                const testParam = query.get('testId');
+                // determine if testParam refers to overall (0)
+                let isOverall = false;
+                if (!testParam || testParam === 'Overall' || testParam === '0') isOverall = true;
+                else {
+                  // handle values like 'Test 1' or 'Test 0'
+                  const parsed = parseInt(String(testParam).replace(/^Test\s*/i, ''), 10);
+                  if (!Number.isNaN(parsed) && parsed === 0) isOverall = true;
+                }
+
+                const hasBotany = derivedSubjects.includes('Botany');
+                const hasZoology = derivedSubjects.includes('Zoology');
+                const hasBiology = derivedSubjects.includes('Biology');
+
+                const shouldPullOutBiology = isOverall && hasBotany && hasZoology && hasBiology;
+
+                const gridSubjects = shouldPullOutBiology ? derivedSubjects.filter(s => s !== 'Biology') : derivedSubjects;
+
+                return (
+                  <>
+                    {gridSubjects.map(subject => (
+                      <div key={subject} className="border border-gray-200 bg-white p-3 rounded-lg">
+                        <h3 className="font-bold mb-1 text-lg uppercase">{subject}</h3>
+                        <div className="space-y-2 text-sm">
+                          {CATEGORIES.map(cat => (
+                            <div key={cat}>
+                              <div className="font-semibold text-sm mb-1">{CATEGORY_LABELS[cat]}</div>
+                              {subjectsSwot[subject] && subjectsSwot[subject][cat] && subjectsSwot[subject][cat].length ? (
+                                <ul className="list-disc list-inside ml-3 space-y-1">
+                                  {subjectsSwot[subject][cat].map((topic, idx) => (
+                                    <li key={idx} className="whitespace-pre-wrap text-gray-700">{topic}</li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <div className="italic text-gray-400">No data</div>
+                              )}
+                            </div>
                           ))}
-                        </ul>
-                      ) : (
-                        <div className="italic text-gray-400">No data</div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+                        </div>
+                      </div>
+                    ))}
+
+                    {shouldPullOutBiology && (
+                      <div className="col-span-2 border border-gray-200 bg-white p-3 rounded-lg">
+                        <h3 className="font-bold mb-1 text-lg uppercase">Biology</h3>
+                        <div className="space-y-2 text-sm">
+                          {CATEGORIES.map(cat => (
+                            <div key={cat}>
+                              <div className="font-semibold text-sm mb-1">{CATEGORY_LABELS[cat]}</div>
+                              {subjectsSwot['Biology'] && subjectsSwot['Biology'][cat] && subjectsSwot['Biology'][cat].length ? (
+                                <ul className="list-disc list-inside ml-3 space-y-1">
+                                  {subjectsSwot['Biology'][cat].map((topic, idx) => (
+                                    <li key={idx} className="whitespace-pre-wrap text-gray-700">{topic}</li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <div className="italic text-gray-400">No data</div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()
+            }
           </div>
         </div>
 

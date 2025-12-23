@@ -36,19 +36,31 @@ CORS_ALLOWED_ORIGINS = _parse_env_list('CORS_ALLOWED_ORIGINS') or [
 ]
 CORS_ALLOW_CREDENTIALS = True
 
-# === Email Configuration (Zoho SMTP) ===
+# === Proxy SSL Configuration (for ALB/ACM) ===
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+CSRF_TRUSTED_ORIGINS = _parse_env_list('CSRF_TRUSTED_ORIGINS') or []
+SECURE_SSL_REDIRECT = False  # ALB handles HTTPS redirect
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # Use SMTP backend for sending emails
+# === Email Configuration (from environment) ===
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST', '')
+EMAIL_PORT = os.getenv('EMAIL_PORT', '587')
 
-EMAIL_HOST = 'smtp.zoho.in'  # SMTP server for Zoho Mail
-EMAIL_PORT = 587             # Port for TLS
-EMAIL_USE_TLS = True         # Use TLS for secure connection
 
-EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")       # SMTP username from environment variable
-EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")   # SMTP password from environment variable
-EMAIL_USE_TLS = True
+# TLS/SSL flags (allow env values like 'true', '1', 'yes')
+def _env_bool(name, default=False):
+    val = os.getenv(name)
+    if val is None:
+        return default
+    return str(val).strip().lower() in ('1', 'true', 'yes', 'y')
 
-DEFAULT_FROM_EMAIL = 'no-reply@inzighted.com'  # Default sender address for emails sent by Django
+EMAIL_USE_TLS = _env_bool('EMAIL_USE_TLS', True)
+EMAIL_USE_SSL = _env_bool('EMAIL_USE_SSL', False)
+
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'no-reply@inzighted.com')
+FRONTEND_RESET_URL = os.getenv('FRONTEND_RESET_URL', '')
 
 # === Installed Applications ===
 INSTALLED_APPS = [
@@ -132,7 +144,20 @@ USE_TZ = True
 
 # === Static Files ===
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+# Put collected static files where the Docker `static_data` volume and nginx expect them.
+# Default to `/usr/src/app/static_root` but allow overriding with env var.
+STATIC_ROOT = os.getenv('DJANGO_STATIC_ROOT', '/usr/src/app/static_root')
+
+# === PDF Service Integration ===
+# URL the backend should use to call the internal pdf service endpoint.
+# In Docker compose this is typically the service name (http://pdf_service:8080).
+PDF_SERVICE_URL = os.getenv('PDF_SERVICE_URL', 'http://pdf_service:8080')
+
+# Internal token expected by the pdf service for internal requests.
+PDF_SERVICE_INTERNAL_TOKEN = os.getenv('PDF_SERVICE_INTERNAL_TOKEN', 'changeme-internal-token')
+
+# Default frontend origin used when generating report tokens or calling the PDF service
+DEFAULT_FRONTEND_ORIGIN = os.getenv('DEFAULT_FRONTEND_ORIGIN', 'https://tamilnadu.inzighted.com')
 
 # === AWS S3 Storage ===
 AWS_S3_REGION_NAME = 'us-east-1'  # e.g., 'us-east-1'
@@ -181,8 +206,24 @@ SIMPLE_JWT = {
 # === Sentry Error Logging ===
 SENTRY_DSN = os.getenv("SENTRY_DSN", "")  # Optional env var
 if SENTRY_DSN:
+    from sentry_sdk.integrations.django import DjangoIntegration
+    from sentry_sdk.integrations.logging import LoggingIntegration
+    from sentry_sdk.integrations.celery import CeleryIntegration
+    
+    sentry_logging = LoggingIntegration(
+        level=None,         # Don't capture logs as breadcrumbs by default
+        event_level="ERROR" # Send ERROR+ logs as Sentry events
+    )
+    
     sentry_sdk.init(
         dsn=SENTRY_DSN,
-        traces_sample_rate=1.0,  # optional: controls performance tracing
+        integrations=[
+            DjangoIntegration(),
+            sentry_logging,
+            CeleryIntegration()
+        ],
+        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+        send_default_pii=os.getenv("SENTRY_SEND_PII", "false").lower() in ("1", "true", "yes"),
+        environment=os.getenv("SENTRY_ENV", os.getenv("DJANGO_ENV", "development")),
     )
 

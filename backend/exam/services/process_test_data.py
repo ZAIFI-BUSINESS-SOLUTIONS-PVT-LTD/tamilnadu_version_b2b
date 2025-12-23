@@ -10,9 +10,29 @@ from django.utils.timezone import now
 from exam.models.test_status import TestProcessingStatus
 from exam.models.test_metadata import TestMetadata
 import logging
+import sentry_sdk
+import time
 from exam.models.educator import Educator
 
 logger = logging.getLogger(__name__)
+
+def get_answer_dict_with_retry(path, max_retries=5, delay=0.5):
+    """
+    Retry wrapper for get_answer_dict to handle S3 eventual consistency issues.
+    Returns answer_dict or raises Exception after retries exhausted.
+    """
+    for attempt in range(1, max_retries + 1):
+        answer_dict = get_answer_dict(path)
+        if answer_dict:
+            logger.info(f"✅ Successfully loaded answer key from {path} on attempt {attempt}")
+            return answer_dict
+        logger.warning(f"⚠️ Attempt {attempt}/{max_retries}: Answer key empty or not found at {path}, retrying in {delay}s...")
+        if attempt < max_retries:
+            time.sleep(delay)
+    
+    error_msg = f"❌ Failed to load answer key after {max_retries} attempts: {path}"
+    logger.error(error_msg)
+    raise Exception(error_msg)
 
 def get_subject(class_id, answer_key_path, question_paper_path):
     class_id_lower = class_id.lower()
@@ -54,7 +74,10 @@ def process_test_data(class_id, test_num):
         # Check if test metadata exists (admin-provided subject mapping)
         metadata = TestMetadata.objects.filter(class_id=class_id, test_num=test_num).first()
         
-        answer_dict = get_answer_dict(answer_key_path)
+        # Use retry wrapper for answer_dict to handle S3 timing issues
+        answer_dict = get_answer_dict_with_retry(answer_key_path, max_retries=6, delay=0.5)
+        logger.info(f"📋 Loaded {len(answer_dict)} answers from answer key")
+        
         response_dict = get_student_response(answer_sheet_path, class_id)
         save_student_response(class_id, test_num, response_dict)
 
@@ -99,6 +122,12 @@ def process_test_data(class_id, test_num):
             
             subject = get_subject(class_id, answer_key_path, question_paper_path)
             questions_list = questions_extract(question_paper_path, test_path)
+            if not questions_list:
+                logger.warning("⚠️ Automatic extraction failed: no questions returned")
+                status_obj.logs += "\n⚠️ Automatic extraction failed: no questions returned"
+                status_obj.save()
+                raise Exception("Automatic extraction returned empty questions list")
+
             for q in questions_list:
                 q['subject'] = subject
             save_questions_bulk(class_id, test_num, questions_list, answer_dict)
@@ -110,15 +139,14 @@ def process_test_data(class_id, test_num):
         # update_educator_dashboard will be triggered automatically after update_student_dashboard completes
         logger.info(f"📊 Student & educator dashboards will be updated after all student analysis tasks complete.")
         
-        status_obj.status = "Successful"
-        status_obj.logs += "\n✅ Processing completed"
-        status_obj.ended_at = now()
+        # Do NOT mark final success here; final success will be set by the educator dashboard
+        status_obj.logs += "\n✅ Processing completed (analysis & scheduling finished)"
         status_obj.save()
 
-        logger.info(f"✅ Test {test_num} processed successfully for class {class_id}")
+        logger.info(f"✅ Test {test_num} processed and analysis scheduled for class {class_id}")
 
     except Exception as e:
-        logger.error(f"❌ Error processing test {test_num} for class {class_id}: {e}")
+        logger.exception(f"❌ Error processing test {test_num} for class {class_id}: {e}")
         status_obj.status = "failed"
         status_obj.logs += f"\n❌ Failed with error: {e}"
         status_obj.ended_at = now()

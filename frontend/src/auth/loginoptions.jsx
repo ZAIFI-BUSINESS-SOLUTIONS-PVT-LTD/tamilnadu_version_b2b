@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { GraduationCap, ChalkboardTeacher, ArrowLeft } from '@phosphor-icons/react';
+import { GraduationCap, UserCheck, ArrowLeft, Building } from 'lucide-react';
 import { motion } from 'framer-motion';
 import logo from '../assets/images/logo.svg';
 import {
@@ -38,15 +38,6 @@ const LoginOptions = () => {
         </motion.div>
         <Card className="overflow-hidden">
           <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-5 relative">
-            <motion.button
-              onClick={() => navigate('..')}
-              className="absolute top-4 left-4 text-white hover:bg-white/10 p-2 rounded-full transition-colors"
-              aria-label="Go back"
-              variants={item}
-            >
-              <ArrowLeft size={18} weight="bold" />
-            </motion.button>
-
             <CardHeader className="p-0">
               <motion.div className="flex flex-col items-center text-center" variants={item}>
                 <div className="flex items-center mb-2">
@@ -64,7 +55,7 @@ const LoginOptions = () => {
               <Link to="./student/login" className="group block">
                 <div className="flex items-center gap-4 p-3 rounded-lg border border-slate-100 hover:border-blue-300 hover:bg-blue-50 transition-colors">
                   <div className="bg-blue-100 p-3 rounded-md">
-                    <GraduationCap weight="fill" size={20} className="text-blue-600" />
+                    <GraduationCap size={20} className="text-blue-600" />
                   </div>
                   <div className="flex-1 text-left">
                     <p className="font-medium text-slate-800">Student</p>
@@ -76,11 +67,23 @@ const LoginOptions = () => {
               <Link to="./educator/login" className="group block">
                 <div className="flex items-center gap-4 p-3 rounded-lg border border-slate-100 hover:border-blue-300 hover:bg-blue-50 transition-colors">
                   <div className="bg-blue-100 p-3 rounded-md">
-                    <ChalkboardTeacher weight="fill" size={20} className="text-blue-600" />
+                    <UserCheck size={20} className="text-blue-600" />
                   </div>
                   <div className="flex-1 text-left">
                     <p className="font-medium text-slate-800">Educator</p>
                     <p className="text-sm text-slate-500">Access reports and manage students</p>
+                  </div>
+                </div>
+              </Link>
+
+              <Link to="./institution/login" className="group block">
+                <div className="flex items-center gap-4 p-3 rounded-lg border border-slate-100 hover:border-blue-300 hover:bg-blue-50 transition-colors">
+                  <div className="bg-blue-100 p-3 rounded-md">
+                    <Building size={20} className="text-blue-600" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="font-medium text-slate-800">Institution</p>
+                    <p className="text-sm text-slate-500">Manage institution and educators</p>
                   </div>
                 </div>
               </Link>

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from exam.models import Educator, Manager, TestProcessingStatus, Test, Student, Result, StudentResponse,Gemini_ApiCallLog, Gemini_ApiKeyModelMinuteStats, Gemini_ApiKeyModelDayStats, SWOT, TestMetadata
+from exam.models import Educator, Manager, TestProcessingStatus, Test, Student, Result, StudentResponse,Gemini_ApiCallLog, Gemini_ApiKeyModelMinuteStats, Gemini_ApiKeyModelDayStats, SWOT, TestMetadata, NotificationLog
 from django.contrib import admin
 
 
@@ -19,8 +19,8 @@ class TestMetadataAdmin(admin.ModelAdmin):
 
 @admin.register(Educator)
 class EducatorAdmin(admin.ModelAdmin):
-    list_display = ('id','name', 'email', 'class_id', 'institution', 'csv_status')
-    search_fields = ('email', 'name', 'class_id')
+    list_display = ('id', 'name', 'email', 'phone_number', 'class_id', 'institution', 'csv_status')
+    search_fields = ('email', 'name', 'class_id', 'phone_number')
     list_filter = ('institution', 'csv_status')
 
     def save_model(self, request, obj, form, change):
@@ -176,3 +176,28 @@ class SWOTAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
+
+@admin.register(NotificationLog)
+class NotificationLogAdmin(admin.ModelAdmin):
+    list_display = ('class_id', 'test_num', 'educator', 'notification_type', 'sent', 'attempts', 'phone_number', 'created_at', 'sent_at')
+    list_filter = ('sent', 'notification_type', 'created_at')
+    search_fields = ('class_id', 'test_num', 'phone_number', 'educator__email')
+    readonly_fields = ('created_at', 'updated_at', 'sent_at', 'response_code', 'response_body', 'error', 'payload')
+    ordering = ('-created_at',)
+    
+    fieldsets = (
+        ('Notification Details', {
+            'fields': ('class_id', 'test_num', 'educator', 'notification_type', 'phone_number')
+        }),
+        ('Status', {
+            'fields': ('sent', 'attempts', 'created_at', 'updated_at', 'sent_at')
+        }),
+        ('API Response', {
+            'fields': ('payload', 'response_code', 'response_body', 'error'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def has_add_permission(self, request):
+        # Prevent manual creation of notification logs
+        return False

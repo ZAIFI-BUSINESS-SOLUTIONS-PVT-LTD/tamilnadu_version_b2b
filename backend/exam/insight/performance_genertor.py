@@ -5,6 +5,8 @@ import concurrent.futures
 import re
 from exam.llm_call.prompts import performance_prompt as base_prompt
 import logging
+import sentry_sdk
+from exam.llm_call.decorators import traceable
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +27,7 @@ def parse_questions(text):
     return parsed_json
 
 
+@traceable()
 def generate_perfomance_data(db_name):
 
     performance_graph, performance_data = get_overview_data(db_name)
@@ -35,8 +38,19 @@ def generate_perfomance_data(db_name):
         try:
             subject_prompt = base_prompt + "\n\n" + json.dumps(data, indent=2)
 
-            for _ in range(10):  # Retry max 3 times
-                response = call_gemini_api_with_rotation(subject_prompt)
+            for _ in range(10):  # Retry max 10 times
+                result = call_gemini_api_with_rotation(subject_prompt, return_structured=True)
+
+                # Normalize result to plain text
+                if isinstance(result, dict):
+                    if result.get("ok"):
+                        response = result.get("response", "") or ""
+                    else:
+                        logger.warning(f"Gemini structured error: code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+                        response = ""
+                else:
+                    response = result or ""
+
                 try:
                     insights = parse_questions(response)
                     return subject, insights
@@ -48,7 +62,7 @@ def generate_perfomance_data(db_name):
             return subject, {}
 
         except Exception as e:
-            logger.error(f"❌ Error while generating performance for {subject}: {e}")
+            logger.exception(f"❌ Error while generating performance for {subject}: {e}")
             #print(f"❌ Error while generating performance for {subject}: {e}")
             return subject, {}
 
@@ -65,7 +79,7 @@ def generate_perfomance_data(db_name):
                 _, insights = future.result()
                 results[subject] = insights
             except Exception as e:
-                logger.error(f"❌ Failed processing {subject}: {e}")
+                logger.exception(f"❌ Failed processing {subject}: {e}")
                 #print(f"❌ Failed processing {subject}: {e}")
                 results[subject] = {}
     performance_insights = results

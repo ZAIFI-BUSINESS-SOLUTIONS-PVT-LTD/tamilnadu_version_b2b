@@ -1,7 +1,7 @@
 from django.contrib.auth.hashers import make_password
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from exam.models import Educator, Student, Test, Overview, Result
+from exam.models import Educator, Student, Test, Overview, Result, Manager
 from django.core.files.storage import default_storage  # ✅ Ensure transactions commit properly
 
 from django.http import JsonResponse
@@ -12,22 +12,55 @@ from exam.models.test_status import TestProcessingStatus
 from exam.models.swot import SWOT
 from exam.models.test_metadata import TestMetadata
 import logging
+import sentry_sdk
+import re
 
 logger = logging.getLogger(__name__)
 
 UPLOAD_DIR = "uploads/"
 
+# Helper to parse test_num from various formats (e.g., "Test 2" -> 2, "2" -> 2)
+def parse_test_num(test_input):
+    """Parse test_num from string formats like 'Test 2', 'test 2', '2', etc."""
+    if test_input is None:
+        return None
+    
+    # If already an integer, return it
+    if isinstance(test_input, int):
+        return test_input
+    
+    # Convert to string and try to extract number
+    test_str = str(test_input).strip()
+    
+    # Try direct integer conversion first
+    try:
+        return int(test_str)
+    except ValueError:
+        pass
+    
+    # Try to extract number from "Test N" or "test N" format
+    match = re.search(r'\d+', test_str)
+    if match:
+        return int(match.group())
+    
+    # If nothing works, return None
+    return None
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_educator_details(request):
     try:
-
         educator_email = request.user.email
         educator = Educator.objects.filter(email=educator_email).first()
-        name=educator.name
-        class_id=educator.class_id
+        
+        if not educator:
+            # Return empty/default data instead of error for non-educators
+            return JsonResponse({'name': '', "class_id": '', "inst": ''}, status=200)
+        
+        name = educator.name
+        class_id = educator.class_id
         inst = educator.institution
-        return JsonResponse({'name': name, "class_id":class_id, "inst": inst}, status=200)
+        return JsonResponse({'name': name, "class_id": class_id, "inst": inst}, status=200)
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -73,6 +106,7 @@ def educator_register(request):
         dob = request.data.get("dob")
         institution = request.data.get("institution")
         password = request.data.get("password")
+        phone_number = request.data.get("phone_number")  # Optional for WhatsApp notifications
         student_csv = request.FILES.get("file")
 
         # ✅ Validate required fields
@@ -97,11 +131,16 @@ def educator_register(request):
         
 
 
-        # ✅ Save Educator Password
+        # ✅ Save Educator Password and details
         educator.name = full_name  
         educator.dob = dob
         educator.institution = institution
         educator.password = make_password(password)
+        
+        # ✅ Save phone number if provided (for WhatsApp notifications)
+        if phone_number:
+            educator.phone_number = phone_number
+        
         educator.save()
 
         # ✅ Retrieve class_id
@@ -127,6 +166,7 @@ def educator_register(request):
         return Response({"message": "Educator registered successfully!"}, status=201)
 
     except Exception as e:
+        logger.exception(f"Error in educator_register: {str(e)}")
         return Response({"error": str(e)}, status=500)
     
 @api_view(['GET'])
@@ -134,11 +174,21 @@ def educator_register(request):
 def get_educator_tests(request):
     """Fetch all tests for a given educator with status from TestProcessingStatus."""
     try:
-        educator_email = request.user.email
-        educator = Educator.objects.filter(email=educator_email).first()
-
-        if not educator:
-            return JsonResponse({'error': 'Educator not found'}, status=404)
+        educator = None
+        if isinstance(request.user, Educator):
+            educator = request.user
+        elif isinstance(request.user, Manager):
+            educator_id = request.GET.get('educator_id') # GET request, so use query params
+            if not educator_id:
+                return JsonResponse({'error': 'Educator ID is required for institution view'}, status=400)
+            educator = Educator.objects.filter(id=educator_id).first()
+            if not educator:
+                return JsonResponse({'error': 'Educator not found'}, status=404)
+            
+            if request.user.institution != educator.institution:
+                 return JsonResponse({'error': 'Unauthorized: Educator does not belong to your institution'}, status=403)
+        else:
+             return JsonResponse({'error': 'Unauthorized user type'}, status=403)
 
         class_id = educator.class_id
         tests = Test.objects.filter(class_id=class_id).order_by('test_num')
@@ -155,6 +205,7 @@ def get_educator_tests(request):
         return JsonResponse({'tests': test_data}, status=200)
 
     except Exception as e:
+        logger.exception(f"Error in get_educator_tests: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
 
 
@@ -216,6 +267,7 @@ def get_educator_dashboard(request):
             "testMetadata": test_metadata_map
         })
     except Exception as e:
+        logger.exception(f"Error in get_educator_dashboard: {str(e)}")
         return Response({"error": str(e)}, status=500)
 
 
@@ -236,8 +288,10 @@ def get_educator_swot(request):
         if not educator:
             return Response({"error": "Student not found"}, status=404)
 
-        # Get test_num from the POST data
-        test_num = request.data.get("test_num")
+        # Get test_num from the POST data and parse it
+        test_num = parse_test_num(request.data.get("test_num"))
+        if test_num is None:
+            return Response({"error": "Invalid test_num format"}, status=400)
         
 
         # Filter records using test_num and student/class info
@@ -257,6 +311,7 @@ def get_educator_swot(request):
         })
 
     except Exception as e:
+        logger.exception(f"Error in get_educator_swot: {str(e)}")
         return Response({"error": str(e)}, status=500)
 
 @api_view(['POST'])
@@ -265,19 +320,18 @@ def get_educatorstudent_insights(request):
     try:
         # Extract form data from request.data instead of query_params
         student_id = request.data.get("student_id")
-        test_num = request.data.get("test_num")
+        test_num_raw = request.data.get("test_num")
         
-        logger.debug(f"[DEBUG] Received request data: student_id={student_id}, test_num={test_num}")
-        #print(f"[DEBUG] Received request data: student_id={student_id}, test_num={test_num}")
+        logger.debug(f"[DEBUG] Received request data: student_id={student_id}, test_num={test_num_raw}")
+        #print(f"[DEBUG] Received request data: student_id={student_id}, test_num={test_num_raw}")
 
-        if not student_id or test_num is None:
+        if not student_id or test_num_raw is None:
             return Response({"error": "Both 'student_id' and 'test_num' are required."}, status=400)
 
-        # Convert test_num to integer if it's not already
-        try:
-            test_num = int(test_num)
-        except (ValueError, TypeError):
-            return Response({"error": "test_num must be a valid integer"}, status=400)
+        # Parse test_num from various formats (e.g., "Test 2" -> 2)
+        test_num = parse_test_num(test_num_raw)
+        if test_num is None:
+            return Response({"error": "Invalid test_num format"}, status=400)
 
         # Fetch student
         student = Student.objects.filter(student_id=student_id).first()
@@ -336,7 +390,7 @@ def get_educatorstudent_insights(request):
         })
 
     except Exception as e:
-        logger.error(f"[ERROR] Exception in get_educatorstudent_insights: {str(e)}")
+        logger.exception(f"[ERROR] Exception in get_educatorstudent_insights: {str(e)}")
         #print(f"[ERROR] Exception in get_educatorstudent_insights: {str(e)}")
         return Response({"error": str(e)}, status=500)
 
@@ -364,7 +418,7 @@ def get_educator_student_tests(request):
         return Response({"available_tests": list(tests)})
 
     except Exception as e:
-        logger.error(f"[ERROR] Exception in get_educator_student_tests: {str(e)}")
+        logger.exception(f"[ERROR] Exception in get_educator_student_tests: {str(e)}")
         #print(f"[ERROR] Exception in get_educator_student_tests: {str(e)}")
         return Response({"error": str(e)}, status=500)
     
@@ -393,4 +447,5 @@ def get_educator_students_result(request):
             ))
         }, status=200)
     except Exception as e:
+        logger.exception(f"Error in get_educator_students_result: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)

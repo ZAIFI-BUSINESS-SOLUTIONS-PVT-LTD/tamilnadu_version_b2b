@@ -252,7 +252,7 @@ def analyse_students(class_id, test_num, subject=None):
     else:
         logger.warning(f"⚠️ No student analysis tasks to schedule for class {class_id}, test {test_num}.")
     
-    status_obj.status = "Successful"
+    # Do not mark Successful here; this only means student analysis tasks were scheduled.
     status_obj.logs += f"✅ Analysis tasks scheduled for class {class_id}, test {test_num}."
     status_obj.save()
     logger.info(f"✅ Analysis tasks scheduled for class {class_id}, test {test_num}.")

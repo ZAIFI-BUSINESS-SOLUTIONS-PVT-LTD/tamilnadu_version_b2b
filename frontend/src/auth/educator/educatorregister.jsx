@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 import { motion } from 'framer-motion';
-import { ChalkboardTeacher, ArrowLeft } from '@phosphor-icons/react';
+import { UserCheck, ArrowLeft } from 'lucide-react';
 
 import bgImage from '../../assets/landingpage-images/bg_001.webp';
 import educatorSignupImg from '../../assets/auth images/educatorlogin.svg';
@@ -145,12 +145,12 @@ const EducatorSignup = () => {
             className="absolute top-4 left-4 btn btn-sm btn-base-100 btn-circle text-white"
             aria-label="Go back"
           >
-            <ArrowLeft size={18} weight="bold" />
+            <ArrowLeft size={18} />
           </motion.button>
 
           <div className="card-body pt-6">
             <div className="flex items-center justify-center mb-4">
-              <ChalkboardTeacher weight="duotone" size={32} className="text-primary mr-2" />
+              <UserCheck size={32} className="text-primary mr-2" />
               <h2 className="text-2xl font-bold text-center text-gray-800">Educator Signup</h2>
             </div>
 
@@ -230,9 +230,6 @@ const EducatorSignup = () => {
                 {studentCSV && (
                   <p className="mt-1 text-sm text-gray-600">📄 {studentCSV.name}</p>
                 )}
-              </div>
-              <div className="form-control">
-                {/* Biology split removed — educators no longer choose splitting here */}
               </div>
               <motion.div
                 variants={buttonVariants}

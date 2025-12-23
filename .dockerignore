@@ -1,0 +1,77 @@
+# .dockerignore
+# Exclude unnecessary files from Docker build context
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+!README.md
+
+# Docker
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# Environment
+.env.example
+.env.local
+
+# Logs
+*.log
+logs/
+nohup.out
+
+# Database
+*.sqlite3
+*.db
+
+# Node/Frontend (if present)
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tests
+*.pytest_cache/
+.coverage
+htmlcov/
+
+# Static files (collected at build time)
+backend/staticfiles/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+.env.swp

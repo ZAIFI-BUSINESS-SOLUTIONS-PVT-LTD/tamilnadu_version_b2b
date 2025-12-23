@@ -10,6 +10,7 @@ class Educator(models.Model):
     institution = models.CharField(max_length=255)
     password = models.CharField(max_length=255)  # ✅ Storing hashed passwords
     separate_biology_subjects = models.BooleanField(default=False)
+    phone_number = models.CharField(max_length=20, blank=True, null=True)  # For WhatsApp notifications
 
 
     CSV_STATUS_CHOICES = [

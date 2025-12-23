@@ -13,6 +13,15 @@ export default defineConfig({
     host: '0.0.0.0',   // Must be this, not just `true`
     port: 5173,
     strictPort: true,
+    // Dev proxy: forward /pdf requests to the host nginx (so browser -> vite -> nginx -> pdf_service)
+    // This avoids requiring port 80 to be publicly reachable from the developer machine.
+    proxy: {
+      '/pdf': {
+        target: 'http://127.0.0.1',
+        changeOrigin: true,
+        secure: false,
+      }
+    },
   },
   build: {
     // Increase warning threshold to a slightly larger chunk size

@@ -8,6 +8,11 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '.
 import Stat from '../components/ui/stat.jsx';
 import Carousel from '../components/ui/carousel.jsx';
 import { Card } from '../../components/ui/card.jsx';
+import SDashboardMobile from './s_dashboard_mobile.jsx';
+import PageLoader from '../components/LoadingPage';
+import ActionPlanCard from './components/ActionPlanCard.jsx';
+import ChecklistCard from './components/ChecklistCard.jsx';
+import StudyTipsCard from './components/StudyTipsCard.jsx';
 
 function SDashboard() {
   // State to hold the student dashboard data and loading/error status
@@ -16,6 +21,8 @@ function SDashboard() {
     subjectWiseData: {},
     subjectWiseDataMapping: [],
     performanceTrendDataMapping: {},
+    actionPlan: [],
+    checklist: [],
     lastTestImprovement: 0,
     lastTestPercentage: 0,
     isLoading: true,
@@ -36,45 +43,78 @@ function SDashboard() {
           throw new Error(data?.error || 'Failed to fetch data');
         }
 
-        // Keep raw mappings for charts that need details and transform subject-wise data
+        // Keep raw mappings for charts that need details
         const subjectWiseDataMapping = Array.isArray(data.subjectWiseDataMapping) ? data.subjectWiseDataMapping : [];
+
+        // Build a normalized subjectWiseData object keyed by test name where each value is
+        // an array of subject totals ordered by the global subjects discovered in the mapping.
+        const globalSubjects = getSubjectsFromMapping(subjectWiseDataMapping || []);
         let subjectWiseData = {};
         subjectWiseDataMapping.forEach((row) => {
           const testName = row.Test || 'Unknown Test';
-          subjectWiseData[testName] = [
-            row.Botany || 0,
-            row.Chemistry || 0,
-            row.Physics || 0,
-            row.Zoology || 0,
-          ];
+          subjectWiseData[testName] = (globalSubjects || []).map(s => {
+            if (typeof row[s] !== 'undefined' && row[s] !== null) return Number(row[s]) || 0;
+            const c = Number(row[`${s}__correct`] || 0);
+            const i = Number(row[`${s}__incorrect`] || 0);
+            const u = Number(row[`${s}__unattempted`] || row[`${s}__skipped`] || 0);
+            return c + i + u;
+          });
         });
 
-        // Compute last test performance and improvement
-        const testKeys = Object.keys(subjectWiseData);
-        let lastTestTotal = 0;
-        let lastTestImprovement = 0;
+        // Compute per-test totals and percentages from the detailed mapping (handles variable subject sets)
+        const perTestStats = (subjectWiseDataMapping || []).map(row => {
+          const testName = row.Test || 'Unknown Test';
+          const details = buildSubjectDetailsFromRow(row, getSubjectsFromMapping([row]));
+          const present = Array.isArray(details) ? details.filter(d => {
+            const c = Number(d?.correct || 0);
+            const i = Number(d?.incorrect || 0);
+            const u = Number(d?.unattended ?? d?.skipped ?? d?.unattempted ?? 0);
+            return (c + i + u) > 0;
+          }) : [];
+
+          // Compute total questions and total score using scoring: +4 for correct, -1 for incorrect, 0 for unattempted
+          const subjectsToUse = (present.length ? present : (Array.isArray(details) ? details : []));
+          let totalQuestions = 0;
+          let totalScore = 0;
+          subjectsToUse.forEach(d => {
+            const c = Number(d?.correct || 0);
+            const i = Number(d?.incorrect || 0);
+            const u = Number(d?.unattended ?? d?.skipped ?? d?.unattempted ?? 0);
+            const q = c + i + u;
+            totalQuestions += q;
+            totalScore += (c * 4) + (i * -1) + (u * 0);
+          });
+
+          const percentage = totalQuestions > 0 ? (totalScore / (totalQuestions * 4)) * 100 : 0;
+          return { testName, totalScore, totalQuestions, percentage };
+        });
+
+        // numeric-aware ordering: ensure tests like Test10 come after Test9
+        const extractTestNum = (s) => {
+          const m = String(s || '').match(/(\d+)/);
+          return m ? parseInt(m[1], 10) : NaN;
+        };
+
+        const sortedPerTestStats = [...perTestStats].sort((a, b) => {
+          const na = extractTestNum(a.testName);
+          const nb = extractTestNum(b.testName);
+          if (!isNaN(na) && !isNaN(nb)) return na - nb; // numeric ascending
+          if (!isNaN(na)) return 1; // numeric after non-numeric
+          if (!isNaN(nb)) return -1;
+          return String(a.testName || '').localeCompare(String(b.testName || ''));
+        });
+
+        const testKeys = sortedPerTestStats.map(p => p.testName);
         let lastTestPercentage = 0;
+        let lastTestImprovement = 0;
 
-        if (testKeys.length > 0) {
-          const lastTest = testKeys[testKeys.length - 1];
-          const lastTestScores = subjectWiseData[lastTest];
-
-          // Ensure lastTestScores is an array and calculate total
-          if (Array.isArray(lastTestScores)) {
-            lastTestTotal = lastTestScores.reduce((sum, score) => sum + (score || 0), 0);
-            // Calculate percentage based on total marks of 720 (4 subjects × 180 marks each)
-            lastTestPercentage = lastTestTotal > 0 ? (lastTestTotal / 720) * 100 : 0;
-          }
-
-          if (testKeys.length > 1) {
-            const prevTest = testKeys[testKeys.length - 2];
-            const prevTestScores = subjectWiseData[prevTest];
-
-            if (Array.isArray(prevTestScores)) {
-              const prevTotal = prevTestScores.reduce((sum, score) => sum + (score || 0), 0);
-              // Calculate percentage improvement: ((current - previous) / previous) * 100
-              lastTestImprovement = prevTotal > 0 ? ((lastTestTotal - prevTotal) / prevTotal) * 100 : 0;
-            }
+        if (sortedPerTestStats.length > 0) {
+          const last = sortedPerTestStats[sortedPerTestStats.length - 1];
+          lastTestPercentage = Number(last.percentage || 0);
+          if (sortedPerTestStats.length > 1) {
+            const prev = sortedPerTestStats[sortedPerTestStats.length - 2];
+            const prevPct = Number(prev.percentage || 0);
+            lastTestImprovement = prevPct > 0 ? ((lastTestPercentage - prevPct) / prevPct) * 100 : 0;
           }
         }
 
@@ -84,6 +124,10 @@ function SDashboard() {
           subjectWiseData,
           subjectWiseDataMapping,
           performanceTrendDataMapping: data.performanceTrendDataMapping || {},
+          actionPlan: data.actionPlan || [],
+          checklist: data.checklist || [],
+          studyTips: data.studyTips || [],
+          perTestStats: sortedPerTestStats,
           lastTestImprovement,
           lastTestPercentage,
           isLoading: false,
@@ -112,6 +156,7 @@ function SDashboard() {
   const {
     keyInsightsData,
     subjectWiseData,
+    actionPlan,
     lastTestImprovement,
     lastTestPercentage,
     isLoading,
@@ -129,8 +174,6 @@ function SDashboard() {
 
   // State to manage the currently selected subject for the Performance Trend Chart.
   // Initialized as an empty string, default will be set when rendering the chart.
-  const [selectedSubjectTrend, setSelectedSubjectTrend] = useState('Overall');
-
   // State to manage the currently selected test for the Subject-Wise Analysis Chart.
   // Initialized as an empty string, default will be set when rendering the chart.
   const [selectedTest, setSelectedTest] = useState('');
@@ -139,15 +182,7 @@ function SDashboard() {
 
   // Display a loading indicator while dashboard data is being fetched.
   if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 bg-base-100 rounded-lg shadow-md">
-        <svg className="animate-spin h-8 w-8 text-primary mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-        </svg>
-        <div className="text-center text-gray-500">Loading dashboard...</div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   // Display an error message if data fetching failed.
@@ -167,13 +202,31 @@ function SDashboard() {
 
   // --- Main Dashboard Content ---
   // Create summary cards directly from subjectWiseData
+  // Compute average percentage across all tests using per-test stats derived from mapping
+  const perTestStats = dashboardData.perTestStats || [];
+  const _nTests = perTestStats.length;
+  const averagePercentage = _nTests ? (perTestStats.reduce((s, p) => s + (Number(p.percentage || 0)), 0) / _nTests) : 0;
+  // Compute average improvement for the average-percentage badge (compare avg of first n-1 tests vs avg of all n tests)
+  let averageMarkImprovement = 0;
+  if (_nTests > 1) {
+    const prevAvg = perTestStats.slice(0, -1).reduce((s, p) => s + (Number(p.percentage || 0)), 0) / (_nTests - 1);
+    const newAvg = averagePercentage;
+    averageMarkImprovement = prevAvg > 0 ? ((newAvg - prevAvg) / prevAvg) * 100 : (newAvg - prevAvg);
+  }
   const summaryCards = [
     {
-      title: 'Last Test Performance',
+      title: 'Recent Test Performance',
       value: lastTestPercentage,
       icon: 'ChartLine',
       id: 'last-test-performance',
       description: 'Percentage score from the most recent test'
+    },
+    {
+      title: 'Average Percentage',
+      value: Number(averagePercentage.toFixed(1)),
+      icon: 'TrendUp',
+      id: 'average-percentage',
+      description: 'Average percentage across all tests'
     },
     {
       title: 'Tests Taken',
@@ -184,309 +237,211 @@ function SDashboard() {
     }
   ];
 
+  // derive subjects list once for children that need it
+  // Make subjects responsive to the currently selected test: compute per-test subjects
+  const _mapping = dashboardData.subjectWiseDataMapping || [];
+  const _tests = Array.isArray(_mapping) ? _mapping.map(r => r.Test || 'Unknown Test') : [];
+  const _selectedTestKey = selectedTest || (_tests.length ? _tests[_tests.length - 1] : undefined);
+  const _selectedTestRow = _mapping.find(r => (r.Test || '') === _selectedTestKey) || {};
+  // Build subject details for the selected test and derive subject names. Fall back to global mapping-derived list.
+  const subjectsForSelectedTest = (function () {
+    const details = buildSubjectDetailsFromRow(_selectedTestRow, getSubjectsFromMapping([_selectedTestRow]));
+    // Filter out subjects that did not appear in this test: all breakdown fields zero
+    const present = Array.isArray(details) ? details.filter(d => {
+      const c = Number(d?.correct || 0);
+      const i = Number(d?.incorrect || 0);
+      const u = Number(d?.unattended ?? d?.skipped ?? d?.unattempted ?? 0);
+      return (c + i + u) > 0;
+    }) : [];
+    const names = present.map(d => d?.name).filter(Boolean);
+    if (names.length) return names;
+
+    // If no subject breakdowns indicate presence, fall back to global mapping-derived subjects
+    const global = getSubjectsFromMapping(_mapping || []);
+    return (global && global.length) ? global : SUBJECTS;
+  })();
+
+  // Global derived subjects (used by SubjectWiseAnalysisChart and other components)
+  const derivedSubjects = getSubjectsFromMapping(_mapping || []) || SUBJECTS;
+
   return (
-    <div className="space-y-6 sm:space-y-8 pt-6 sm:pt-12 mx-none sm:mx-4 lg:m-4">
-      {/* Row 1: Left column = Summary cards (top) + Carousel (bottom). Right column = PerformanceTrendChart */}
-      <div className="grid grid-cols-1 gap-4 sm:gap-8 lg:grid-cols-2">
-        {/* Left stacked column: Summary on top, Carousel below */}
-        <div className="flex flex-col gap-3 sm:gap-8">
-          {/* Mobile: stacked vertical stats (one per row) */}
-          <div className="block sm:hidden w-full">
-            <div className="flex flex-col gap-2">
-              {summaryCards.map((card, idx) => {
-                const { icon: iconName = 'Default', title = 'Untitled Stat', value, id, description } = card;
-                const iconMap = {
-                  ChartLine: <BarChart2 />,
-                  ClipboardText: <Clipboard />,
-                  TrendUp: <TrendingUp />,
-                  Archive: <Archive />,
-                  Default: <HelpCircle />
-                };
+    <>
+      {/* Mobile version */}
+      <div className="block md:hidden">
+        <SDashboardMobile />
+      </div>
 
-                const badgeForThis = (() => {
-                  if (title === 'Last Test Performance') {
-                    const isPositive = lastTestImprovement > 0;
-                    const isNegative = lastTestImprovement < 0;
+      {/* Desktop version */}
+      <div className="hidden md:block">
+        <div className="space-y-6 sm:space-y-8 pt-6 sm:pt-12 mx-none sm:mx-4 lg:m-4">
+          {/* Row 1: Left column = Summary cards (top) + Carousel (bottom). Right column = PerformanceTrendChart */}
+          <div className="grid grid-cols-1 gap-4 sm:gap-8 lg:grid-cols-2">
+            {/* Left stacked column: Summary on top, Carousel below */}
+            <div className="flex flex-col gap-3 sm:gap-8">
+              <div className="hidden sm:grid sm:grid-cols-3 gap-3 sm:gap-6">
+                {summaryCards.length ? (
+                  summaryCards.map((card, idx) => {
+                    const { icon: iconName = 'Default', title = 'Untitled Stat', value, id, description } = card;
+                    const iconMap = {
+                      ChartLine: <BarChart2 />,
+                      ClipboardText: <Clipboard />,
+                      TrendUp: <TrendingUp />,
+                      Archive: <Archive />,
+                      Default: <HelpCircle />
+                    };
+
+                    // same badge generation as before
+                    const badgeForThis = (() => {
+                      if (title === 'Recent Test Performance') {
+                        const isPositive = lastTestImprovement > 0;
+                        const isNegative = lastTestImprovement < 0;
+                        return (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${isPositive ? 'bg-green-50 text-green-700' : isNegative ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-700'}`}>
+                            {isPositive ? '+' : ''}{lastTestImprovement.toFixed(1)}%
+                            {isPositive ? (
+                              <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 12V4M8 4l-3 3M8 4l3 3" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                            ) : isNegative ? (
+                              <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 4v8M8 12l3-3M8 12l-3-3" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                            ) : (
+                              <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 8h8M8 8H0" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" /></svg>
+                            )}
+                          </span>
+                        );
+                      }
+
+                      if (title === 'Average Percentage') {
+                        const isPositive = averageMarkImprovement > 0;
+                        const isNegative = averageMarkImprovement < 0;
+                        return (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${isPositive ? 'bg-green-50 text-green-700' : isNegative ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-700'}`}>
+                            {isPositive ? '+' : ''}{averageMarkImprovement.toFixed(1)}%
+                            {isPositive ? (
+                              <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 12V4M8 4l-3 3M8 4l3 3" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                            ) : isNegative ? (
+                              <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 4v8M8 12l3-3M8 12l-3-3" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                            ) : (
+                              <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 8h8M8 8H0" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" /></svg>
+                            )}
+                          </span>
+                        );
+                      }
+
+                      return null;
+                    })();
+
                     return (
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${isPositive ? 'bg-green-50 text-green-700' : isNegative ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-700'}`}>
-                        {isPositive ? '+' : ''}{lastTestImprovement.toFixed(1)}%
-                        {isPositive ? (
-                          <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 12V4M8 4l-3 3M8 4l3 3" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                        ) : isNegative ? (
-                          <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 4v8M8 12l3-3M8 12l-3-3" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                        ) : (
-                          <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 8h8M8 8H0" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" /></svg>
-                        )}
-                      </span>
+                      <Stat
+                        key={id || `stat-${idx}`}
+                        icon={iconMap[iconName] || iconMap.Default}
+                        label={title}
+                        value={formatStatValue(value)}
+                        info={description}
+                        badge={badgeForThis}
+                        compact={true}
+                      />
                     );
-                  }
-
-                  return null;
-                })();
-
-                return (
-                  <div key={id || `stat-${idx}`} className="w-full p-2">
-                    <Stat
-                      icon={iconMap[iconName] || iconMap.Default}
-                      label={title}
-                      value={formatStatValue(value)}
-                      info={description}
-                      badge={badgeForThis}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="hidden sm:grid grid-cols-1 gap-3 sm:gap-6 sm:grid-cols-2">
-            {summaryCards.length ? (
-              summaryCards.map((card, idx) => {
-                const { icon: iconName = 'Default', title = 'Untitled Stat', value, id, description } = card;
-                const iconMap = {
-                  ChartLine: <BarChart2 />,
-                  ClipboardText: <Clipboard />,
-                  TrendUp: <TrendingUp />,
-                  Archive: <Archive />,
-                  Default: <HelpCircle />
-                };
-
-                // same badge generation as before
-                const badgeForThis = (() => {
-                  if (title === 'Last Test Performance') {
-                    const isPositive = lastTestImprovement > 0;
-                    const isNegative = lastTestImprovement < 0;
-                    return (
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${isPositive ? 'bg-green-50 text-green-700' : isNegative ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-700'}`}>
-                        {isPositive ? '+' : ''}{lastTestImprovement.toFixed(1)}%
-                        {isPositive ? (
-                          <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 12V4M8 4l-3 3M8 4l3 3" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                        ) : isNegative ? (
-                          <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 4v8M8 12l3-3M8 12l-3-3" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                        ) : (
-                          <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 8h8M8 8H0" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" /></svg>
-                        )}
-                      </span>
-                    );
-                  }
-
-                  return null;
-                })();
-
-                return (
-                  <Stat
-                    key={id || `stat-${idx}`}
-                    icon={iconMap[iconName] || iconMap.Default}
-                    label={title}
-                    value={formatStatValue(value)}
-                    info={description}
-                    badge={badgeForThis}
-                  />
-                );
-              })
-            ) : (
-              <div>
-                <div role="alert" className="alert alert-info shadow-lg my-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                  </svg>
-                  <span>No Summary Data Available.</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Desktop: keep Carousel (visible on sm and up) */}
-          <div className="hidden sm:block w-full">
-            <Carousel
-              sections={[
-                {
-                  key: 'keyStrengths',
-                  title: 'Key Strengths',
-                  items: keyInsightsData?.keyStrengths || [],
-                  icon: <CheckCircle size={18} className="text-green-500" />,
-                  tag: (
-                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-                      <Sparkles size={12} />
-                      AI Generated
-                    </span>
-                  ),
-                  tagTooltip: 'AI-generated strengths identified for the student.'
-                },
-                {
-                  key: 'areasForImprovement',
-                  title: 'Areas for Improvement',
-                  items: keyInsightsData?.areasForImprovement || [],
-                  icon: <AlertTriangle size={18} className="text-amber-500" />,
-                  tag: (
-                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-                      <Sparkles size={12} />
-                      AI Generated
-                    </span>
-                  ),
-                  tagTooltip: 'AI-generated suggestions for improvement.'
-                },
-                {
-                  key: 'yetToDecide',
-                  title: 'Consistency Vulnerability',
-                  items: keyInsightsData?.yetToDecide || [],
-                  icon: <Clock size={18} className="text-purple-500" />,
-                  tag: (
-                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-                      <Sparkles size={12} />
-                      AI Generated
-                    </span>
-                  ),
-                  tagTooltip: 'Potential vulnerabilities in consistency, identified by AI.'
-                }
-              ]}
-              emptyMessage="No insights available"
-            />
-          </div>
-
-          {/* Mobile: Card with Select + list (visible only on mobile) */}
-          <div className="block sm:hidden w-full">
-            <Card className="p-3 rounded-2xl">
-              <div className="flex items-center ">
-                <div className="w-full">
-                  <MobileInsightsSelect keyInsightsData={keyInsightsData} />
-                </div>
-              </div>
-            </Card>
-          </div>
-        </div>
-
-        {/* Right column: Donut (question breakdown) at top, summary card below */}
-        <div className="flex flex-col gap-3">
-          <Card className="h-full rounded-2xl border border-gray-250 bg-gray-100 flex flex-col items-start justify-start sm:p-0 p-2">
-            <div className="w-full flex flex-col h-full bg-white p-3 sm:p-6 rounded-2xl">
-              <div className="w-full flex flex-col sm:flex-row justify-between items-start mb-0.5 sm:mb-1">
-                <div className="flex flex-col items-start justify-start gap-0">
-                  <h3 className="text-primary text-lg font-semibold">Question Breakdown</h3>
-                  <p className="text-gray-500 text-xs sm:text-sm mb-3 sm:mb-6">Correct / Incorrect / Skipped for selected test & subject</p>
-                </div>
-
-                {/* Desktop selects */}
-                <div className="hidden sm:block w-full">
-                  <div className="flex justify-end">
-                    <div className="w-fit">
-                      <Select onValueChange={(val) => setSelectedTest(val)} value={selectedTest}>
-                        <SelectTrigger className="btn btn-sm justify-between w-full max-w-full truncate text-start">
-                          <SelectValue placeholder="Select Test" />
-                        </SelectTrigger>
-                        <SelectContent side="bottom" align="start">
-                          {(dashboardData.subjectWiseDataMapping || []).map(r => (
-                            <SelectItem key={r.Test || String(r)} value={r.Test || ''}>{r.Test || 'Unknown'}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="w-fit ml-2">
-                      <Select onValueChange={(val) => setSelectedSubjectTrend(val)} value={selectedSubjectTrend}>
-                        <SelectTrigger className="btn btn-sm justify-between w-full max-w-full truncate text-start">
-                          <SelectValue placeholder="Select Subject" />
-                        </SelectTrigger>
-                        <SelectContent side="bottom" align="start">
-                          {['Overall', 'Botany', 'Chemistry', 'Physics', 'Zoology'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                  })
+                ) : (
+                  <div>
+                    <div role="alert" className="alert alert-info shadow-lg my-4">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                      <span>No Summary Data Available.</span>
                     </div>
                   </div>
-                </div>
-
-                {/* Mobile: stacked selects */}
-                <div className="block sm:hidden w-full mb-2">
-                  <div className="flex flex-col gap-2">
-                    <Select onValueChange={(val) => setSelectedTest(val)} value={selectedTest}>
-                      <SelectTrigger className="btn btn-sm justify-between w-full text-start">
-                        <SelectValue placeholder="Select Test" />
-                      </SelectTrigger>
-                      <SelectContent side="bottom" align="end">
-                        {(dashboardData.subjectWiseDataMapping || []).map(r => (
-                          <SelectItem key={r.Test || String(r)} value={r.Test || ''}>{r.Test || 'Unknown'}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <Select onValueChange={(val) => setSelectedSubjectTrend(val)} value={selectedSubjectTrend}>
-                      <SelectTrigger className="btn btn-sm justify-between w-full text-start">
-                        <SelectValue placeholder="Select Subject" />
-                      </SelectTrigger>
-                      <SelectContent side="bottom" align="end">
-                        {['Overall', 'Botany', 'Chemistry', 'Physics', 'Zoology'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                )}
               </div>
 
-              <div className="w-full border border-bg-primary rounded-lg p-2 bg-white flex-1 min-h-[160px] sm:min-h-[220px] flex items-center justify-center">
-                <DonutChart
-                  subjectWiseDataMapping={dashboardData.subjectWiseDataMapping}
-                  selectedTest={selectedTest}
-                  setSelectedTest={setSelectedTest}
-                  selectedSubject={selectedSubjectTrend}
-                  setSelectedSubject={setSelectedSubjectTrend}
+              {/* Desktop: keep Carousel (visible on sm and up) */}
+              <div className="hidden sm:block w-full">
+                <Carousel
+                  sections={[
+                    {
+                      key: 'keyStrengths',
+                      title: 'Steady Zone',
+                      items: keyInsightsData?.keyStrengths || [],
+                      icon: <CheckCircle size={18} className="text-green-500" />,
+                      tag: (
+                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
+                          <Sparkles size={12} />
+                          AI Generated
+                        </span>
+                      ),
+                      tagTooltip: 'AI-generated strengths identified for the student.'
+                    },
+
+                    {
+                      key: 'yetToDecide',
+                      title: 'Focus Zone',
+                      items: keyInsightsData?.yetToDecide || [],
+                      icon: <Clock size={18} className="text-purple-500" />,
+                      tag: (
+                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
+                          <Sparkles size={12} />
+                          AI Generated
+                        </span>
+                      ),
+                      tagTooltip: 'Potential vulnerabilities in consistency, identified by AI.'
+                    }
+                  ]}
+                  emptyMessage="No insights available"
                 />
               </div>
-              {/* Three small stat cards placed outside the donut container */}
-              <div className="w-full mt-3 grid grid-cols-3 gap-2">
-                {
-                  // derive counts from the mapping and current selections using the normalization helper
-                  (() => {
-                    const mapping = dashboardData.subjectWiseDataMapping || [];
-                    const tests = Array.isArray(mapping) ? mapping.map(r => r.Test || 'Unknown Test') : [];
-                    const testKey = selectedTest || (tests.length ? tests[tests.length - 1] : undefined);
-                    const testRow = mapping.find(r => (r.Test || '') === testKey) || {};
 
-                    const subjects = buildSubjectDetailsFromRow(testRow);
-                    const selectedSubName = selectedSubjectTrend || (subjects[0] && subjects[0].name) || 'Botany';
-
-                    let correct = 0;
-                    let incorrect = 0;
-                    let skipped = 0;
-
-                    if (selectedSubName === 'Overall') {
-                      subjects.forEach(d => {
-                        if (!d) return;
-                        correct += Number(d.correct || 0);
-                        incorrect += Number(d.incorrect || 0);
-                        skipped += Number(d.unattended ?? d.skipped ?? 0);
-                      });
-                    } else {
-                      const subjectRow = subjects.find(d => d && (d.name === selectedSubName || d.name?.toLowerCase() === selectedSubName?.toLowerCase())) || {};
-                      correct = Number(subjectRow.correct || 0);
-                      incorrect = Number(subjectRow.incorrect || 0);
-                      skipped = Number(subjectRow.unattended ?? subjectRow.skipped ?? 0);
-                    }
-
-                    return [
-                      (<div key="c" className="p-2"><div className="p-3 bg-white rounded-lg border border-green-600 text-center"><div className="text-xs text-gray-500">Correct Answers</div><div className="mt-1 text-lg font-semibold text-green-600">{correct}</div></div></div>),
-                      (<div key="i" className="p-2"><div className="p-3 bg-white rounded-lg border border-orange-500 text-center"><div className="text-xs text-gray-500">Incorrect Answers</div><div className="mt-1 text-lg font-semibold text-orange-500">{incorrect}</div></div></div>),
-                      (<div key="s" className="p-2"><div className="p-3 bg-white rounded-lg border border-gray-600 text-center"><div className="text-xs text-gray-500">Skipped Questions</div><div className="mt-1 text-lg font-semibold text-gray-600">{skipped}</div></div></div>)
-                    ];
-                  })()
-                }
-              </div>
+              {/* Action Plan / Checklist / Study Tips are now shown as a carousel in the right column */}
             </div>
-          </Card>
-        </div>
-      </div>
 
-      {/* Row 2: Subject wise analysis on left, empty right cell for now */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div>
-          <SubjectWiseAnalysisChart
-            testData={subjectWiseData}
-          />
-        </div>
-        <div>
-          <PerformanceTrendChart
-            subjectWiseData={subjectWiseData}
-          />
+            {/* Right column: single carousel for guidance cards */}
+            <div className="flex flex-col gap-3">
+              <Carousel
+                height={520}
+                sections={[
+                  {
+                    key: 'actionPlan',
+                    title: 'Your Action Plan',
+                    subtitle: 'Top actions to improve your performance',
+                    content: <ActionPlanCard actionPlan={dashboardData.actionPlan} />
+                  },
+                  {
+                    key: 'checklist',
+                    title: 'Problem Checklist',
+                    subtitle: 'Issues identified in your performance',
+                    content: <ChecklistCard checklist={dashboardData.checklist} />
+                  },
+                  {
+                    key: 'studyTips',
+                    title: 'Study Smarter',
+                    subtitle: 'Practical techniques tailored for you',
+                    content: <StudyTipsCard studyTips={dashboardData.studyTips} />
+                  }
+                ]}
+                emptyMessage="No guidance available"
+              />
+            </div>
+          </div>
+
+          {/* Row 2: Subject wise analysis on left, empty right cell for now */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div>
+              <PerformanceTrendChart
+                subjectWiseData={subjectWiseData}
+                subjectWiseDataMapping={dashboardData.subjectWiseDataMapping}
+              />
+            </div>
+            <div>
+              <SubjectWiseAnalysisChart
+                testData={subjectWiseData}
+                subjectWiseDataMapping={dashboardData.subjectWiseDataMapping}
+                selectedTest={selectedTest}
+                setSelectedTest={setSelectedTest}
+                subjectLabels={subjectsForSelectedTest}
+              />
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -509,8 +464,33 @@ ChartJS.register(
 
 /** DonutChart component: shows correct/incorrect/unattended counts for a selected test and subject */
 // Helper: normalize a mapping row into an array of subjectDetails with { name, correct, incorrect, unattended, total }
-const buildSubjectDetailsFromRow = (row = {}) => {
-  const subjects = ['Botany', 'Chemistry', 'Physics', 'Zoology'];
+// Helper: derive subjects dynamically from subjectWiseDataMapping. Prefer a sensible canonical order when possible.
+const getSubjectsFromMapping = (mapping = []) => {
+  if (!Array.isArray(mapping) || mapping.length === 0) return [];
+  const set = new Set();
+  mapping.forEach(row => {
+    Object.keys(row || {}).forEach(k => {
+      if (!k) return;
+      if (k === 'Test') return;
+      const base = k.includes('__') ? k.split('__')[0] : k;
+      if (base) set.add(base);
+    });
+  });
+  // prefer this display order when present, append any others deterministically
+  const preferred = ['Physics', 'Chemistry', 'Botany', 'Zoology', 'Biology'];
+  const rest = Array.from(set).filter(s => !preferred.includes(s)).sort();
+  return [...preferred.filter(p => set.has(p)), ...rest];
+};
+
+// Backward-compatible fallback constant. New code prefers dynamic derivation via `getSubjectsFromMapping`.
+const SUBJECTS = ['Physics', 'Chemistry', 'Botany', 'Zoology'];
+
+const buildSubjectDetailsFromRow = (row = {}, subjects = []) => {
+  // If subjects not provided, attempt to derive from row keys
+  if (!subjects || !subjects.length) {
+    subjects = Object.keys(row || {}).filter(k => k && k !== 'Test').map(k => (k.includes('__') ? k.split('__')[0] : k));
+    subjects = Array.from(new Set(subjects));
+  }
 
   // If the row already provides subjectDetails array, normalize each entry
   if (Array.isArray(row.subjectDetails)) {
@@ -523,7 +503,7 @@ const buildSubjectDetailsFromRow = (row = {}) => {
     }));
   }
 
-  // Detect legacy / flattened shape: fields like "Botany__correct", "Botany__incorrect", "Botany__unattempted"
+  // Detect flattened shape using provided subjects
   const looksLikeFlattened = subjects.some(s => Object.prototype.hasOwnProperty.call(row, `${s}__correct`));
   if (looksLikeFlattened) {
     return subjects.map(s => ({
@@ -548,15 +528,18 @@ const buildSubjectDetailsFromRow = (row = {}) => {
 const DonutChart = ({ subjectWiseDataMapping = [], selectedTest, setSelectedTest, selectedSubject, setSelectedSubject }) => {
   const tests = Array.isArray(subjectWiseDataMapping) ? subjectWiseDataMapping.map(r => r.Test || 'Unknown Test') : [];
 
+  // derive subjects for this mapping and use them to normalize rows
+  const subjectsList = getSubjectsFromMapping(subjectWiseDataMapping);
+
   // find details for selectedTest (if not provided, pick last test)
   const testKey = selectedTest || (tests.length ? tests[tests.length - 1] : undefined);
   const testRow = subjectWiseDataMapping.find(r => (r.Test || '') === testKey) || {};
 
   // Build normalized subjectDetails from whatever shape the API returned
-  const subjectDetails = buildSubjectDetailsFromRow(testRow);
+  const subjectDetails = buildSubjectDetailsFromRow(testRow, subjectsList);
 
   // Selected subject row. Support 'Overall' which aggregates across all subjectDetails
-  const selectedSubName = selectedSubject || (subjectDetails[0] && subjectDetails[0].name) || 'Botany';
+  const selectedSubName = selectedSubject || (subjectDetails[0] && subjectDetails[0].name) || (subjectsList[0] || 'Physics');
 
   let correct = 0;
   let incorrect = 0;
@@ -664,7 +647,7 @@ const formatStatValue = (value) => {
 
 
 /** PerformanceTrendChart (inlined from s_performancetrend.jsx) */
-const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWiseData = {}, title = 'Performance Trend' }) => {
+const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWiseData = {}, subjectWiseDataMapping = [], title = 'Performance Trend' }) => {
   // if parent doesn't control selectedSubject, manage it locally
   const [localSelectedSubject, setLocalSelectedSubject] = React.useState('Overall');
   const effectiveSelectedSubject = selectedSubject ?? localSelectedSubject;
@@ -685,17 +668,57 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
     return { name: null, value: 0 };
   }) : []);
 
-  const subjectNames = ['Botany', 'Chemistry', 'Physics', 'Zoology'];
-  const testKeys = Object.keys(subjectWiseData);
+  // Determine subject names solely from subjectWiseDataMapping (do NOT use performanceTrendDataMapping)
+  let subjectNames = getSubjectsFromMapping(subjectWiseDataMapping || []);
+  if (!subjectNames || subjectNames.length === 0) subjectNames = SUBJECTS;
 
-  // Create performanceData from subjectWiseData
+  // Prefer test ordering from the mapping when available, otherwise fall back to subjectWiseData keys
+  const rawTestKeys = (Array.isArray(subjectWiseDataMapping) && subjectWiseDataMapping.length)
+    ? subjectWiseDataMapping.map((r, i) => r.Test || `Test ${i + 1}`)
+    : Object.keys(subjectWiseData || {});
+
+  // Numeric-aware descending sort for labels like "Test1", "Test10" etc.
+  const extractTestNum = (s) => {
+    const m = String(s || '').match(/(\d+)/);
+    return m ? parseInt(m[1], 10) : NaN;
+  };
+
+  const testKeys = [...rawTestKeys].sort((a, b) => {
+    const na = extractTestNum(a);
+    const nb = extractTestNum(b);
+    if (!isNaN(na) && !isNaN(nb)) return nb - na; // numeric descending
+    if (!isNaN(na)) return -1;
+    if (!isNaN(nb)) return 1;
+    return b.localeCompare(a);
+  });
+
+  // Create performanceData using the mapping rows when available (safer for dynamic subject lists).
   const performanceData = {};
-  subjectNames.forEach((subject, index) => {
-    performanceData[subject] = testKeys.map(test => subjectWiseData[test][index]);
+  subjectNames.forEach((subject) => {
+    if (Array.isArray(subjectWiseDataMapping) && subjectWiseDataMapping.length) {
+      // Build series directly from mapping in order (fast and reliable)
+      performanceData[subject] = subjectWiseDataMapping.map(row => {
+        if (typeof row[subject] !== 'undefined' && row[subject] !== null) return Number(row[subject]) || 0;
+        // fallback: sum parts if totals not provided
+        const c = Number(row[`${subject}__correct`] || 0);
+        const i = Number(row[`${subject}__incorrect`] || 0);
+        const u = Number(row[`${subject}__unattempted`] || row[`${subject}__skipped`] || 0);
+        const total = Number(row[subject] || 0);
+        return total || (c + i + u);
+      });
+    } else {
+      // fallback: use array-based subjectWiseData and align by index using subjectNames
+      performanceData[subject] = testKeys.map(test => {
+        const arr = subjectWiseData[test] || [];
+        const idx = subjectNames.indexOf(subject);
+        const val = typeof arr[idx] !== 'undefined' ? arr[idx] : 0;
+        return typeof val === 'number' ? val : Number(val || 0);
+      });
+    }
   });
 
   const subjectKeys = Object.keys(performanceData || {});
-  const subjects = ['Overall', ...subjectKeys];
+  const subjects = ['Overall', ...subjectKeys.sort((a, b) => b.localeCompare(a))];
 
   const normalizedPerfs = Object.fromEntries(Object.entries(performanceData || {}).map(([k, v]) => [k, normalize(v)]));
 
@@ -707,7 +730,15 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
 
   let masterLabels;
   if (testsFromSubjectWise.length) {
-    masterLabels = testsFromSubjectWise;
+    // numeric-aware sort for master labels (ascending by test number)
+    masterLabels = [...testsFromSubjectWise].sort((a, b) => {
+      const na = extractTestNum(a);
+      const nb = extractTestNum(b);
+      if (!isNaN(na) && !isNaN(nb)) return na - nb; // numeric ascending
+      if (!isNaN(na)) return -1;
+      if (!isNaN(nb)) return 1;
+      return a.localeCompare(b);
+    });
   } else {
     // fallback to previous index/name based approach
     let maxLen = 0;
@@ -730,7 +761,7 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
     const arr = normalizedPerfs[subjectKey] || [];
     // Determine the correct index for this subject within the per-test arrays.
     // Use subjectKeys (which does NOT include 'Overall') so the index matches the
-    // ordering used when building subjectWiseData (Botany, Chemistry, ...).
+    // ordering used when building subjectWiseData (Physics, Chemistry, Botany, ...).
     const subjectIndex = subjectKeys.indexOf(subjectKey);
 
     return masterLabels.map((label, idx) => {
@@ -793,7 +824,7 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
     labels: dynamicLabels,
     datasets: [
       {
-        label: effectiveSelectedSubject === 'Overall' ? 'Overall Average Marks' : effectiveSelectedSubject + ' Marks',
+        label: effectiveSelectedSubject === 'Overall' ? 'Total Mark' : effectiveSelectedSubject + ' Mark',
         data: subjectData,
         fill: true,
         backgroundColor: (context) => {
@@ -813,6 +844,33 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
         pointBorderWidth: 2,
         pointBorderColor: '#fff',
         tension: 0.45
+      },
+      {
+        label: 'Average',
+        data: (() => {
+          // number of tests
+          const nTests = (dynamicLabels && dynamicLabels.length) ? dynamicLabels.length : 0;
+          if (nTests === 0) return [];
+
+          if (effectiveSelectedSubject === 'Overall') {
+            // overall: average of total marks per test
+            const totalAcrossTests = testWiseSumMarks.reduce((s, t) => s + (typeof t.sum === 'number' ? t.sum : 0), 0);
+            const overallAvg = totalAcrossTests / nTests;
+            return dynamicLabels.map(() => overallAvg);
+          } else {
+            // subject: average of the selected subject across all tests (include zeros if any)
+            const subjectVals = alignedSubjectData(effectiveSelectedSubject || '') || [];
+            const sum = subjectVals.reduce((s, v) => s + (typeof v === 'number' ? v : 0), 0);
+            const subjectAvg = sum / nTests;
+            return dynamicLabels.map(() => subjectAvg);
+          }
+        })(),
+        fill: false,
+        borderColor: '#9CA3AF',
+        borderDash: [5, 5],
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0
       }
     ]
   };
@@ -938,16 +996,48 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
 };
 
 /** SubjectWiseAnalysisChart (inlined from s_subjectwiseanalysis.jsx) */
-const SubjectWiseAnalysisChart = ({ selectedTest, setSelectedTest, testData = {}, subjectLabels = ['Botany', 'Chemistry', 'Physics', 'Zoology'], title = 'Subject-wise Analysis' }) => {
+const SubjectWiseAnalysisChart = ({ selectedTest, setSelectedTest, testData = {}, subjectWiseDataMapping = [], subjectLabels = ['Physics', 'Chemistry', 'Botany', 'Zoology'], title = 'Subject-wise Analysis' }) => {
   // local selection when parent doesn't control it
   const [localSelectedTest, setLocalSelectedTest] = React.useState('');
   const effectiveSelectedTest = selectedTest ?? localSelectedTest;
   const effectiveSetSelectedTest = setSelectedTest ?? setLocalSelectedTest;
 
-  const testList = Object.keys(testData || {});
+  const extractTestNumForList = (s) => {
+    const m = String(s || '').match(/(\d+)/);
+    return m ? parseInt(m[1], 10) : NaN;
+  };
+  const testList = Object.keys(testData || {}).sort((a, b) => {
+    const na = extractTestNumForList(a);
+    const nb = extractTestNumForList(b);
+    if (!isNaN(na) && !isNaN(nb)) return nb - na;
+    if (!isNaN(na)) return -1;
+    if (!isNaN(nb)) return 1;
+    return b.localeCompare(a);
+  });
   // If effectiveSelectedTest is not set, default to the latest test in testList
   const defaultTestKey = effectiveSelectedTest || (testList.length ? testList[testList.length - 1] : '');
-  const currentTestData = testData[defaultTestKey] || [];
+
+  // Build currentTestData aligned to the provided subjectLabels using the detailed mapping.
+  // Prefer the mapping row (which contains per-subject totals and breakdowns) for accurate totals.
+  let currentTestData = [];
+  try {
+    const mapping = Array.isArray(subjectWiseDataMapping) ? subjectWiseDataMapping : [];
+    const row = mapping.find(r => (r.Test || '') === defaultTestKey) || {};
+    const details = buildSubjectDetailsFromRow(row, subjectLabels || []);
+    // map subjectLabels to totals (use total if present, else sum breakdowns)
+    currentTestData = (subjectLabels || []).map(label => {
+      const d = details.find(x => x && (x.name === label || (x.name || '').toLowerCase() === (label || '').toLowerCase()));
+      if (!d) return 0;
+      const total = Number(d.total || 0);
+      if (total && total > 0) return total;
+      const c = Number(d.correct || 0);
+      const i = Number(d.incorrect || 0);
+      const u = Number(d.unattended ?? d.skipped ?? d.unattempted ?? 0);
+      return c + i + u;
+    });
+  } catch (e) {
+    currentTestData = testData[defaultTestKey] || [];
+  }
 
   React.useEffect(() => {
     if (testList.length > 0 && !effectiveSelectedTest) {
@@ -1080,7 +1170,6 @@ const MobileInsightsSelect = ({ keyInsightsData = {} }) => {
   const sections = {
     quickRecommendations: keyInsightsData?.quickRecommendations || [],
     keyStrengths: keyInsightsData?.keyStrengths || [],
-    areasForImprovement: keyInsightsData?.areasForImprovement || [],
     yetToDecide: keyInsightsData?.yetToDecide || []
   };
 
@@ -1095,7 +1184,6 @@ const MobileInsightsSelect = ({ keyInsightsData = {} }) => {
         <SelectContent side="bottom" align="end">
           {/* <SelectItem value="quickRecommendations">Quick Recommendations</SelectItem> */}
           <SelectItem value="keyStrengths">Key Strengths</SelectItem>
-          <SelectItem value="areasForImprovement">Areas for Improvement</SelectItem>
           <SelectItem value="yetToDecide">Consistency Threats</SelectItem>
         </SelectContent>
       </Select>

@@ -9,6 +9,10 @@ from exam.models.swot import SWOT
 from django.http import JsonResponse
 from exam.models.educator import Educator
 from exam.models.test_metadata import TestMetadata
+import logging
+import sentry_sdk
+
+logger = logging.getLogger(__name__)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -26,6 +30,7 @@ def get_student_details(request):
         return JsonResponse({'name': name, "student_id": student_id, "class_id":class_id, "inst": inst_name}, status=200)
 
     except Exception as e:
+        logger.exception(f"Error in get_student_details: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
 
 
@@ -68,8 +73,11 @@ def get_student_dashboard(request):
             "yetToDecide": json.loads(metric_dict.get('CV', '[]')),
         }
 
+        # Get Action Plan, Checklist, and Study Tips
+        action_plan = json.loads(metric_dict.get('AP', '[]'))
+        checklist = json.loads(metric_dict.get('CL', '[]'))
+        study_tips = json.loads(metric_dict.get('ST', '[]'))
         
-
         performanceTrendDataMapping = json.loads(metric_dict.get('PT', '[]'))
         subjectWiseDataMapping = json.loads(metric_dict.get('SA', '[]'))
 
@@ -86,9 +94,13 @@ def get_student_dashboard(request):
             "performanceTrendDataMapping": performanceTrendDataMapping,
             "subjectWiseDataMapping": subjectWiseDataMapping,
             "keyInsightsData": keyInsightsData,
+            "actionPlan": action_plan,
+            "checklist": checklist,
+            "studyTips": study_tips,
             "testMetadata": test_metadata_map
         })
     except Exception as e:
+        logger.exception(f"Error in get_student_dashboard: {str(e)}")
         return Response({"error": str(e)}, status=500)
 
 
@@ -120,6 +132,7 @@ def get_student_performance(request):
         })
 
     except Exception as e:
+        logger.exception(f"Error in get_student_performance: {str(e)}")
         return Response({"error": str(e)}, status=500)
 
 
@@ -138,6 +151,9 @@ def get_student_swot(request):
         test_num = request.data.get("test_num")
         if test_num is None:
             return Response({"error": "Missing 'test_num' in request body"}, status=400)
+        # Debug: log received test_num and its type to help frontend/backend mismatch debugging
+        logger.info(f"get_student_swot called for student={student_id} raw_test_num={request.data.get('test_num')} type={type(request.data.get('test_num'))}")
+
         # Filter records using test_num and student/class info
         class_id = student.class_id
         record = SWOT.objects.filter(
@@ -148,6 +164,7 @@ def get_student_swot(request):
         ).first()
 
         if not record:
+            logger.info(f"get_student_swot: no SWOT record found for student={student_id} class={class_id} test_num={test_num}")
             return Response({"error": "SWOT record not found"}, status=404)
 
         return Response({
@@ -155,6 +172,7 @@ def get_student_swot(request):
         })
 
     except Exception as e:
+        logger.exception(f"Error in get_student_swot: {str(e)}")
         return Response({"error": str(e)}, status=500)
     
 

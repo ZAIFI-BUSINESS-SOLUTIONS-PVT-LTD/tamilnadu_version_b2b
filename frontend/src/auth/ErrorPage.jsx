@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { WarningCircle, House, ArrowClockwise, Bug, Stack } from "@phosphor-icons/react";
+import { AlertTriangle, Home, RefreshCw, Bug, Layers } from "lucide-react";
 
-const ErrorPage = ({ 
-  errorCode = 500, 
-  errorMessage = "Something went wrong", 
+const ErrorPage = ({
+  errorCode = 500,
+  errorMessage = "Something went wrong",
   showTechnicalDetails = false,
   errorDetails = null
 }) => {
@@ -56,7 +56,7 @@ const ErrorPage = ({
 
         <div className="w-full md:w-1/2 text-center md:text-left space-y-7">
           <div className="flex items-center justify-center md:justify-start gap-3 text-red-500">
-            <WarningCircle size={38} weight="fill" className="animate-pulse" />
+            <AlertTriangle size={38} className="animate-pulse" />
             <h1 className="text-3xl sm:text-4xl text-gray-800 font-extrabold tracking-tight">
               {getErrorTitle()}
             </h1>
@@ -75,7 +75,7 @@ const ErrorPage = ({
               onClick={() => window.location.href = "/"}
               className="flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-500 transition-all text-base font-semibold shadow-lg gap-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
             >
-              <House size={20} weight="bold" />
+              <Home size={20} />
               Home
             </button>
             <button
@@ -85,7 +85,7 @@ const ErrorPage = ({
               }}
               className="flex items-center justify-center px-6 py-3 bg-white text-blue-700 rounded-xl border border-blue-200 hover:bg-blue-50 transition-all text-base font-semibold gap-2 shadow focus:outline-none focus:ring-2 focus:ring-blue-200"
             >
-              <ArrowClockwise size={20} weight="bold" className={isAutoRefreshing ? "animate-spin" : ""} />
+              <RefreshCw size={20} className={isAutoRefreshing ? "animate-spin" : ""} />
               {isAutoRefreshing ? `Refreshing in ${countdown}s` : "Refresh"}
             </button>
           </div>
@@ -93,7 +93,7 @@ const ErrorPage = ({
           {/* Technical details accordion */}
           {showTechnicalDetails && errorDetails && (
             <div className="mt-7 border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-gray-50">
-              <button 
+              <button
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="w-full px-4 py-3 bg-gray-100 flex items-center justify-between text-left text-base font-semibold text-gray-700 hover:bg-gray-200 transition-all"
               >
@@ -106,10 +106,10 @@ const ErrorPage = ({
               {isExpanded && (
                 <div className="p-4 bg-gray-50 border-t border-gray-200">
                   <div className="flex items-start gap-2">
-                    <Stack size={18} className="mt-1 flex-shrink-0 text-blue-400" />
+                    <Layers size={18} className="mt-1 flex-shrink-0 text-blue-400" />
                     <pre className="text-xs font-mono bg-gray-100 p-3 rounded overflow-x-auto max-h-40 w-full text-gray-700">
-                      {typeof errorDetails === 'object' 
-                        ? JSON.stringify(errorDetails, null, 2) 
+                      {typeof errorDetails === 'object'
+                        ? JSON.stringify(errorDetails, null, 2)
                         : errorDetails}
                     </pre>
                   </div>

@@ -2,19 +2,20 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { fetchEducatorAllStudentResults, fetcheducatorstudent } from '../../utils/api';
 import { useNavigate } from 'react-router-dom';
 import {
-  MagnifyingGlass,
-  Spinner,
-  WarningCircle,
-  SmileySad,
+  Search,
+  Loader2,
+  AlertCircle,
+  Frown,
   X,
-  ChartBar,
-  Exam,
-  User,
-  CaretUp,
-  CaretDown
-} from '@phosphor-icons/react';
+  BarChart,
+  FileText,
+  SlidersHorizontal,
+  ChevronUp,
+  ChevronDown
+} from 'lucide-react';
 import Table from '../components/ui/table.jsx';
 import Modal from '../components/ui/modal.jsx';
+import LoadingPage from '../components/LoadingPage.jsx';
 
 function EResults() {
   const [loading, setLoading] = useState(true);
@@ -185,17 +186,16 @@ function EResults() {
 
   // Sort icon component
   const SortIcon = ({ field }) => {
-    if (sortField !== field) return <CaretDown size={14} className="text-gray-400" />;
+    if (sortField !== field) return <ChevronDown size={14} className="text-gray-400" />;
     return sortDirection === 'asc'
-      ? <CaretUp size={14} className="text-primary" />
-      : <CaretDown size={14} className="text-primary" />;
+      ? <ChevronUp size={14} className="text-primary" />
+      : <ChevronDown size={14} className="text-primary" />;
   };
 
   if (loading) {
     return (
-      <div className="flex flex-col justify-center items-center h-screen gap-4">
-        <Spinner className="animate-spin h-8 w-8 text-primary" />
-        <p className="text-gray-600">Loading student results...</p>
+      <div className="relative min-h-screen">
+        <LoadingPage fixed={false} className="bg-white/80 dark:bg-gray-900/80 z-10" />
       </div>
     );
   }
@@ -204,7 +204,7 @@ function EResults() {
     return (
       <div className="flex flex-col items-center justify-center h-screen p-4">
         <div className="alert alert-error max-w-md shadow-lg">
-          <WarningCircle className="stroke-current shrink-0 h-6 w-6" weight="bold" />
+          <AlertCircle className="stroke-current shrink-0 h-6 w-6" />
           <div>
             <h3 className="font-bold">Error!</h3>
             <div className="text-xs">{error}</div>
@@ -245,231 +245,227 @@ function EResults() {
   );
 
   return (
-    <div className="p-6 pt-16 w-full mx-auto">
-      {/* Page Header and Search Bar */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-gray-800">Student Results</h1>
-          <span className="badge badge-lg text-sm">
-            {groupedResults.length} {groupedResults.length === 1 ? 'Student' : 'Students'}
-          </span>
-        </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <button className="btn btn-outline" onClick={() => setFilterModalOpen(true)}>
-            Filter
-          </button>
-          <div className="w-full sm:w-96 flex gap-2">
-            <div className="relative flex-1">
-              <input
-                type="text"
-                placeholder="Search by ID or name..."
-                className="input input-bordered w-full pl-10 pr-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <MagnifyingGlass
-                className="h-5 w-5 absolute left-3 top-3 opacity-50"
-                weight="bold"
-              />
-              {searchTerm && (
-                <button
-                  onClick={clearSearch}
-                  className="absolute right-3 top-3 opacity-70 hover:opacity-100"
-                  aria-label="Clear search"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
+    <div className="sm:pt-4 w-full mx-auto">
+      <div className="card rounded-2xl border border-gray-250 bg-white w-full mt-8 p-8">
+        {/* Page Header and Search Bar */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4  pb-6 border-b border-gray-200">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-800">Student Results</h1>
+            <span className="badge badge-lg border-transparent bg-blue-50 text-sm text-blue-700">
+              {groupedResults.length} {groupedResults.length === 1 ? 'Student' : 'Students'}
+            </span>
           </div>
-        </div>
-      </div>
-
-      {/* Styled Table Layout */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
-        {sortedResults.length > 0 ? (
-          <Table
-            columns={columns}
-            data={sortedResults}
-            sortField={sortField}
-            sortDirection={sortDirection}
-            onSort={field => {
-              if (sortField === field) setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-              setSortField(field);
-            }}
-            renderRow={renderRow}
-            emptyState={
-              <div className="p-8 text-center">
-                <SmileySad className="h-12 w-12 mx-auto text-gray-400" weight="duotone" />
-                <h3 className="mt-2 text-lg font-medium text-gray-900">No results found</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  {searchTerm ? 'Try a different search term' : 'No student results available'}
-                </p>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <div className="w-full sm:w-96 flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  placeholder="Search by ID or name..."
+                  className="input input-bordered w-full pl-10 pr-8"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <Search
+                  className="h-5 w-5 absolute left-3 top-3 opacity-50"
+                />
                 {searchTerm && (
                   <button
                     onClick={clearSearch}
-                    className="mt-4 btn btn-sm btn-ghost"
+                    className="absolute right-3 top-3 opacity-70 hover:opacity-100"
+                    aria-label="Clear search"
                   >
-                    Clear search
+                    <X className="h-4 w-4" />
                   </button>
                 )}
               </div>
-            }
-          />
-        ) : (
-          <div className="p-8 text-center">
-            <SmileySad className="h-12 w-12 mx-auto text-gray-400" weight="duotone" />
-            <h3 className="mt-2 text-lg font-medium text-gray-900">No results found</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchTerm ? 'Try a different search term' : 'No student results available'}
-            </p>
-            {searchTerm && (
-              <button
-                onClick={clearSearch}
-                className="mt-4 btn btn-sm btn-ghost"
-              >
-                Clear search
+              <button className="btn btn-ghost border-gray-300 flex items-center gap-2" onClick={() => setFilterModalOpen(true)}>
+                <SlidersHorizontal className="w-5 h-5" />
+                <span>Filter</span>
               </button>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Modal for student details */}
-      <Modal
-        open={!!modalStudent}
-        onClose={() => setModalStudent(null)}
-        title={modalStudent ? (
-          <>
-            {studentNameMap[modalStudent.student_id] || modalStudent.student_name}
-            <span className="text-xs text-gray-400 ml-2">(ID: {modalStudent.student_id})</span>
-          </>
-        ) : ''}
-        maxWidth="max-w-3xl"
-      >
-        {modalStudent && (
-          <>
-            <div className="flex flex-wrap gap-x-6 gap-y-2 mb-4">
-              <div className="flex items-center gap-2">
-                <Exam className="text-gray-400" weight="bold" />
-                <div>
-                  <p className="text-sm text-gray-500">Tests</p>
-                  <p className="font-medium">{modalStudent.tests_taken}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <ChartBar className="text-gray-400" weight="bold" />
-                <div>
-                  <p className="text-sm text-gray-500">Average</p>
-                  <p className="font-medium">{modalStudent.average_score}</p>
-                </div>
-              </div>
             </div>
-            <h4 className="text-md font-semibold text-gray-800 mb-2">Test Performance</h4>
-            <div className="overflow-x-auto">
-              <table className="table table-zebra table-sm">
-                <thead>
-                  <tr>
-                    <th>Test #</th>
-                    <th>Total Score</th>
-                    <th>Physics</th>
-                    <th>Chemistry</th>
-                    {/* Dynamically show subject columns based on data */}
-                    {modalStudent.test_results.some(t => (t.bio_score > 0 || t.bio_total > 0)) && <th>Biology</th>}
-                    {modalStudent.test_results.some(t => (t.bot_score > 0 || t.bot_total > 0)) && <th>Botany</th>}
-                    {modalStudent.test_results.some(t => (t.zoo_score > 0 || t.zoo_total > 0)) && <th>Zoology</th>}
-                    <th>Accuracy</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {modalStudent.test_results.map((test, index) => {
-                    const showBio = modalStudent.test_results.some(t => (t.bio_score > 0 || t.bio_total > 0));
-                    const showBot = modalStudent.test_results.some(t => (t.bot_score > 0 || t.bot_total > 0));
-                    const showZoo = modalStudent.test_results.some(t => (t.zoo_score > 0 || t.zoo_total > 0));
-                    
-                    return (
+          </div>
+        </div>
+
+        {/* Styled Table Layout */}
+
+        <div className="overflow-x-auto">
+          {sortedResults.length > 0 ? (
+            <Table
+              columns={columns}
+              data={sortedResults}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onSort={field => {
+                if (sortField === field) setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                setSortField(field);
+              }}
+              renderRow={renderRow}
+              emptyState={
+                <div className="p-8 text-center">
+                  <Frown className="h-12 w-12 mx-auto text-gray-400" />
+                  <h3 className="mt-2 text-lg font-medium text-gray-900">No results found</h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    {searchTerm ? 'Try a different search term' : 'No student results available'}
+                  </p>
+                  {searchTerm && (
+                    <button
+                      onClick={clearSearch}
+                      className="mt-4 btn btn-sm btn-ghost"
+                    >
+                      Clear search
+                    </button>
+                  )}
+                </div>
+              }
+            />
+          ) : (
+            <div className="p-8 text-center">
+              <Frown className="h-12 w-12 mx-auto text-gray-400" />
+              <h3 className="mt-2 text-lg font-medium text-gray-900">No results found</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                {searchTerm ? 'Try a different search term' : 'No student results available'}
+              </p>
+              {searchTerm && (
+                <button
+                  onClick={clearSearch}
+                  className="mt-4 btn btn-sm btn-ghost"
+                >
+                  Clear search
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Modal for student details */}
+        <Modal
+          open={!!modalStudent}
+          onClose={() => setModalStudent(null)}
+          title={modalStudent ? (
+            <>
+              {studentNameMap[modalStudent.student_id] || modalStudent.student_name}
+              <span className="text-xs text-gray-400 ml-2">(ID: {modalStudent.student_id})</span>
+            </>
+          ) : ''}
+          maxWidth="max-w-3xl"
+        >
+          {modalStudent && (
+            <>
+              <div className="flex flex-wrap gap-x-6 gap-y-2 mb-4">
+                <div className="flex items-center gap-2">
+                  <FileText className="text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-500">Tests</p>
+                    <p className="font-medium">{modalStudent.tests_taken}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <BarChart className="text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-500">Average</p>
+                    <p className="font-medium">{modalStudent.average_score}</p>
+                  </div>
+                </div>
+              </div>
+              <h4 className="text-md font-semibold text-gray-800 mb-2">Test Performance</h4>
+              <div className="overflow-x-auto">
+                <table className="table table-zebra table-sm">
+                  <thead>
+                    <tr>
+                      <th>Test #</th>
+                      <th>Total Score</th>
+                      <th>Physics</th>
+                      <th>Chemistry</th>
+                      <th>Biology</th>
+                      <th>Botany</th>
+                      <th>Zoology</th>
+                      <th>Accuracy</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {modalStudent.test_results.map((test, index) => (
                       <tr key={index}>
                         <td>{test.test_num}</td>
                         <td className="font-medium">{test.total_score}</td>
-                        <td>{test.phy_score ?? 0}</td>
-                        <td>{test.chem_score ?? 0}</td>
-                        {showBio && <td>{test.bio_score ?? 0}</td>}
-                        {showBot && <td>{test.bot_score ?? 0}</td>}
-                        {showZoo && <td>{test.zoo_score ?? 0}</td>}
+                        <td>{test.phy_score || "-"}</td>
+                        <td>{test.chem_score || "-"}</td>
+                        <td>{test.bio_score || "-"}</td>
+                        <td>{test.bot_score || "-"}</td>
+                        <td>{test.zoo_score || "-"}</td>
                         <td>
-                          {test.total_attended > 0 ? Math.round((test.total_correct / test.total_attended) * 100) : 0}%
+                          {test.total_attended ? Math.round((test.total_correct / test.total_attended) * 100) + '%' : '-'}
                         </td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <div className="modal-action mt-6">
-              <button className="btn" onClick={() => setModalStudent(null)}>Close</button>
-            </div>
-          </>
-        )}
-      </Modal>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="modal-action mt-6">
+                <button className="btn" onClick={() => setModalStudent(null)}>Close</button>
+              </div>
+            </>
+          )}
+        </Modal>
 
-      {/* Filter Modal */}
-      {filterModalOpen && (
-        <div className="modal modal-open">
-          <div className="modal-box max-w-md">
-            <h3 className="font-bold text-lg mb-4">Filter by Average Score</h3>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Average Score Range</label>
-              <div className="flex items-center gap-2">
+        {/* Filter Modal */}
+        {filterModalOpen && (
+          <div className="modal modal-open">
+            <div className="modal-box max-w-md">
+              <h3 className="font-bold text-lg mb-4">Filter by Average Score</h3>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Average Score Range</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={minAvg}
+                    max={scoreRange[1]}
+                    value={scoreRange[0]}
+                    onChange={e => setScoreRange([Number(e.target.value), scoreRange[1]])}
+                    className="input input-bordered w-20"
+                  />
+                  <span>-</span>
+                  <input
+                    type="number"
+                    min={scoreRange[0]}
+                    max={maxAvg}
+                    value={scoreRange[1]}
+                    onChange={e => setScoreRange([scoreRange[0], Number(e.target.value)])}
+                    className="input input-bordered w-20"
+                  />
+                </div>
                 <input
-                  type="number"
+                  type="range"
                   min={minAvg}
-                  max={scoreRange[1]}
+                  max={maxAvg}
                   value={scoreRange[0]}
                   onChange={e => setScoreRange([Number(e.target.value), scoreRange[1]])}
-                  className="input input-bordered w-20"
+                  className="range range-xs mt-2"
                 />
-                <span>-</span>
                 <input
-                  type="number"
-                  min={scoreRange[0]}
+                  type="range"
+                  min={minAvg}
                   max={maxAvg}
                   value={scoreRange[1]}
                   onChange={e => setScoreRange([scoreRange[0], Number(e.target.value)])}
-                  className="input input-bordered w-20"
+                  className="range range-xs mt-2"
                 />
+                <div className="flex justify-between text-xs text-gray-400 mt-1">
+                  <span>{minAvg}</span>
+                  <span>{maxAvg}</span>
+                </div>
               </div>
-              <input
-                type="range"
-                min={minAvg}
-                max={maxAvg}
-                value={scoreRange[0]}
-                onChange={e => setScoreRange([Number(e.target.value), scoreRange[1]])}
-                className="range range-xs mt-2"
-              />
-              <input
-                type="range"
-                min={minAvg}
-                max={maxAvg}
-                value={scoreRange[1]}
-                onChange={e => setScoreRange([scoreRange[0], Number(e.target.value)])}
-                className="range range-xs mt-2"
-              />
-              <div className="flex justify-between text-xs text-gray-400 mt-1">
-                <span>{minAvg}</span>
-                <span>{maxAvg}</span>
+              <div className="modal-action">
+                <button className="btn" onClick={() => setFilterModalOpen(false)}>Apply</button>
               </div>
             </div>
-            <div className="modal-action">
-              <button className="btn" onClick={() => setFilterModalOpen(false)}>Apply</button>
-            </div>
+            <div className="modal-backdrop" onClick={() => setFilterModalOpen(false)}></div>
           </div>
-          <div className="modal-backdrop" onClick={() => setFilterModalOpen(false)}></div>
-        </div>
-      )}
+        )}
 
-      <div className="mt-6 text-sm text-gray-500 flex items-center gap-2">
-        <ChartBar className="w-4 h-4" />
-        <p>Results are sorted by average score (highest to lowest)</p>
+        <div className="mt-6 text-sm text-gray-500 flex items-center gap-2">
+          <BarChart className="w-4 h-4" />
+          <p>Results are sorted by average score (highest to lowest)</p>
+        </div>
       </div>
     </div>
   );

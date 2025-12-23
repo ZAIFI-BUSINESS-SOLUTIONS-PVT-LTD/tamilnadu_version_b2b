@@ -7,13 +7,13 @@ from io import BytesIO
 from typing import List, Dict, Any, Optional
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
-from celery import shared_task
 from celery.exceptions import TimeoutError
 import logging
 
 # LLM API and prompts as per your setup:
 from exam.llm_call.prompts import ocr_image_prompt as ocr_prompt
 from exam.llm_call.gemini_api import call_gemini_api_with_rotation
+from exam.llm_call.decorators import traceable
 from exam.llm_call.mistral_api import call_mistrall_ocr_api_with_rotation
 
 logger = logging.getLogger(__name__)
@@ -81,13 +81,23 @@ def parse_questions_or_raise(text: str) -> Dict[str, List[Dict[str, Any]]]:
 
 # --- LLM Wrappers ---
 
+@traceable()
 def get_total_questions(images: List[BytesIO]) -> int:
     prompt = (
         "Count the total number of questions (every question with a question number, mostly 180/200). "
         "Return just a single integer, nothing else."
     )
-    model = "gemini-2.0-flash-lite"
-    response = call_gemini_api_with_rotation(prompt, model, images)
+    model = "gemini-2.0-flash"
+    result = call_gemini_api_with_rotation(prompt, model, images, return_structured=True)
+    if isinstance(result, dict):
+        if result.get("ok"):
+            response = result.get("response", "") or ""
+        else:
+            logger.warning(f"Gemini structured error (get_total_questions): code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+            response = ""
+    else:
+        response = result or ""
+
     try:
         N = int(re.search(r"\d+", response).group())
         return N
@@ -95,14 +105,29 @@ def get_total_questions(images: List[BytesIO]) -> int:
         logger.error(f"Failed to extract question count from response: {response} ({e})")
         raise
 
+@traceable()
 def extract_text_from_images(images: List[BytesIO], start: int, end: int) -> str:
     prompt = f"extract from question number {start} till {end}" + ocr_prompt
-    return call_gemini_api_with_rotation(prompt, "gemini-2.5-flash", images)
+    result = call_gemini_api_with_rotation(prompt, "gemini-2.5-flash", images, return_structured=True)
+    if isinstance(result, dict):
+        if result.get("ok"):
+            return result.get("response", "") or ""
+        logger.warning(f"Gemini structured error (extract_text_from_images): code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+        return ""
+    return result or ""
 
+@traceable()
 def extract_text_from_content(ocr: str, start: int, end: int) -> str:
     prompt = f"extract from question number {start} till {end}" + str(ocr_prompt) + ocr
-    return call_gemini_api_with_rotation(prompt, "gemini-2.0-flash")
+    result = call_gemini_api_with_rotation(prompt, "gemini-2.0-flash", return_structured=True)
+    if isinstance(result, dict):
+        if result.get("ok"):
+            return result.get("response", "") or ""
+        logger.warning(f"Gemini structured error (extract_text_from_content): code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+        return ""
+    return result or ""
 
+@traceable()
 def extract_text(ocr: str, start: int, end: int, images: List[BytesIO]) -> str:
     r1 = extract_text_from_images(images, start, end)
     r2 = extract_text_from_content(ocr, start, end)
@@ -127,8 +152,15 @@ def extract_text(ocr: str, start: int, end: int, images: List[BytesIO]) -> str:
         "}\n"
         + r1 + "\n" + r2
     )
-    return call_gemini_api_with_rotation(prompt, "gemini-2.5-flash", images)
+    result = call_gemini_api_with_rotation(prompt, "gemini-2.5-flash", images, return_structured=True)
+    if isinstance(result, dict):
+        if result.get("ok"):
+            return result.get("response", "") or ""
+        logger.warning(f"Gemini structured error (extract_text): code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+        return ""
+    return result or ""
 
+@traceable()
 def retry_extract_text(response: str, error: Exception) -> str:
     prompt = (
         f"Error parsing JSON: {error}\n"
@@ -137,11 +169,21 @@ def retry_extract_text(response: str, error: Exception) -> str:
         "Expected JSON format:\n"
         "{ \"questions\": [ { \"question_number\": int, \"question\": \"\", \"options\": {\"1\": \"\", \"2\": \"\", \"3\": \"\", \"4\": \"\"}, \"im_desp\": \"...\" } ] }"
     )
-    return call_gemini_api_with_rotation(prompt, "gemini-2.5-flash")
+    result = call_gemini_api_with_rotation(prompt, "gemini-2.5-flash", return_structured=True)
+    if isinstance(result, dict):
+        if result.get("ok"):
+            return result.get("response", "") or ""
+        logger.warning(f"Gemini structured error (retry_extract_text): code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+        return ""
+    return result or ""
 
-# --- Celery subtask ---
-
+# --- Chunk extraction (synchronous) ---
+@traceable()
 def extract_chunk_subtask(ocr_text, start, end, images):
+    """
+    Synchronous chunk extraction with retry logic.
+    Used by the orchestrator for both sequential and parallel execution.
+    """
     attempt = 0
     
     extracted_text = extract_text(ocr_text, start, end, images)
@@ -168,12 +210,18 @@ def extract_chunk_subtask(ocr_text, start, end, images):
 
 # --- Main orchestrator (not a Celery task) ---
 
-def questions_extract(pdf_path: str, test_path: str) -> Optional[List[Dict[str, Any]]]:
+@traceable()
+def questions_extract(pdf_path: str, test_path: str, use_parallel=True, total_questions: Optional[int] = None) -> Optional[List[Dict[str, Any]]]:
     """
-    - Launches 4 parallel chunk extraction subtasks via Celery,
-    - Aggregates results as soon as each chunk finishes,
-    - Retries individual chunks on TimeoutError,
-    - Saves result JSON if all chunks succeed.
+    Extracts questions from PDF using parallel chunk processing.
+    
+    Args:
+        pdf_path: Path to the PDF file
+        test_path: Directory for saving outputs
+        use_parallel: If True, uses Celery group for parallel extraction; if False, sequential
+    
+    Returns:
+        List of question dicts or None on failure
     """
     # OCR and initial setup
     all_questions = []
@@ -184,27 +232,98 @@ def questions_extract(pdf_path: str, test_path: str) -> Optional[List[Dict[str, 
     default_storage.save(markdown_path, ContentFile(markdown_content))
     logger.info(f"[QUESTION EXTRACTION] ✅ OCR data saved as Markdown at: {markdown_path}")
 
-    N = get_total_questions(images)
-    logger.info(f"[QUESTION EXTRACTION] 📄 Total questions: {N}")
-    for i in range(1,N,int(N/4)):
-        questions = []
-        start=i
-        end = i+(N/4)-1
-        questions = extract_chunk_subtask(ocr_text, start, end, images)
-        logger.info(f"Extracted questions from {start} to {end}")
-
-        all_questions.extend(questions["questions"])
-
-    if len(all_questions) == N:
-        question_paper_json_path = os.path.join(test_path, "qp.json")
-        json_data = json.dumps(all_questions, indent=4)
-        default_storage.save(question_paper_json_path, ContentFile(json_data))
-        logger.info(f"[QUESTION EXTRACTION] ✅ Saved extracted questions to {question_paper_json_path}")
-        return all_questions
+    # Use provided total_questions (from metadata) if available to avoid an LLM call
+    if total_questions is not None:
+        N = int(total_questions)
+        logger.info(f"[QUESTION EXTRACTION] 📄 Using metadata total questions: {N}")
     else:
-        logger.error(f"[QUESTION EXTRACTION] ❌ Extraction incomplete: {len(all_questions)}/{N}")
-        return None
+        N = get_total_questions(images)
+        logger.info(f"[QUESTION EXTRACTION] 📄 Total questions (LLM): {N}")
+    
+    # Calculate chunk boundaries
+    chunk_size = int(N / 4)
+    chunks = []
+    for idx in range(4):
+        start = 1 + (idx * chunk_size)
+        # Last chunk takes any remaining questions
+        end = N if idx == 3 else start + chunk_size - 1
+        chunks.append((start, end, idx))
 
+    logger.info(f"[QUESTION EXTRACTION] 📊 Chunk boundaries: {[(s, e) for s, e, _ in chunks]}")
+
+    # We'll attempt extraction up to `max_attempts` times if the exact question count isn't met.
+    max_attempts = 3
+    for attempt in range(1, max_attempts + 1):
+        all_questions = []
+
+        if use_parallel:
+            # Parallel extraction using ThreadPoolExecutor
+            logger.info(f"[QUESTION EXTRACTION] 🚀 Attempt {attempt}/{max_attempts} - Using parallel chunk extraction")
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+
+            chunk_results = [None] * 4  # Preserve order
+
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                future_to_chunk = {
+                    executor.submit(extract_chunk_subtask, ocr_text, start, end, images): (start, end, idx)
+                    for start, end, idx in chunks
+                }
+
+                for future in as_completed(future_to_chunk):
+                    start, end, idx = future_to_chunk[future]
+                    try:
+                        questions = future.result()
+                        chunk_results[idx] = questions
+                        logger.info(f"[QUESTION EXTRACTION] ✅ Chunk {idx + 1}/4 completed (Q{start}-Q{end}): {len(questions.get('questions', []))} questions")
+                    except Exception as e:
+                        logger.error(f"[QUESTION EXTRACTION] ❌ Chunk {idx + 1}/4 failed (Q{start}-Q{end}): {e}")
+                        chunk_results[idx] = None
+
+            # Merge results in order
+            for idx, result in enumerate(chunk_results):
+                if result and 'questions' in result:
+                    all_questions.extend(result['questions'])
+                else:
+                    logger.error(f"[QUESTION EXTRACTION] ❌ Chunk {idx + 1}/4 returned no valid results")
+        else:
+            # Sequential extraction (original behavior)
+            logger.info(f"[QUESTION EXTRACTION] 🔄 Attempt {attempt}/{max_attempts} - Using sequential chunk extraction")
+            for start, end, idx in chunks:
+                questions = extract_chunk_subtask(ocr_text, start, end, images)
+                logger.info(f"[QUESTION EXTRACTION] ✅ Extracted questions from {start} to {end}")
+                if questions and 'questions' in questions:
+                    all_questions.extend(questions["questions"])
+
+        # Deduplicate by question_number (keep first occurrence)
+        seen = set()
+        deduped_questions = []
+        for q in all_questions:
+            qnum = q.get('question_number')
+            if qnum not in seen:
+                seen.add(qnum)
+                deduped_questions.append(q)
+            else:
+                logger.warning(f"[QUESTION EXTRACTION] ⚠️ Duplicate question number {qnum} found, keeping first occurrence")
+
+        logger.info(f"[QUESTION EXTRACTION] 📊 Attempt {attempt}/{max_attempts} - Total extracted: {len(all_questions)}, After dedup: {len(deduped_questions)}, Expected: {N}")
+
+        # Require exact match now. If mismatch, retry up to max_attempts.
+        if len(deduped_questions) == N:
+            question_paper_json_path = os.path.join(test_path, "qp.json")
+            json_data = json.dumps(deduped_questions, indent=4)
+            default_storage.save(question_paper_json_path, ContentFile(json_data))
+            logger.info(f"[QUESTION EXTRACTION] ✅ Saved {len(deduped_questions)} questions to {question_paper_json_path}")
+            return deduped_questions
+        else:
+            logger.warning(f"[QUESTION EXTRACTION] ⚠️ Extraction count mismatch: {len(deduped_questions)}/{N} on attempt {attempt}/{max_attempts}")
+            if attempt < max_attempts:
+                logger.info(f"[QUESTION EXTRACTION] 🔄 Retrying extraction (attempt {attempt + 1}/{max_attempts})")
+                continue
+            else:
+                logger.error(f"[QUESTION EXTRACTION] ❌ Extraction incomplete after {max_attempts} attempts: {len(deduped_questions)}/{N}")
+                return None
+
+@traceable()
 def get_subject_from_q_paper(pdf_path: str) -> Optional[str]:
     """
     Extracts the subject from the first page of a question paper using an LLM.
@@ -217,9 +336,15 @@ def get_subject_from_q_paper(pdf_path: str) -> Optional[str]:
         first_page_image = images[0]
         prompt = "Analyze the provided image of a question paper's first page and identify the subject. The subject is likely to be Physics, Chemistry, Botany, Zoology, or Biology. Return only the subject name as a single word."
         model = "gemini-2.0-flash-lite"
-        subject = call_gemini_api_with_rotation(prompt, model, [first_page_image])
-
-        subject = subject.strip().title()
+        result = call_gemini_api_with_rotation(prompt, model, [first_page_image], return_structured=True)
+        if isinstance(result, dict):
+            if result.get("ok"):
+                subject = (result.get("response", "") or "").strip().title()
+            else:
+                logger.warning(f"Gemini structured error (get_subject_from_q_paper): code={result.get('code')} reason={result.get('reason')} model={result.get('model')} attempt={result.get('attempt')}")
+                subject = ""
+        else:
+            subject = (result or "").strip().title()
         if subject in ["Physics", "Chemistry", "Botany", "Zoology", "Biology"]:
             return subject
         return None
@@ -228,6 +353,7 @@ def get_subject_from_q_paper(pdf_path: str) -> Optional[str]:
         return None
 
 
+@traceable()
 def questions_extract_with_metadata(pdf_path: str, test_path: str, subject_ranges: list, total_questions: int) -> Optional[List[Dict[str, Any]]]:
     """
     Extract questions using admin-provided subject ranges.
@@ -254,7 +380,11 @@ def questions_extract_with_metadata(pdf_path: str, test_path: str, subject_range
         
         # First, try extracting the entire paper once and then assign subjects by metadata ranges.
         logger.info("[METADATA EXTRACTION] ℹ️ Attempting full-paper extraction before per-range extraction")
-        whole_questions = questions_extract(pdf_path, test_path)
+        # Pass along metadata total_questions to avoid redundant LLM calls
+        # Note: do not reference `use_parallel` here (not defined in this scope).
+        # Let questions_extract use its default `use_parallel` behavior, but pass
+        # through the admin-provided `total_questions` to skip the LLM counting call.
+        whole_questions = questions_extract(pdf_path, test_path, total_questions=total_questions)
 
         if whole_questions and isinstance(whole_questions, list) and len(whole_questions) > 0:
             logger.info(f"[METADATA EXTRACTION] ✅ Full-paper extraction returned {len(whole_questions)} questions. Assigning to ranges...")

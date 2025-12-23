@@ -5,9 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node ./scripts/generate-sitemap.js",
-    "build": "npm run prebuild && vite build && vite build --ssr src/entry-server.jsx --outDir dist/server",
-    "postbuild": "node ./scripts/prerender.mjs",
+    "build": "vite build && vite build --ssr src/entry-server.jsx --outDir dist/server",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -27,6 +25,7 @@
     "date-fns": "^4.1.0",
     "file-saver": "^2.0.5",
     "framer-motion": "^12.23.12",
+    "lottie-react": "^2.4.1",
     "lucide-react": "^0.509.0",
     "motion": "^12.23.12",
     "prop-types": "^15.8.1",

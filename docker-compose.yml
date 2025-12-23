@@ -1,0 +1,105 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tamilnadu_backend_app:latest
+    container_name: tamilnadu_backend_app
+    env_file:
+      - ./.env.docker
+    depends_on:
+      - broker
+    volumes:
+      - static_data:/usr/src/app/static_root
+      - ./backend/uploads:/usr/src/app/backend/uploads
+    networks:
+      - backend_network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tamilnadu_backend_worker:latest
+    container_name: tamilnadu_backend_worker
+    env_file:
+      - ./.env.docker
+    command: >
+      celery -A inzighted --workdir /usr/src/app/backend worker -l info --concurrency=3
+    depends_on:
+      - broker
+      - app
+    volumes:
+      - static_data:/usr/src/app/static_root
+      - ./backend/uploads:/usr/src/app/backend/uploads
+    networks:
+      - backend_network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: tamilnadu_nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - app
+    volumes:
+      - static_data:/usr/src/app/static_root:ro
+      - ./backend/uploads:/usr/src/app/backend/uploads:ro
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - backend_network
+    restart: unless-stopped
+
+  broker:
+    image: "redis:7-alpine"
+    container_name: tamilnadu_redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend_network
+    ports:
+      - "6379:6379"
+
+  pdf_service:
+    build:
+      context: ./pdf_service
+      dockerfile: Dockerfile
+    image: tamilnadu_pdf_service:latest
+    container_name: tamilnadu_pdf_service
+    env_file:
+      - ./pdf_service/.env.docker
+    # Expose port only on the Docker network via `expose`.
+    # We do not publish the PDF service port to the host because nginx
+    # will proxy requests to it under the same backend domain and SSL.
+    expose:
+      - "8080"
+    volumes:
+      - pdf_temp:/usr/src/pdf_service/temp
+      - pdf_logs:/usr/src/pdf_service/logs
+    networks:
+      - backend_network
+    restart: unless-stopped
+    depends_on:
+      - app
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)}).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  static_data:
+  redis_data:
+  pdf_temp:
+  pdf_logs:
+
+networks:
+  backend_network:
+    driver: bridge

@@ -4,6 +4,12 @@ import numpy as np
 import math
 from collections import defaultdict
 
+# --------------------- Threshold Constants ---------------------
+# Minimum WeightedScore threshold for strength metrics (60% accuracy baseline)
+STRENGTH_WEIGHTED_THRESHOLD = 0.6
+# Maximum WeightedScore threshold for weakness metrics (90% accuracy ceiling)
+WEAKNESS_WEIGHTED_THRESHOLD = 0.9
+
 # --------------------- Utility Functions ---------------------
 def calculate_weighted_score(total, correct):
     if total == 0:
@@ -133,10 +139,17 @@ def best_topic_analysis(kg_manager, test_name):
     print("DEBUG: topic_metrics =", topic_metrics)
     df_topic_metrics = pd.DataFrame(topic_metrics)
     best_topics = df_topic_metrics.sort_values(by=["WeightedScore", "ImprovementRate"], ascending=False).groupby("Subject").head(3)
+    
+    # Filter: keep only topics with WeightedScore >= threshold (genuine strengths)
+    best_topics = best_topics[best_topics["WeightedScore"] >= STRENGTH_WEIGHTED_THRESHOLD]
+    
     subject_dfs = {}
     for subject, group in best_topics.groupby("Subject"):
         topics = group["Topic"].tolist()
-        subject_dfs[subject] = fetch_correct_questions(kg_manager, test_name, subject, topics)
+        if topics:  # Only fetch if topics exist after filtering
+            subject_dfs[subject] = fetch_correct_questions(kg_manager, test_name, subject, topics)
+        else:
+            subject_dfs[subject] = pd.DataFrame()  # Empty DataFrame for subjects with no qualifying topics
     return subject_dfs
 
 def improvement_over_time_analysis(kg_manager, test_name):
@@ -269,10 +282,17 @@ def most_challenging_topic_analysis(kg_manager, test_name):
             })
     df_topic_metrics = pd.DataFrame(topic_metrics)
     challenging = df_topic_metrics.sort_values(by=["WeightedScore", "ImprovementRate"], ascending=True).groupby("Subject").head(3)
+    
+    # Filter: keep only topics with WeightedScore < threshold (genuine weaknesses)
+    challenging = challenging[challenging["WeightedScore"] < WEAKNESS_WEIGHTED_THRESHOLD]
+    
     subject_dfs = {}
     for subject, group in challenging.groupby("Subject"):
         topics = group["Topic"].tolist()
-        subject_dfs[subject] = fetch_wrong_questions(kg_manager, test_name, subject, topics)
+        if topics:  # Only fetch if topics exist after filtering
+            subject_dfs[subject] = fetch_wrong_questions(kg_manager, test_name, subject, topics)
+        else:
+            subject_dfs[subject] = pd.DataFrame()  # Empty DataFrame for subjects with no qualifying topics
     return subject_dfs
 
 def practice_recommendation_analysis(kg_manager, test_name):

@@ -14,8 +14,7 @@ export const useFileUpload = () => {
   const [isUploading, setIsUploading] = useState(false);
 
   // useCallback hook to handle the file upload process
-  // metadata is optional - if provided, it will be sent along with files
-  const handleUpload = useCallback(async (metadata = null) => {
+  const handleUpload = useCallback(async (metadata = null, filesToUpload = null, educatorId = null) => {
     // Prevent multiple uploads if already uploading
     if (isUploading) {
       return false;
@@ -24,12 +23,16 @@ export const useFileUpload = () => {
     try {
       // Set uploading state to true
       setIsUploading(true);
-      // Call the API to upload the test files with optional metadata
+      // Use provided files or default to state files
+      const uploadFiles = filesToUpload || files;
+      // Call the API to upload the test files
+      // Forward optional metadata to the API helper so server receives subject config
       const response = await uploadTest(
-        files.questionPaper,
-        files.answerKey,
-        files.responseSheets,
-        metadata
+        uploadFiles.questionPaper,
+        uploadFiles.answerKey,
+        uploadFiles.responseSheets,
+        metadata,
+        educatorId
       );
 
       // Handle API response for errors

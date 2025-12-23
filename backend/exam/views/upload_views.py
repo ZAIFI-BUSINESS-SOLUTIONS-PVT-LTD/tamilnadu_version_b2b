@@ -4,6 +4,7 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework.permissions import IsAuthenticated
 from exam.authentication import UniversalJWTAuthentication
 from exam.models.educator import Educator
+from exam.models.manager import Manager
 from exam.models.test import Test
 from exam.models.test_metadata import TestMetadata
 from exam.services.process_test_data import process_test_data
@@ -11,6 +12,7 @@ from datetime import datetime
 import os
 import magic
 import logging
+import sentry_sdk
 
 logger = logging.getLogger(__name__)
 
@@ -22,11 +24,23 @@ UPLOAD_DIR = "uploads/"
 @permission_classes([IsAuthenticated])
 def upload_test(request):
     try:
-        educator_email = request.user.email
-        educator = Educator.objects.filter(email=educator_email).first()
-
-        if not educator:
-            return JsonResponse({'error': 'Educator not found'}, status=404)
+        educator = None
+        if isinstance(request.user, Educator):
+            educator = request.user
+        elif isinstance(request.user, Manager):
+            educator_id = request.data.get('educator_id')
+            if not educator_id:
+                return JsonResponse({'error': 'Educator ID is required for institution upload'}, status=400)
+            educator = Educator.objects.filter(id=educator_id).first()
+            if not educator:
+                return JsonResponse({'error': 'Educator not found'}, status=404)
+            
+            # Verify institution match
+            if request.user.institution != educator.institution:
+                 return JsonResponse({'error': 'Unauthorized: Educator does not belong to your institution'}, status=403)
+        else:
+             # Fallback/Safety
+             return JsonResponse({'error': 'Unauthorized user type'}, status=403)
 
         class_id = educator.class_id
         if not class_id:
@@ -178,6 +192,7 @@ def upload_test(request):
         return JsonResponse({'message': f'Test {test_num} uploaded successfully!', 'test_num': test_num}, status=200)
 
     except Exception as e:
+        logger.exception(f"Error in upload_test: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
 
 
@@ -293,7 +308,7 @@ def save_test_metadata(request):
         }, status=201 if created else 200)
         
     except Exception as e:
-        logger.error(f"Error saving test metadata: {e}")
+        logger.exception(f"Error saving test metadata: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
 
@@ -323,7 +338,7 @@ def get_test_metadata(request, class_id, test_num):
         }, status=200)
         
     except Exception as e:
-        logger.error(f"Error retrieving test metadata: {e}")
+        logger.exception(f"Error retrieving test metadata: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
 
@@ -360,5 +375,5 @@ def list_test_metadata_by_class(request, class_id):
         return JsonResponse({'class_id': class_id, 'metadata': mapping}, status=200)
 
     except Exception as e:
-        logger.error(f"Error listing test metadata for class {class_id}: {e}")
+        logger.exception(f"Error listing test metadata for class {class_id}: {e}")
         return JsonResponse({'error': str(e)}, status=500)

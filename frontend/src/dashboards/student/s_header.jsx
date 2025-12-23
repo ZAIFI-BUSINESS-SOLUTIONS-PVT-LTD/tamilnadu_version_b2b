@@ -1,31 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  List,
-  House,
+  Home,
   Target,
-  ChartBar,
-  SignOut,
-  Files,
-  TextAlignLeft,
-  CaretDown, // Not explicitly used for collapsible items in StudentHeader, but imported.
-  CaretRight // Not explicitly used for collapsible items in StudentHeader, but imported.
-} from "@phosphor-icons/react";
+  BarChart3,
+  FileText,
+  MessageSquare,
+  AlignLeft
+} from "lucide-react";
 import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
 import { fetchstudentdetail } from '../../utils/api.js';
-import HeaderBase from '../shared/header/HeaderBase.jsx';
-import UserDropdown from '../shared/header/UserDropDown.jsx';
-import DesktopSidebar from '../shared/header/DesktopSidebar.jsx';
-import MobileSidebar from '../shared/header/MobileDock.jsx';
+import DesktopSidebar from '../components/header/DesktopSidebar.jsx';
+import UserDropdown from '../components/header/UserDropDown.jsx';
 import DownloadReportModal from './components/s_studentreport.jsx';
-import Logo from '../../assets/images/logo.svg';
+import FeedbackModal from '../components/feedback/FeedbackModal.jsx';
+import StudentHeaderMobile from './s_header-mobile.jsx';
 
 /**
  * StudentHeader Component
  *
- * This component serves as the main header and navigation control for the student's dashboard.
- * It provides responsive layouts for mobile and desktop, including sidebar toggling,
- * student information display, notifications, and navigation links to various sections relevant to a student.
+ * This component serves as the desktop header and navigation control for the student's dashboard.
+ * It provides the desktop layout, including sidebar toggling,
+ * student information display, and navigation links to various sections relevant to a student.
  *
  * @param {object} props - The component props.
  * @param {boolean} props.isSidebarCollapsed - Controls the collapsed state of the desktop sidebar.
@@ -36,11 +32,9 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
   // Fetch student user data using a custom hook
   const { userData: studentInfo, isLoading } = useUserData(fetchstudentdetail, { name: '', student_id: '' });
 
-  // State for controlling the visibility of the mobile sidebar
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
   // State for controlling the visibility of the student report download modal
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   // React Router hooks for navigation and current location
   const navigate = useNavigate();
@@ -55,19 +49,19 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
   const sidebarItems = [
     {
       to: '/student/dashboard',
-      icon: <House weight="regular" size={20} />,
+      icon: <Home size={20} />,
       text: 'Home',
       activePattern: /^\/student\/dashboard/
     },
     {
       to: '/student/swot',
-      icon: <Target weight="regular" size={20} />,
+      icon: <Target size={20} />,
       text: 'Analysis',
       activePattern: /^\/student\/swot/
     },
     {
       to: '/student/performance',
-      icon: <ChartBar weight="regular" size={20} />,
+      icon: <BarChart3 size={20} />,
       text: 'Performance',
       activePattern: /^\/student\/performance/
     },
@@ -81,7 +75,7 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
    */
   const additionalItems = [
     {
-      icon: <Files weight="regular" size={20} />,
+      icon: <FileText size={20} />,
       text: 'Download Report',
       onClick: () => setShowDownloadModal(true) // Triggers the DownloadReportModal
     }
@@ -116,39 +110,10 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
         <DownloadReportModal onClose={() => setShowDownloadModal(false)} />
       )}
 
-      {/* Mobile Header (visible on small screens) */}
-      <HeaderBase isMobile>
-        <div className="flex items-center justify-between w-full py-3">
-          {/* App Logo for Mobile (moved to the leftmost side) */}
-          <div className="flex items-center">
-            <img
-              src={Logo}
-              alt="InzightEd Logo"
-              className="h-7 pt-1"
-            />
-          </div>
-
-          {/* Mobile User Dropdown */}
-          <div className="flex">
-            {/* User Dropdown for Mobile */}
-            <UserDropdown
-              userInfo={studentInfo}
-              onLogout={handleLogout}
-              type="student"
-            />
-          </div>
-        </div>
-      </HeaderBase>
-
-      {/* Mobile Sidebar Component */}
-      <MobileSidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        items={sidebarItems}
-        additionalItems={additionalItems}
-        onLogout={handleLogout}
-        userInfo={studentInfo}
-      />
+      {/* Conditional rendering of the FeedbackModal */}
+      {showFeedbackModal && (
+        <FeedbackModal onClose={() => setShowFeedbackModal(false)} userType="student" />
+      )}
 
       {/* Desktop Layout (hidden on small screens, visible on medium and larger) */}
       <div className="hidden md:flex">
@@ -175,7 +140,7 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
               className="btn btn-sm h-10 w-10 btn-square bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 flex items-center justify-center transition-colors"
               aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
-              <TextAlignLeft size={20} />
+              <AlignLeft size={20} />
             </button>
 
             {/* Greeting and Current Date */}
@@ -196,11 +161,14 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
                 userInfo={studentInfo}
                 onLogout={handleLogout}
                 type="student"
+                onFeedback={() => setShowFeedbackModal(true)}
               />
             </div>
           </div>
         </header>
       </div>
+
+      <StudentHeaderMobile />
     </>
   );
 };

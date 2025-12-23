@@ -93,20 +93,44 @@ def find_actual_file(base_path):
     """
     Given a base path (possibly without extension), find the actual file with a supported extension.
     Returns the full path to the file, or None if not found.
+    Works with both local filesystem and S3 storage.
     """
     supported_exts = ['.csv', '.xls', '.xlsx']
+    
+    # Check if base_path exists as-is
     if default_storage.exists(base_path):
+        logger.info(f"[find_actual_file] Found exact path: {base_path}")
         return base_path
-    dir_name = os.path.dirname(base_path)
-    base_name = os.path.basename(base_path)
+    
+    # Try with each supported extension
+    # Use string concatenation with / for S3 compatibility (not os.path.join)
     for ext in supported_exts:
-        candidate = os.path.join(dir_name, base_name + ext)
+        candidate = base_path + ext
+        logger.debug(f"[find_actual_file] Checking: {candidate}")
         if default_storage.exists(candidate):
             # Optionally, use magic to confirm type
-            with default_storage.open(candidate, 'rb') as f:
-                mime = magic.from_buffer(f.read(2048), mime=True)
-                if mime in ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']:
-                    return candidate
+            # Accept text/plain for CSV files (S3 sometimes stores CSVs as text/plain)
+            try:
+                with default_storage.open(candidate, 'rb') as f:
+                    mime = magic.from_buffer(f.read(2048), mime=True)
+                    accepted_mimes = [
+                        'text/csv', 
+                        'text/plain',  # S3 often stores CSV as text/plain
+                        'application/csv',
+                        'application/vnd.ms-excel', 
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    ]
+                    if mime in accepted_mimes or ext == '.csv':  # Trust extension if mime check uncertain
+                        logger.info(f"[find_actual_file] ✅ Found valid file: {candidate} (mime: {mime})")
+                        return candidate
+                    else:
+                        logger.warning(f"[find_actual_file] File exists but mime type mismatch: {candidate} (mime: {mime}), trying next...")
+            except Exception as e:
+                logger.warning(f"[find_actual_file] Error reading {candidate}: {e}, returning file anyway")
+                # Return it anyway if exists (mime check failed but file is there)
+                return candidate
+    
+    logger.error(f"[find_actual_file] ❌ No valid file found for base path: {base_path}")
     return None
 
 
@@ -209,26 +233,20 @@ def get_student_response(answer_sheet_path, class_id):
                 raw_answer = answers[idx]
                 if pd.isna(raw_answer) or raw_answer == '' or str(raw_answer).strip() == '':
                     mapped_answer = None
-                    logger.info(f"Empty answer found: {raw_answer}")
                 else:
-                    # Debug log the raw answer
-                    logger.info(f"Processing raw answer: {raw_answer} of type {type(raw_answer)}")
-                    
                     # Handle both numeric and string answers
                     if isinstance(raw_answer, (int, float)):
                         # Direct mapping for numbers
                         int_val = int(raw_answer)
                         mapped_answer = answer_map.get(int_val, None)
-                        logger.info(f"Numeric answer: {raw_answer} -> {mapped_answer}")
                     else:
                         # String processing for letter answers
                         answer = str(raw_answer).strip().upper()
                         answer = answer.rstrip('0').rstrip('.') if '.' in answer else answer
                         mapped_answer = answer_map.get(answer, None)
-                        logger.info(f"String answer: {raw_answer} -> {mapped_answer}")
-                    
-                    # Log the final mapped answer
-                    logger.info(f"Final mapped answer: {mapped_answer}")
+                    # Warn about unmapped/raw unexpected answers so issues are visible
+                    if mapped_answer is None and raw_answer not in (None, '', ' '):
+                        logger.warning(f"[get_student_response] ⚠️ Unmapped answer '{raw_answer}' for student {student_id}, Q{question_number}")
                 data.append({
                     "student_id": student_id,
                     "question_number": question_number,

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Download, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { generateTeacherSelfPdfReport, fetchAvailableSwotTests_Educator } from '../../../utils/api.js';
+import { generateTeacherSelfPdfReport, fetchAvailableSwotTests_Educator, getEducatorDetails } from '../../../utils/api.js';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select.jsx';
 import { Button } from '../../../components/ui/button.jsx';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card.jsx';
@@ -11,18 +11,45 @@ export const TeacherReportModal = ({ onClose }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [availableTests, setAvailableTests] = useState([]);
-  const [selectedTest, setSelectedTest] = useState('Overall');
+  const [selectedTest, setSelectedTest] = useState('');
+  const [classId, setClassId] = useState(null);
+
+  // Fetch educator's class_id on mount
+  useEffect(() => {
+    const fetchClassId = async () => {
+      try {
+        const data = await getEducatorDetails();
+        if (data && data.class_id) {
+          setClassId(data.class_id);
+        }
+      } catch (err) {
+        console.warn('Could not fetch class_id for S3 upload:', err);
+      }
+    };
+    fetchClassId();
+  }, []);
 
   // Fetch available tests for the teacher on mount
   useEffect(() => {
     const fetchTests = async () => {
       setLoading(true);
       try {
-        const tests = await fetchAvailableSwotTests_Educator();
-        const uniqueTests = [...new Set(tests)].filter((num) => num !== 0);
-        setAvailableTests(['Overall', ...uniqueTests.map((num) => `Test ${num}`)]);
+          const tests = await fetchAvailableSwotTests_Educator();
+          // normalize to numbers, remove falsy/zero, dedupe and sort: Overall (0) first, then descending for others
+          const uniqueTests = [...new Set(tests || [])]
+            .map((n) => Number(n))
+            .filter((num) => !Number.isNaN(num))
+            .sort((a, b) => {
+              if (a === 0) return -1;
+              if (b === 0) return 1;
+              return b - a;
+            });
+          const mapped = uniqueTests.map((num) => num === 0 ? 'Overall' : `Test ${num}`);
+        setAvailableTests(mapped);
+        // default to first test if none selected yet
+        if (mapped.length && !selectedTest) setSelectedTest(mapped[0]);
       } catch (err) {
-        setAvailableTests(['Overall']);
+        setAvailableTests([]);
       } finally {
         setLoading(false);
       }
@@ -31,13 +58,7 @@ export const TeacherReportModal = ({ onClose }) => {
   }, []);
 
   // Options for the test selection dropdown
-  const testOptions = [
-    ...(!availableTests.includes('Overall') ? [{ value: 'Overall', label: 'Overall' }] : []),
-    ...availableTests.map((test) => ({
-      value: test,
-      label: test,
-    })),
-  ];
+  const testOptions = availableTests.map((test) => ({ value: test, label: test }));
 
   const handleDownload = async () => {
     if (!selectedTest) {
@@ -47,7 +68,19 @@ export const TeacherReportModal = ({ onClose }) => {
     setLoading(true);
     setError(null);
     try {
-      const blob = await generateTeacherSelfPdfReport(selectedTest);
+      // Parse selectedTest to testNum
+      let testNum;
+      if (selectedTest === 'Overall') {
+        testNum = 0;
+      } else {
+        const parsed = parseInt(selectedTest.split(' ')[1], 10);
+        testNum = Number.isNaN(parsed) ? null : parsed;
+      }
+      if (testNum === null) {
+        setError('Invalid test selection.');
+        return;
+      }
+      const blob = await generateTeacherSelfPdfReport(testNum, classId);
       if (blob && blob.size > 0) {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
