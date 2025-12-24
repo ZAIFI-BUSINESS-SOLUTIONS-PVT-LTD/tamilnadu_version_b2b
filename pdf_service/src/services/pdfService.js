@@ -300,6 +300,35 @@ class PdfService {
     }
   }
 
+  /**
+   * Generate a presigned URL for downloading from S3
+   * @param {string} s3Key - The S3 object key
+   * @param {number} expiresIn - Expiration time in seconds (default: 1 hour)
+   * @returns {Promise<string>} Presigned download URL
+   */
+  async getPresignedDownloadUrl(s3Key, expiresIn = 3600) {
+    if (!this.s3Client || !config.aws.s3Enabled) {
+      throw new Error('S3 client not initialized or S3 disabled');
+    }
+
+    try {
+      const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+      const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+
+      const command = new GetObjectCommand({
+        Bucket: config.aws.bucketName,
+        Key: s3Key
+      });
+
+      const presignedUrl = await getSignedUrl(this.s3Client, command, { expiresIn });
+      logger.debug('Generated presigned URL', { s3Key, expiresIn });
+      return presignedUrl;
+    } catch (error) {
+      logger.error('Failed to generate presigned URL', { s3Key, error: error.message });
+      throw error;
+    }
+  }
+
   async generatePdf(studentId, testId, jwtToken, origin, classId = null, educatorId = null) {
     if (!this.isInitialized) {
       await this.initialize();
@@ -492,9 +521,43 @@ class PdfService {
     const archive = archiver('zip', { zlib: { level: 9 } });
 
     return new Promise(async (resolve, reject) => {
-      output.on('close', () => {
+      output.on('close', async () => {
         logger.info('Bulk PDF zip created', { zipFilename, size: archive.pointer() });
-        resolve(zipFilePath);
+        
+        // Upload ZIP to S3 if enabled
+        let s3Key = null;
+        if (this.s3Client && config.aws.s3Enabled && classId) {
+          try {
+            const zipBuffer = fs.readFileSync(zipFilePath);
+            const sanitizedTestId = testId.replace(/\s+/g, '_');
+            s3Key = `reports/${classId}/${sanitizedTestId}/bulk/${zipFilename}`;
+            
+            const uploadParams = {
+              Bucket: config.aws.bucketName,
+              Key: s3Key,
+              Body: zipBuffer,
+              ContentType: 'application/zip',
+              Metadata: {
+                'class-id': String(classId),
+                'test-id': String(testId),
+                'student-count': String(studentIds.length),
+                'generated-at': new Date().toISOString()
+              }
+            };
+
+            const { PutObjectCommand } = await import('@aws-sdk/client-s3');
+            await this.s3Client.send(new PutObjectCommand(uploadParams));
+            
+            logger.info('Bulk ZIP uploaded to S3', { 
+              s3Key, 
+              size: `${(zipBuffer.length / 1024).toFixed(2)}KB` 
+            });
+          } catch (error) {
+            logger.warn('Failed to upload ZIP to S3', { error: error.message });
+          }
+        }
+        
+        resolve({ filePath: zipFilePath, s3Key, filename: zipFilename });
       });
       archive.on('error', (err) => {
         logger.error('Error creating zip', { error: err.message });
@@ -533,14 +596,22 @@ class PdfService {
   }
 
   async cleanup(filePath) {
-    if (!filePath || !fs.existsSync(filePath)) return;
+    if (!filePath) return;
 
     setTimeout(() => {
       try {
+        // Check existence inside setTimeout, not before
+        if (!fs.existsSync(filePath)) {
+          logger.debug('Cleanup skipped - file already removed', { filePath });
+          return;
+        }
         fs.unlinkSync(filePath);
         logger.debug('Temporary PDF file cleaned up', { filePath });
       } catch (error) {
-        logger.warn('Could not clean up PDF file', { filePath, error: error.message });
+        // Silently ignore ENOENT (file already deleted)
+        if (error.code !== 'ENOENT') {
+          logger.warn('Could not clean up PDF file', { filePath, error: error.message });
+        }
       }
     }, config.pdf.cleanupDelay);
   }

@@ -342,6 +342,7 @@ export const generateBulkPdfReportsZip = async (studentIds, testId, classId = nu
       body.educatorId = educatorId;
     }
     console.log('generateBulkPdfReportsZip called with:', { studentIds, testId, classId, educatorId, body });
+    
     const response = await fetch(
       `${PDF_SERVICE_URL}/generate-bulk-pdf`,
       {
@@ -353,14 +354,59 @@ export const generateBulkPdfReportsZip = async (studentIds, testId, classId = nu
         body: JSON.stringify(body)
       }
     );
+    
+    console.log('generateBulkPdfReportsZip response:', {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      type: response.type,
+      headers: {
+        contentType: response.headers.get('content-type'),
+        contentLength: response.headers.get('content-length'),
+        contentDisposition: response.headers.get('content-disposition')
+      }
+    });
+    
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
     }
+    
+    // Check if response is JSON (S3 presigned URL) or blob (streaming)
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      // S3 presigned URL response
+      const data = await response.json();
+      console.log('Received S3 presigned URL response:', data);
+      
+      if (data.downloadUrl) {
+        // Trigger download from S3 URL
+        const link = document.createElement('a');
+        link.href = data.downloadUrl;
+        link.download = data.filename || 'reports.zip';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return { success: true, s3Download: true };
+      }
+    }
+    
+    // Fallback: blob response (streaming)
     const blob = await response.blob();
+    console.log('generateBulkPdfReportsZip blob received:', { size: blob.size, type: blob.type });
+    
+    if (blob.size === 0) {
+      throw new Error('Received empty ZIP file from server');
+    }
+    
     return blob;
   } catch (error) {
     console.error('generateBulkPdfReportsZip error:', error);
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    });
     throw error;
   }
 };
