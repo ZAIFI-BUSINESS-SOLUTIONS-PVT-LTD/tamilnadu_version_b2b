@@ -380,7 +380,14 @@ export default function TeacherReport() {
         }
 
         const subjects = Object.keys(data);
-        const sorted = subjects.sort((a, b) => {
+        // If Botany/Zoology are missing but Biology exists in SWOT, copy Biology buckets
+        // into Botany and Zoology so the report can render those subject pages.
+        if (!data['Botany'] && !data['Zoology'] && data['Biology']) {
+            data['Botany'] = { ...data['Biology'] };
+            data['Zoology'] = { ...data['Biology'] };
+        }
+
+        const sorted = Object.keys(data).sort((a, b) => {
             const ia = DEFAULT_SUBJECT_ORDER.indexOf(a);
             const ib = DEFAULT_SUBJECT_ORDER.indexOf(b);
             if (ia === -1 && ib === -1) return a.localeCompare(b);
@@ -425,13 +432,20 @@ export default function TeacherReport() {
 
     // Process student results for subject charts: average subject_score per test_num per subject
     const subjectCharts = useMemo(() => {
-        // mapping from display subject to field key in results
-        const subjectFieldMap = {
-            Physics: "phy_score",
-            Chemistry: "chem_score",
-            Biology: "bio_score",
-            Botany: "bot_score",
-            Zoology: "zoo_score",
+        // helper to detect whether a given prefix exists in results
+        const hasField = (prefix) => normalizedResults.some(r => r && (
+            r[`${prefix}_score`] != null || r[`${prefix}_total`] != null || r[`${prefix}_marks`] != null || r[prefix] != null
+        ));
+
+        // mapping from display subject to resolved field key in results. For Botany/Zoology,
+        // fallback to Biology fields when bot/zoo-specific fields are absent.
+        const resolveFieldKey = (subject) => {
+            if (subject === 'Physics') return 'phy_score';
+            if (subject === 'Chemistry') return 'chem_score';
+            if (subject === 'Biology') return 'bio_score';
+            if (subject === 'Botany') return (hasField('bot') ? 'bot_score' : (hasField('bio') ? 'bio_score' : 'bot_score'));
+            if (subject === 'Zoology') return (hasField('zoo') ? 'zoo_score' : (hasField('bio') ? 'bio_score' : 'zoo_score'));
+            return `${subject.toLowerCase()}_score`;
         };
 
         // collect all test numbers present so each subject chart has the same x-axis categories
@@ -466,7 +480,7 @@ export default function TeacherReport() {
         }
 
         return DEFAULT_SUBJECT_ORDER.map(subject => {
-            const key = subjectFieldMap[subject];
+            const key = resolveFieldKey(subject);
             // aggregate per test
             const grouped = {};
             normalizedResults.forEach(result => {
@@ -508,13 +522,23 @@ export default function TeacherReport() {
     const subjectDonutMap = useMemo(() => {
         if (!normalizedResults.length) return {};
 
-        // mapping prefix for subject-specific fields
-        const prefixMap = {
-            Physics: 'phy',
-            Chemistry: 'chem',
-            Biology: 'bio',
-            Botany: 'bot',
-            Zoology: 'zoo',
+        // helper to detect whether a given prefix exists in results
+        const hasField = (prefix) => normalizedResults.some(r => r && (
+            r[`${prefix}_score`] != null || r[`${prefix}_total`] != null || r[`${prefix}_marks`] != null || r[`${prefix}_correct`] != null || r[`${prefix}_attended`] != null
+        ));
+
+        // mapping prefix for subject-specific fields; allow fallback to Biology when bot/zoo missing
+        const resolvePrefix = (subject) => {
+            if (subject === 'Botany') {
+                return hasField('bot') ? 'bot' : (hasField('bio') ? 'bio' : 'bot');
+            }
+            if (subject === 'Zoology') {
+                return hasField('zoo') ? 'zoo' : (hasField('bio') ? 'bio' : 'zoo');
+            }
+            if (subject === 'Biology') return 'bio';
+            if (subject === 'Physics') return 'phy';
+            if (subject === 'Chemistry') return 'chem';
+            return subject.toLowerCase();
         };
 
         // collect test numbers present
@@ -547,7 +571,8 @@ export default function TeacherReport() {
 
         const map = {};
 
-        Object.entries(prefixMap).forEach(([subject, prefix]) => {
+        Object.keys({ Physics:1, Chemistry:1, Biology:1, Botany:1, Zoology:1 }).forEach((subject) => {
+            const prefix = resolvePrefix(subject);
             let totalCorrect = 0, totalIncorrect = 0, totalSkipped = 0, count = 0;
 
             relevant.forEach(result => {
@@ -695,14 +720,22 @@ export default function TeacherReport() {
     // only render a subject if there is actual data to show (chart/donut/SWOT topics).
     // detect which subjects have result data (use normalizedResults for consistency)
     const subjectsFromResults = new Set();
+    let _hasBio = false, _hasBot = false, _hasZoo = false;
     normalizedResults.forEach(r => {
         if (!r) return;
-        if ((r.bio_total || r.bio_score) != null) subjectsFromResults.add('Biology');
+        if ((r.bio_total || r.bio_score) != null) { subjectsFromResults.add('Biology'); _hasBio = true; }
         if ((r.phy_total || r.phy_score) != null) subjectsFromResults.add('Physics');
         if ((r.chem_total || r.chem_score) != null) subjectsFromResults.add('Chemistry');
-        if ((r.bot_total || r.bot_score) != null) subjectsFromResults.add('Botany');
-        if ((r.zoo_total || r.zoo_score) != null) subjectsFromResults.add('Zoology');
+        if ((r.bot_total || r.bot_score) != null) { subjectsFromResults.add('Botany'); _hasBot = true; }
+        if ((r.zoo_total || r.zoo_score) != null) { subjectsFromResults.add('Zoology'); _hasZoo = true; }
     });
+
+    // If Botany and Zoology data are not present but Biology is, treat Botany and Zoology
+    // as present by deriving them from Biology so the report still shows subject pages.
+    if (!_hasBot && !_hasZoo && _hasBio) {
+        subjectsFromResults.add('Botany');
+        subjectsFromResults.add('Zoology');
+    }
 
     const baseSubjects = (sortedSubjectList && sortedSubjectList.length) ? sortedSubjectList.slice() : DEFAULT_SUBJECT_ORDER.slice();
     const combined = Array.from(new Set([...baseSubjects, ...Array.from(subjectsFromResults)]));
