@@ -71,7 +71,7 @@ export const StudentPDFReportModal = ({ onClose, students = [], availableTests =
       if (selectedStudent === 'ALL') {
         // Download all students as zip
         const allStudentIds = (localStudents || []).map(s => s.student_id);
-        blob = await generateBulkPdfReportsZip(allStudentIds, selectedTest, classId);
+        blob = await generateBulkPdfReportsZip(allStudentIds, selectedTest, classId, selectedEducatorId);
         if (blob && blob.size > 0) {
           const url = window.URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -90,7 +90,7 @@ export const StudentPDFReportModal = ({ onClose, students = [], availableTests =
           setError('Failed to generate or download ZIP.');
         }
       } else {
-        blob = await generatePdfReport(selectedStudent, selectedTest, classId);
+        blob = await generatePdfReport(selectedStudent, selectedTest, classId, selectedEducatorId);
         if (blob && blob.size > 0) {
           const url = window.URL.createObjectURL(blob);
           const a = document.createElement('a');

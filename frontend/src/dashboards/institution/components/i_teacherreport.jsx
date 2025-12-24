@@ -93,8 +93,8 @@ export const TeacherReportModal = ({ onClose }) => {
         setError('Invalid test selection.');
         return;
       }
-      // For institution, call generateTeacherSelfPdfReport with educator classId
-      const blob = await generateTeacherSelfPdfReport(testNum, classId);
+      // For institution, call generateTeacherSelfPdfReport with educator classId and educatorId
+      const blob = await generateTeacherSelfPdfReport(testNum, classId, selectedEducatorId);
       if (blob && blob.size > 0) {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');

@@ -1,5 +1,6 @@
 import React from 'react';
-import { CheckCircle, AlertCircle, Filter, Target, Atom, FlaskConical, Microscope, Leaf, PawPrint, User, ChevronDown } from 'lucide-react';
+import { CheckCircle, AlertCircle, Filter, Target, Atom, FlaskConical, Microscope, Leaf, PawPrint, User, ChevronDown, Mail, Phone } from 'lucide-react';
+// eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 import { fetchInstitutionEducatorSWOT, fetchAvailableSwotTests_InstitutionEducator, getTeachersByClass } from '../../utils/api';
 import LoadingPage from '../components/LoadingPage.jsx';
@@ -41,7 +42,7 @@ const useSwotData = (fetchSwotData, fetchAvailableTestsData, selectedEducatorId)
     };
 
     loadAvailableTests();
-  }, [fetchAvailableTestsData, selectedEducatorId]);
+  }, [fetchAvailableTestsData, selectedEducatorId, selectedTest]);
 
   useEffect(() => {
     if (!selectedTest && availableTests.length > 0) {
@@ -137,7 +138,7 @@ const metricToCategoryMap = {
   TT_IP: ['Threats', 'Inconsistent Performance', 'Areas where performance is erratic:'],
 };
 
-const SwotSection = ({ label, displayLabel, icon, color, border, data, selectedSubject }) => {
+const SwotSection = ({ label, displayLabel, color, data, selectedSubject }) => {
   const displayText = displayLabel || label;
   const itemsToRender = data?.[selectedSubject]?.[label] || [];
 
@@ -146,17 +147,11 @@ const SwotSection = ({ label, displayLabel, icon, color, border, data, selectedS
     'Steady Zone': 'Strong areas',
   };
 
-  const zoneBgMap = {
-    'Focus Zone': 'bg-gradient-to-br from-pink-100 via-pink-50 to-pink-50',
-    'Steady Zone': 'bg-gradient-to-br from-green-100 via-green-50 to-green-50',
-  };
-
   const subtitle = zoneSubtitleMap[displayText] || '';
-  const outerBg = zoneBgMap[displayText] || 'bg-base-100';
 
   return (
-    <Card className={`${outerBg} rounded-2xl overflow-hidden h-full flex flex-col border ${border}`}>
-      <CardHeader className="px-4 py-2">
+    <Card className="bg-white h-full flex flex-col border-none rounded-none">
+      <CardHeader className="p-0 pb-2">
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center">
             <div>
@@ -167,28 +162,36 @@ const SwotSection = ({ label, displayLabel, icon, color, border, data, selectedS
         </div>
       </CardHeader>
 
-      <CardContent className="px-4 pb-4 pt-0 flex-1">
-        <div className="bg-white p-4 rounded-lg flex flex-col h-full">
-          <div className="space-y-4 flex-1 overflow-auto">
+      <CardContent className="p-0 flex-1 border border-yellow-200 rounded-2xl bg-yellow-100/20">
+        <div className="flex flex-col h-full">
+          <div className="flex-1 overflow-auto">
             {itemsToRender.length > 0 ? (
-              itemsToRender.map((item, idx) => (
-                <div key={item.id || `${displayText}-${selectedSubject}-${item.title || ''}-${idx}`} className={`p-3 rounded-lg`}>
-                  {item.topics && item.topics.length > 0 && (
-                    <ul className="list-disc list-inside text-sm md:text-base text-gray-700 space-y-2">
-                      {item.topics.map((topic, i) => (
-                        <li
-                          key={`${item.id || item.title || ''}-topic-${topic}-${i}`}
-                          className="py-1 leading-relaxed break-words whitespace-pre-wrap"
-                        >
-                          {topic}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              ))
+              <div className="divide-y divide-yellow-200">
+                {itemsToRender.map((item, idx) => (
+                  <div
+                    key={item.id || `${displayText}-${selectedSubject}-${item.title || ''}-${idx}`}
+                    className="px-4 py-3 border-t border-yellow-200 first:border-t-0"
+                  >
+                    {item.topics && item.topics.length > 0 ? (
+                      <div className="divide-y divide-yellow-200">
+                        {item.topics.map((topic, i) => (
+                          <div
+                            key={`${item.id || item.title || ''}-topic-${topic}-${i}`}
+                            className="flex items-start gap-2 py-2 text-sm md:text-base text-gray-700"
+                          >
+                            <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary/70" aria-hidden="true" />
+                            <span className="leading-relaxed break-words whitespace-pre-wrap">{topic}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">No data available for this category.</p>
+                    )}
+                  </div>
+                ))}
+              </div>
             ) : (
-              <p className="text-sm text-gray-500 italic">No data available for this category.</p>
+              <p className="px-4 py-3 text-sm text-gray-500 italic">No data available for this category.</p>
             )}
           </div>
         </div>
@@ -210,7 +213,11 @@ SwotSection.propTypes = {
 import FilterDrawer from '../../components/ui/filter-drawer.jsx';
 
 const IAnalysis = () => {
-  const { selectedEducatorId, educators } = useInstitution();
+  const { selectedEducatorId, setSelectedEducatorId, educators } = useInstitution();
+  const sortedEducators = React.useMemo(() => {
+    if (!Array.isArray(educators)) return [];
+    return [...educators].sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
+  }, [educators]);
   const {
     selectedSubject,
     setSelectedSubject,
@@ -329,12 +336,36 @@ const IAnalysis = () => {
   const teacherInitials = teacherName && teacherName !== 'Not assigned'
     ? teacherName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
     : '';
+  const teacherEmail = activeTeacher?.email || 'Not provided';
+  const teacherPhone = activeTeacher?.phone_number || 'Not provided';
+  const canEmail = !!(activeTeacher?.email);
 
   // Drawer state for mobile-only Test selection
   const [testDrawerOpen, setTestDrawerOpen] = React.useState(false);
 
   if (!selectedEducatorId) {
-    return <div className="text-center py-8 mt-20">Please select an educator to view their analysis.</div>;
+    return (
+      <div className="text-center py-8 mt-20">
+        <div className="flex items-center justify-center mb-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-600">Classroom:</span>
+            <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select Educator" />
+              </SelectTrigger>
+              <SelectContent>
+                {sortedEducators.map((edu) => (
+                  <SelectItem key={edu.id} value={String(edu.id)}>
+                    {edu.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div>Please select an educator to view their analysis.</div>
+      </div>
+    );
   }
 
   if (loading) {
@@ -361,10 +392,27 @@ const IAnalysis = () => {
 
   return (
     <div className="md:mt-12 lg:px-4 lg:space-y-6">
-      <div className="hidden lg:flex lg:flex-row lg:items-center lg:justify-between mb-4 pb-4 bg-white lg:pt-4 px-4 pt-2 rounded-xl border border-gray-200">
-        <div className="flex items-center gap-4">
-          <Filter className="text-gray-400 w-5 h-5" />
+      <div className="hidden lg:flex lg:flex-row lg:items-start lg:justify-between mb-4 pb-4 gap-6">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-3xl font-semibold text-gray-800">Classroom Analysis</h2>
+          <p className="text-sm text-gray-500">Review strengths and focus areas by subject and test.</p>
+        </div>
+        <div className="flex items-start gap-4 flex-wrap justify-end">
           <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400 min-w-max pl-1">Classroom</span>
+            <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
+              <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-[220px] lg:w-auto text-start">
+                <SelectValue placeholder="Select Classroom" />
+              </SelectTrigger>
+              <SelectContent side="bottom" align="start">
+                {sortedEducators.map((edu) => (
+                  <SelectItem key={edu.id} value={String(edu.id)}>
+                    {edu.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <span className="text-sm text-gray-400 min-w-max pl-1">Test</span>
             <Select value={selectedTest} onValueChange={(v) => setSelectedTest && setSelectedTest(v)}>
               <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full lg:w-auto text-start">
@@ -394,33 +442,26 @@ const IAnalysis = () => {
             </Select>
           </div>
         </div>
-        {/* Teacher name display - improved visual */}
-        <div className="flex items-center gap-4">
-          <div className="flex flex-col text-right">
-            <span className="text-xs text-gray-400">Educator</span>
-            <span className="text-sm font-semibold text-gray-900">{teacherName}</span>
-          </div>
-          <div className="inline-flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-full px-3 py-1 shadow-sm">
-            <div className="flex items-center justify-center w-8 h-8 bg-white rounded-full border border-gray-100">
-              {teacherInitials ? (
-                <span className="text-sm font-medium text-gray-700">{teacherInitials}</span>
-              ) : (
-                <User className="w-4 h-4 text-gray-500" />
-              )}
-            </div>
-            <div className="hidden lg:block">
-              <div className="text-sm font-medium text-gray-700">{teacherName}</div>
-              <div className="text-xs text-gray-400">{activeTeacher?.email || ''}</div>
-            </div>
-          </div>
-        </div>
       </div>
-
       <div className="lg:hidden">
         <div>
           <div className="flex w-full bg-white px-3 border-b justify-between items-center">
             <div className="text-left py-4">
               <h1 className="text-2xl font-bold text-gray-800">Test wise analysis</h1>
+              <div className="mt-2">
+                <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue placeholder="Classroom" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sortedEducators.map((edu) => (
+                      <SelectItem key={edu.id} value={String(edu.id)}>
+                        {edu.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="py-4">
               <button
@@ -449,7 +490,7 @@ const IAnalysis = () => {
           </div>
 
           <div className="flex bg-white border-b relative pb-1 overflow-x-auto">
-            {orderedSubjects.map((subject, idx) => {
+            {orderedSubjects.map((subject) => {
               const shortName = subject === 'Physics'
                 ? 'Phy'
                 : subject === 'Chemistry'
@@ -603,19 +644,57 @@ const IAnalysis = () => {
         </div>
       </div>
 
-      <div className="hidden lg:flex flex-col space-y-6">
-        {sections.map(({ label, displayLabel, icon, color, border }) => (
-          <SwotSection
-            key={displayLabel}
-            label={label}
-            displayLabel={displayLabel}
-            icon={icon}
-            color={color}
-            border={border}
-            data={filteredSwotData}
-            selectedSubject={selectedSubject}
-          />
-        ))}
+      <div className="hidden lg:grid grid-cols-[3fr_1fr] gap-6 items-start">
+        <div className="flex flex-col space-y-6 bg-white rounded-2xl p-6 border border-gray-200">
+          {sections.map(({ label, displayLabel, icon, color, border }) => (
+            <SwotSection
+              key={displayLabel}
+              label={label}
+              displayLabel={displayLabel}
+              icon={icon}
+              color={color}
+              border={border}
+              data={filteredSwotData}
+              selectedSubject={selectedSubject}
+            />
+          ))}
+        </div>
+
+        <aside className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm flex flex-col gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-12 h-12 bg-gray-100 rounded-full border border-gray-200">
+              {teacherInitials ? (
+                <span className="text-base font-semibold text-gray-700">{teacherInitials}</span>
+              ) : (
+                <User className="w-5 h-5 text-gray-500" />
+              )}
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-gray-900">{teacherName}</div>
+              <div className="text-xs text-gray-500">Educator · {selectedSubject}</div>
+            </div>
+          </div>
+          <div className="space-y-2 text-sm text-gray-700">
+            <div className="flex items-center gap-2">
+              <Mail className="w-4 h-4 text-gray-400" />
+              <span className="truncate">{teacherEmail}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Phone className="w-4 h-4 text-gray-400" />
+              <span className="truncate">{teacherPhone}</span>
+            </div>
+          </div>
+          <Button
+            variant="default"
+            disabled={!canEmail}
+            onClick={() => {
+              if (!canEmail) return;
+              window.location.href = `mailto:${teacherEmail}`;
+            }}
+          >
+            Notify by email
+          </Button>
+        </aside>
       </div>
     </div>
   );

@@ -41,7 +41,8 @@ import {
   IDashboard,
   IAnalysis,
   IStudentDetails,
-  IUpload
+  IUpload,
+  ITestPerformance
 } from './dashboards/institution';
 
 
@@ -90,6 +91,7 @@ function App() {
           <Route path="analysis" element={<IAnalysis />} />
           <Route path="students" element={<IStudentDetails />} />
           <Route path="upload" element={<IUpload />} />
+          <Route path="test-performance" element={<ITestPerformance />} />
         </Route>
       </Routes>
     </>

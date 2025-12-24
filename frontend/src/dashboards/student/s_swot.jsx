@@ -53,8 +53,13 @@ const useSwotData = (fetchSwotData, fetchAvailableTestsData) => {
             setLoading(true);
             setError(null); // Clear previous errors
             try {
-                // Determine the test number to fetch (0 for 'Overall')
-                const testNum = selectedTest === 'Overall' ? 0 : parseInt(selectedTest.split(' ')[1]);
+                // Determine the test number to fetch (0 for 'Overall').
+                // Use regex to extract digits so both "Test 12" and "Test12" work.
+                let testNum = 0;
+                if (selectedTest !== 'Overall') {
+                    const m = String(selectedTest).match(/(\d+)/);
+                    testNum = m ? parseInt(m[1], 10) : 0;
+                }
                 // Fetch the SWOT data for the selected test
                 const response = await fetchSwotData(testNum);
                 // Debug: expose the raw response for debugging in browser console

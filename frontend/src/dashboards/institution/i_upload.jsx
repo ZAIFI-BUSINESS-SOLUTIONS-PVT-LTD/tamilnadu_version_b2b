@@ -6,6 +6,7 @@ import Table from '../components/ui/table.jsx';
 import { Button } from '../../components/ui/button.jsx';
 import { Input } from '../../components/ui/input.jsx';
 import LoadingPage from '../components/LoadingPage.jsx';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select.jsx';
 import { toast } from 'react-hot-toast';
 import { useInstitution } from './index.jsx';
 import FeedbackModal from '../components/feedback/FeedbackModal.jsx';
@@ -14,7 +15,11 @@ import FeedbackModal from '../components/feedback/FeedbackModal.jsx';
 const UploadModal = lazy(() => import('../educator/components/e_docsupload.jsx'));
 
 const IUpload = () => {
-  const { selectedEducatorId } = useInstitution();
+  const { selectedEducatorId, setSelectedEducatorId, educators } = useInstitution();
+  const sortedEducators = React.useMemo(() => {
+    if (!Array.isArray(educators)) return [];
+    return [...educators].sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
+  }, [educators]);
 
   // State to control the visibility of the upload modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -190,19 +195,64 @@ const IUpload = () => {
     return (
       <div className="w-full h-[50vh] flex items-center justify-center">
         <div className="text-center">
+          <div className="flex items-center justify-center mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-600">Classroom:</span>
+              <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Select Educator" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Array.isArray(educators) ? educators : []).map((edu) => (
+                    <SelectItem key={edu.id} value={String(edu.id)}>
+                      {edu.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           <h3 className="text-lg font-medium text-gray-900">No Educator Selected</h3>
-          <p className="text-gray-500">Please select an educator from the top bar to manage tests.</p>
+          <p className="text-gray-500">Please select an educator to manage tests for that classroom.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full mx-auto">
-      <div className="hidden sm:block card rounded-2xl border border-gray-250 bg-white w-full mt-12 p-8">
+    <div className="sm:pt-16 w-full mx-auto px-4 sm:px-6 lg:px-0">
+      <div className="hidden lg:flex lg:flex-row lg:items-center lg:justify-between mb-4 pb-4">
+        <div className="flex items-center gap-4">
+          <h2 className="text-3xl font-semibold text-gray-800">Upload your tests here</h2>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-400 min-w-max pl-1">Classroom</span>
+          <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
+            <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-[220px] lg:w-auto text-start">
+              <SelectValue placeholder="Select Classroom" />
+            </SelectTrigger>
+            <SelectContent side="bottom" align="start">
+              {sortedEducators.map((edu) => (
+                <SelectItem key={edu.id} value={String(edu.id)}>
+                  {edu.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant="default"
+            onClick={handleStartUpload}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-all hover:shadow-md"
+          >
+            <span>Upload New Test</span>
+          </Button>
+        </div>
+
+      </div>
+      <div className="hidden sm:block card rounded-2xl border border-gray-250 bg-white w-full p-8">
         <div>
           <div className="flex flex-col sm:flex-row justify-between items-center sm:pb-8 sm:border-b sm:border-gray-200 gap-4">
-            <h2 className="hidden sm:block text-2xl font-bold text-gray-800 w-full sm:w-auto text-left">Upload Tests</h2>
+            <h2 className="hidden sm:block text-2xl font-bold text-gray-800 w-full sm:w-auto text-left">History</h2>
             <div className="hidden sm:flex flex-row w-full sm:w-auto gap-4 items-center justify-end">
               <div className="relative flex-1 sm:w-96">
                 <Input
@@ -227,14 +277,6 @@ const IUpload = () => {
                   </Button>
                 )}
               </div>
-              <Button
-                variant="default"
-                size="md"
-                onClick={handleStartUpload}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-all hover:shadow-md"
-              >
-                <span>Upload New Test</span>
-              </Button>
             </div>
           </div>
 
@@ -276,6 +318,20 @@ const IUpload = () => {
       <div className="sm:hidden mt-4 px-3">
         <div className="card bg-transparent w-full pt-2">
           <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-center">
+              <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Classroom" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sortedEducators.map((edu) => (
+                    <SelectItem key={edu.id} value={String(edu.id)}>
+                      {edu.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="relative">
               <Input
                 type="text"

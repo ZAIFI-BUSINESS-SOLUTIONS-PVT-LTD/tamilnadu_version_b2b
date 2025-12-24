@@ -16,9 +16,24 @@ const UserDropdown = ({
   const initials = userInfo?.name?.charAt(0)?.toUpperCase() || 'U';
 
   // Determine the secondary text based on user type
+  // Normalize institution name from multiple possible fields the backend may use
+  const instName = (
+    userInfo && (
+      userInfo.inst ||
+      userInfo.institution ||
+      userInfo.institute ||
+      userInfo.school ||
+      userInfo.school_name ||
+      userInfo.schoolName ||
+      userInfo.organization ||
+      userInfo.org ||
+      userInfo.org_name
+    )
+  ) || 'N/A';
+
   const secondaryInfo = type === 'educator'
-    ? `Institution: ${userInfo.inst || "N/A"}`
-    : `Student ID: #${userInfo.student_id || "N/A"}`;
+    ? `Institution: ${instName}`
+    : `Student ID: #${userInfo?.student_id ?? 'N/A'}`;
 
   return (
     <div className="dropdown dropdown-end">

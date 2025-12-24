@@ -120,7 +120,7 @@ const EStudentListMock = ({ rawResults: propRawResults = null, studentNameMap: p
         { field: 'bot_score', label: 'Botany', sortable: false, headerClass: 'text-center' },
         { field: 'zoo_score', label: 'Zoology', sortable: false, headerClass: 'text-center' },
         { field: 'total_score', label: 'Total', sortable: false, headerClass: 'text-center' },
-        { field: 'improvement_rate', label: 'Improvement Rate', sortable: false, headerClass: 'text-center' },
+        { field: 'improvement_rate', label: 'Score Improvement', sortable: false, headerClass: 'text-center' },
     ];
 
     // Build a map of previous test scores for each student

@@ -1,21 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlignLeft, Home, User, FileText, Target, MessageCircle, List, UploadCloud, ChevronRight, ChevronDown } from 'lucide-react';
+import { AlignLeft, Home, User, FileText, Target, UploadCloud, ChevronRight, ChevronDown, BarChart3 } from 'lucide-react';
 import { useInstitution } from './index.jsx';
 import DesktopSidebar from '../components/header/DesktopSidebar.jsx';
 import UserDropdown from '../components/header/UserDropDown.jsx';
 import FeedbackModal from '../components/feedback/FeedbackModal.jsx';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select.jsx';
+// Classroom selector moved to individual pages
 import { fetchAvailableSwotTests_Educator, fetchInstitutionEducatorStudents } from '../../utils/api.js';
 import TeacherReportModal from './components/i_teacherreport.jsx';
 import StudentReportModal from './components/i_studentreport.jsx';
 
 const InstitutionHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
-  const { educators, selectedEducatorId, setSelectedEducatorId } = useInstitution();
-  const sortedEducators = React.useMemo(() => {
-    if (!Array.isArray(educators)) return [];
-    return [...educators].sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
-  }, [educators]);
+  const { selectedEducatorId } = useInstitution();
   const navigate = useNavigate();
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [showStudentReportModal, setShowStudentReportModal] = useState(false);
@@ -42,6 +38,12 @@ const InstitutionHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
       icon: <User size={20} />,
       text: 'Classrooms',
       activePattern: /^\/institution\/students/
+    },
+    {
+      to: '/institution/test-performance',
+      icon: <BarChart3 size={20} />,
+      text: 'Test Performance',
+      activePattern: /^\/institution\/test-performance/
     },
     {
       to: '/institution/upload',
@@ -93,7 +95,7 @@ const InstitutionHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
         }
         const data = await fetchInstitutionEducatorStudents(selectedEducatorId);
         setStudents(Array.isArray(data?.students) ? data.students : []);
-      } catch (err) {
+      } catch {
         setStudents([]);
       }
     }
@@ -103,7 +105,7 @@ const InstitutionHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
         const tests = await fetchAvailableSwotTests_Educator();
         const uniqueTests = [...new Set(tests)].filter((num) => num !== 0);
         setAvailableTests(['Overall', ...uniqueTests.map((num) => `Test ${num}`)]);
-      } catch (err) {
+      } catch {
         setAvailableTests(['Overall']);
       }
     }
@@ -184,24 +186,6 @@ const InstitutionHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
         </div>
 
         <div className="flex items-center gap-4">
-          {/* Educator Selector moved to the right, before profile */}
-          <div className="hidden sm:flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-600">Classroom:</span>
-            <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Select Educator" />
-              </SelectTrigger>
-              <SelectContent>
-                {sortedEducators.map((edu) => (
-                  <SelectItem key={edu.id} value={String(edu.id)}>
-                    {edu.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {/* Separator */}
-          <div className="h-8 w-px bg-gray-200 mx-1"></div>
           <UserDropdown
             userInfo={{ name: 'Institution Admin', inst: 'Institution' }}
             onLogout={handleLogout}

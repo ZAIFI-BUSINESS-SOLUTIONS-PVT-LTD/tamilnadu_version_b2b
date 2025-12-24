@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { fetchInstitutionEducatorAllStudentResults, createInstitutionStudent, updateInstitutionStudent, deleteInstitutionStudent, deleteInstitutionStudentTest, reuploadInstitutionStudentResponses, createTeacher, getTeachersByClass, updateTeacher, deleteTeacher } from '../../utils/api';
-import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   Search,
@@ -15,8 +14,10 @@ import {
   ArrowDown,
   CheckCircle,
   Trash2,
-  Edit
+  Edit,
+  MoreHorizontal
 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../../components/ui/dropdown-menu.jsx';
 import Table from '../components/ui/table.jsx';
 import { Button } from '../../components/ui/button.jsx';
 import { Input } from '../../components/ui/input.jsx';
@@ -27,7 +28,11 @@ import LoadingPage from '../components/LoadingPage.jsx';
 import { useInstitution } from './index.jsx';
 
 function IStudentDetails() {
-  const { selectedEducatorId, educators } = useInstitution();
+  const { selectedEducatorId, setSelectedEducatorId, educators } = useInstitution();
+  const sortedEducators = React.useMemo(() => {
+    if (!Array.isArray(educators)) return [];
+    return [...educators].sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
+  }, [educators]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [groupedResults, setGroupedResults] = useState([]);
@@ -35,7 +40,7 @@ function IStudentDetails() {
   const [modalStudent, setModalStudent] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({ name: '', dob: '', password: '' });
-  const [studentNameMap, setStudentNameMap] = useState({});
+  const [studentNameMap] = useState({});
   const [sortModalOpen, setSortModalOpen] = useState(false);
   const [deleteSummary, setDeleteSummary] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -48,7 +53,11 @@ function IStudentDetails() {
   const [reuploadData, setReuploadData] = useState({ studentId: null, testNum: null });
   const [reuploadFile, setReuploadFile] = useState(null);
   const [reuploadLoading, setReuploadLoading] = useState(false);
-  const navigate = useNavigate();
+  const selectedClassName = React.useMemo(() => {
+    if (!Array.isArray(educators)) return 'Student Results';
+    const found = educators.find(e => String(e.id) === String(selectedEducatorId));
+    return found && found.name ? found.name : 'Student Results';
+  }, [educators, selectedEducatorId]);
 
   // Subject-wise educator mappings for the selected batch (right-side panel)
   const [subjectEducators, setSubjectEducators] = useState([]); // { id, subject, educator }
@@ -245,7 +254,28 @@ function IStudentDetails() {
   })();
 
   if (!selectedEducatorId) {
-    return <div className="text-center py-8 mt-20">Please select an educator to view their students.</div>;
+    return (
+      <div className="text-center py-8 mt-20">
+        <div className="flex items-center justify-center mb-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-600">Classroom:</span>
+            <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select Educator" />
+              </SelectTrigger>
+              <SelectContent>
+                {(Array.isArray(educators) ? educators : []).map((edu) => (
+                  <SelectItem key={edu.id} value={String(edu.id)}>
+                    {edu.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div>Please select an educator to view their students.</div>
+      </div>
+    );
   }
 
   if (loading) {
@@ -277,39 +307,236 @@ function IStudentDetails() {
     );
   }
 
+  const educatorColumns = [
+    { field: 'subject', label: 'Subject', sortable: false },
+    { field: 'educator', label: 'Name', sortable: false },
+    { field: 'phone_number', label: 'Phone Number', sortable: false },
+    { field: 'actions', label: 'Actions', sortable: false, headerClass: 'justify-end' },
+  ];
+
+  const educatorRows = ['Physics', 'Chemistry', 'Botany', 'Zoology'].map((sub) => {
+    const entry = (subjectEducators || []).find(s => String(s.subject).toLowerCase() === String(sub).toLowerCase());
+    const name = entry ? (entry.teacher_name || entry.educator || 'Not assigned') : 'Not assigned';
+    const phone = entry ? (entry.phone_number || 'N/A') : 'N/A';
+    return { subject: sub, name, phone, entry };
+  });
+
   const columns = [
     { field: 'rank', label: 'Rank', sortable: true },
     { field: 'student_id', label: 'Student ID', sortable: true },
     { field: 'student_name', label: 'Student Name', sortable: true },
-    { field: 'tests_taken', label: 'No of test attended', sortable: false },
+    { field: 'last_test_score', label: 'Last test score', sortable: false },
     { field: 'average_score', label: 'Average score', sortable: true },
+    { field: 'actions', label: 'Actions', sortable: false, headerClass: 'justify-end' },
   ];
+
+  const handleEditStudentRow = (student) => {
+    setModalStudent(student);
+    setIsEditing(true);
+    setEditForm({ name: student.student_name || '', dob: student.dob || '', password: '' });
+  };
+
+  const handleDeleteStudentRow = async (student) => {
+    if (!window.confirm(`Delete student ${student.student_id} and all related data?`)) return;
+    try {
+      setLoading(true);
+      const res = await deleteInstitutionStudent(selectedEducatorId, student.student_id);
+      if (res.error) {
+        setError(res.error);
+        toast.error(res.error);
+      } else {
+        setDeleteSummary({ message: res.message || 'Deleted', counts: res.deleted_counts || {} });
+        await fetchResults();
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Failed to delete student');
+      toast.error('Failed to delete student');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteEducator = async (entry) => {
+    if (!entry || !entry.id) {
+      toast.error('No educator assigned to delete');
+      return;
+    }
+    if (!window.confirm(`Delete teacher for ${entry.subject}?`)) return;
+    try {
+      const res = await deleteTeacher(entry.id);
+      if (res && res.success) {
+        toast.success('Teacher deleted successfully');
+        if (classIdForTeachers) {
+          const teachersRes = await getTeachersByClass(classIdForTeachers);
+          if (teachersRes && teachersRes.success) setSubjectEducators(teachersRes.data);
+        }
+      } else {
+        toast.error(res?.error || 'Failed to delete teacher');
+      }
+    } catch (err) {
+      console.error('Error deleting teacher:', err);
+      toast.error('Failed to delete teacher');
+    }
+  };
+
+  const renderEducatorRow = (row) => (
+    <tr key={row.subject}>
+      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800">{row.subject}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{row.name}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{row.phone}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+        <div className="flex items-center justify-end gap-2">
+          {row.entry ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full" aria-label="More">
+                  <MoreHorizontal className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent sideOffset={6} align="end">
+                <DropdownMenuItem onClick={() => {
+                  setEditingSubject(row.entry);
+                  setSubjForm({
+                    subject: row.entry.subject,
+                    educator: row.entry.teacher_name || row.entry.educator || '',
+                    email: row.entry.email || '',
+                    phone_number: row.entry.phone_number || '',
+                    test_range: row.entry.test_range || ''
+                  });
+                  setSubjModalOpen(true);
+                }}>Edit</DropdownMenuItem>
+                <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteEducator(row.entry)}>Delete</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setEditingSubject(null);
+                setSubjForm({ subject: row.subject, educator: '', email: '', phone_number: '', test_range: '' });
+                setSubjModalOpen(true);
+              }}
+            >
+              Assign educator
+            </Button>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
 
   const renderRow = (student) => (
     <tr
       key={student.student_id}
-      className="hover:bg-gray-50 cursor-pointer transition-colors"
-      onClick={() => setModalStudent(student)}>
+      className="">
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{rankMap[student.student_id]}</td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{student.student_id}</td>
       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{studentNameMap[student.student_id] || student.student_name}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{student.tests_taken}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+        {(() => {
+          const tr = Array.isArray(student.test_results) && student.test_results.length > 0
+            ? student.test_results.reduce((prev, curr) => (curr.test_num > prev.test_num ? curr : prev), student.test_results[0])
+            : null;
+          return tr && (tr.total_score !== undefined && tr.total_score !== null) ? tr.total_score : 'N/A';
+        })()}
+      </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{student.average_score}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+        <div className="flex items-center gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full" aria-label="More">
+                <MoreHorizontal className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent sideOffset={6} align="end">
+              <DropdownMenuItem onClick={() => setModalStudent(student)}>View more</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEditStudentRow(student)}>Edit</DropdownMenuItem>
+              <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteStudentRow(student)}>Delete</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </td>
     </tr>
   );
 
   return (
-    <div className="sm:pt-4 w-full mx-auto px-4 sm:px-6 lg:px-0">
-      <div className="flex flex-col lg:flex-row gap-6 mt-8">
+    <div className="sm:pt-16 w-full mx-auto px-4 sm:px-6 lg:px-0">
+      <div className="hidden lg:flex lg:flex-row lg:items-center lg:justify-between mb-4 pb-4">
+        <div className="flex items-center gap-4">
+          <h2 className="text-3xl font-semibold text-gray-800">Classroom Details</h2>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-400 min-w-max pl-1">Classroom</span>
+          <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
+            <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-[220px] lg:w-auto text-start">
+              <SelectValue placeholder="Select Classroom" />
+            </SelectTrigger>
+            <SelectContent side="bottom" align="start">
+              {sortedEducators.map((edu) => (
+                <SelectItem key={edu.id} value={String(edu.id)}>
+                  {edu.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="lg:hidden">
+        <div className="flex w-full bg-white px-3 border-b justify-between items-center rounded-xl">
+          <div className="text-left py-3">
+            <h1 className="text-3xl font-bold text-gray-800">{selectedClassName}</h1>
+            <div className="mt-2">
+              <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Classroom" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sortedEducators.map((edu) => (
+                    <SelectItem key={edu.id} value={String(edu.id)}>
+                      {edu.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        <Card className="rounded-2xl border border-gray-250 bg-white w-full">
+          <CardHeader className="flex flex-col sm:flex-row justify-start items-start sm:items-center gap-4 pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <h1 className="text-2xl font-bold text-gray-800">Class Educators</h1>
+            </div>
+          </CardHeader>
+
+          <div className="overflow-x-auto p-8">
+            <Table
+              columns={educatorColumns}
+              data={educatorRows}
+              renderRow={renderEducatorRow}
+            />
+          </div>
+        </Card>
+
         <div className="flex-1">
-          <Card className="rounded-2xl border border-gray-250 bg-white w-full p-8">
-            <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-gray-200">
+          <Card className="rounded-2xl border border-gray-250 bg-white w-full">
+            <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4">
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold text-gray-800">Student Results</h1>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <h1 className="text-2xl font-bold text-gray-800">Class Students</h1>
+                </div>
                 <span className="badge badge-lg border-transparent bg-blue-50 text-sm text-blue-700">
                   {groupedResults.length} {groupedResults.length === 1 ? 'Student' : 'Students'}
                 </span>
               </div>
+
+
               <div className="flex gap-2 w-full sm:w-auto">
                 <div className="w-full sm:w-96 flex gap-2">
                   <div className="relative flex-1">
@@ -342,7 +569,7 @@ function IStudentDetails() {
               </div>
             </CardHeader>
 
-            <CardContent>
+            <div className="overflow-x-auto p-8">
               {renderDeleteSummary()}
 
               <div>
@@ -353,7 +580,6 @@ function IStudentDetails() {
                         <div
                           key={student.student_id}
                           className="p-4 border rounded-lg shadow-sm hover:bg-gray-50"
-                          onClick={() => setModalStudent(student)}
                         >
                           <div className="flex justify-between items-start">
                             <div>
@@ -368,6 +594,9 @@ function IStudentDetails() {
                           <div className="mt-2 flex justify-between text-sm text-gray-600">
                             <div>Tests: {student.tests_taken}</div>
                             <div>Rank: {rankMap[student.student_id]}</div>
+                          </div>
+                          <div className="mt-3 flex justify-end">
+                            <Button variant="ghost" size="sm" onClick={() => setModalStudent(student)}>View more</Button>
                           </div>
                         </div>
                       ))}
@@ -535,17 +764,6 @@ function IStudentDetails() {
                       onChange={e => setSubjForm(prev => ({ ...prev, phone_number: e.target.value }))}
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Test Range (Optional)</label>
-                    <Input
-                      type="text"
-                      className="input input-bordered w-full"
-                      placeholder="e.g., 1,2,3 or 1-5"
-                      value={subjForm.test_range}
-                      onChange={e => setSubjForm(prev => ({ ...prev, test_range: e.target.value }))}
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Specify which tests this teacher handled (e.g., "1,2,3" or "1-5")</p>
-                  </div>
                   <div className="modal-action mt-4 flex flex-col sm:flex-row gap-2">
                     <Button variant="default" className="w-full sm:w-auto" onClick={async () => {
                       if (!subjForm.subject || !subjForm.educator) {
@@ -565,8 +783,7 @@ function IStudentDetails() {
                             subject: subjForm.subject,
                             teacher_name: subjForm.educator,
                             email: subjForm.email?.trim() || null,
-                            phone_number: subjForm.phone_number?.trim() || null,
-                            test_range: subjForm.test_range?.trim() || null
+                            phone_number: subjForm.phone_number?.trim() || null
                           };
                           const response = await updateTeacher(editingSubject.id, updates);
                           if (response.success) {
@@ -584,8 +801,7 @@ function IStudentDetails() {
                             subject: subjForm.subject,
                             teacher_name: subjForm.educator,
                             email: subjForm.email?.trim() || null,
-                            phone_number: subjForm.phone_number?.trim() || null,
-                            test_range: subjForm.test_range?.trim() || null
+                            phone_number: subjForm.phone_number?.trim() || null
                           };
                           const response = await createTeacher(payload);
                           if (response.success) {
@@ -980,7 +1196,7 @@ function IStudentDetails() {
                               } else {
                                 statusMsg.push(`⚠️ Neo4j: ${res.neo4j?.message || 'failed'}`);
                               }
-                              
+
                               if (res.dashboard?.status === 'ok') {
                                 statusMsg.push('✅ Dashboard regenerated');
                               } else if (res.dashboard?.status === 'partial') {
@@ -996,7 +1212,7 @@ function IStudentDetails() {
 
                               // Refresh results
                               await fetchResults();
-                              
+
                               // Close modals
                               setDeleteTestModalOpen(false);
                               setTestToDelete(null);
@@ -1114,19 +1330,19 @@ function IStudentDetails() {
                             } else {
                               // Show success message with details
                               const statusMsg = [];
-                              
+
                               if (res.responses?.status === 'ok') {
                                 statusMsg.push(`✅ ${res.responses.count} responses uploaded`);
                               } else {
                                 statusMsg.push(`⚠️ Responses: ${res.responses?.message || 'failed'}`);
                               }
-                              
+
                               if (res.analysis?.status === 'ok') {
                                 statusMsg.push('✅ Analysis completed');
                               } else {
                                 statusMsg.push(`⚠️ Analysis: ${res.analysis?.message || 'failed'}`);
                               }
-                              
+
                               if (res.dashboard?.status === 'ok') {
                                 statusMsg.push('✅ Dashboard updated');
                               } else if (res.dashboard?.status === 'partial') {
@@ -1142,7 +1358,7 @@ function IStudentDetails() {
 
                               // Refresh results
                               await fetchResults();
-                              
+
                               // Close modal
                               setReuploadModalOpen(false);
                               setReuploadData({ studentId: null, testNum: null });
@@ -1184,72 +1400,9 @@ function IStudentDetails() {
                   </div>
                 </Modal>
               )}
-            </CardContent>
+            </div>
           </Card>
         </div>
-
-        {/* Right-side panel moved outside card */}
-        <aside className="w-full lg:w-80 pl-0 lg:pl-6 card bg-white border border-gray-250 rounded-2xl p-6 h-fit mt-6 lg:mt-0 lg:sticky lg:top-8 self-start">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Class Educators</h3>
-            <Button size="sm" onClick={() => { setEditingSubject(null); setSubjForm({ subject: '', educator: '', email: '', phone_number: '', test_range: '' }); setSubjModalOpen(true); }}>Add</Button>
-          </div>
-
-          <div className="space-y-3">
-            {subjectEducators.length === 0 && (
-              <p className="text-sm text-gray-500">No subject mappings for this batch.</p>
-            )}
-
-            {subjectEducators.map((s) => (
-              <div key={s.id} className="flex items-center gap-2 p-2 rounded hover:bg-gray-50">
-                <div className="flex-1">
-                  <div className="text-sm font-medium text-gray-800">{s.subject}</div>
-                  <div className="text-sm text-gray-500 truncate">{s.teacher_name || s.educator || <span className="italic">Unassigned</span>}</div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => {
-                    setEditingSubject(s);
-                    setSubjForm({
-                      subject: s.subject,
-                      educator: s.teacher_name || s.educator || '',
-                      email: s.email || '',
-                      phone_number: s.phone_number || '',
-                      test_range: s.test_range || ''
-                    });
-                    setSubjModalOpen(true);
-                  }} aria-label="Edit subject">
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="text-red-600" onClick={async () => {
-                    if (!s.id.toString().startsWith('temp-')) {
-                      try {
-                        const response = await deleteTeacher(s.id);
-                        if (response.success) {
-                          toast.success('Teacher deleted successfully');
-                          // Refresh list
-                          if (classIdForTeachers) {
-                            const teachersRes = await getTeachersByClass(classIdForTeachers);
-                            if (teachersRes && teachersRes.success) {
-                              setSubjectEducators(teachersRes.data);
-                            }
-                          }
-                        }
-                      } catch (err) {
-                        console.error('Error deleting teacher:', err);
-                        toast.error('Failed to delete teacher');
-                      }
-                    } else {
-                      // Just remove from local state for temp items
-                      setSubjectEducators(prev => prev.filter(x => x.id !== s.id));
-                    }
-                  }} aria-label="Delete subject">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </aside>
       </div>
     </div>
   );
