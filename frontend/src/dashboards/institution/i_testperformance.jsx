@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useInstitution } from './index.jsx';
-import { fetchInstitutionTestStudentPerformance } from '../../utils/api';
+import { fetchInstitutionTestStudentPerformance, fetchAvailableSwotTests_InstitutionEducator } from '../../utils/api';
 import { formatQuestionText } from '../../utils/mathFormatter';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card.jsx';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select.jsx';
@@ -10,7 +10,14 @@ import { CheckCircle2, XCircle, MinusCircle, Loader2, AlertCircle } from 'lucide
 import LoadingPage from '../components/LoadingPage.jsx';
 
 const ITestPerformance = () => {
-  const { selectedEducatorId, educators } = useInstitution();
+  const { selectedEducatorId, setSelectedEducatorId, educators } = useInstitution();
+  const sortedEducators = React.useMemo(() => {
+    if (!Array.isArray(educators)) return [];
+    return [...educators].sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
+  }, [educators]);
+  const [availableTests, setAvailableTests] = useState([]);
+  const [testsLoading, setTestsLoading] = useState(false);
+  const [testsError, setTestsError] = useState(null);
   const [testNum, setTestNum] = useState('');
   const [performanceData, setPerformanceData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -28,14 +35,14 @@ const ITestPerformance = () => {
 
     try {
       const data = await fetchInstitutionTestStudentPerformance(selectedEducatorId, parseInt(testNum));
-      
+
       console.log('📊 Performance data received:', data);
       console.log('📝 Questions count:', data?.questions?.length);
       console.log('👥 Students count:', data?.students?.length);
       if (data?.students?.length > 0) {
         console.log('📋 First student responses:', data.students[0].responses?.length);
       }
-      
+
       if (data.error) {
         setError(data.error);
       } else {
@@ -49,11 +56,60 @@ const ITestPerformance = () => {
     }
   };
 
+  useEffect(() => {
+    let cancelled = false;
+    const loadTests = async () => {
+      if (!selectedEducatorId) {
+        setAvailableTests([]);
+        setTestNum('');
+        return;
+      }
+      setTestsLoading(true);
+      setTestsError(null);
+      try {
+        const tests = await fetchAvailableSwotTests_InstitutionEducator(selectedEducatorId);
+        let tlist = Array.isArray(tests) ? tests.map(t => String(t)) : [];
+        // sort descending numerically: most recent / highest test first (test12, test11, ...)
+        tlist = tlist
+          .filter(x => x !== null && x !== undefined && x !== '')
+          .sort((a, b) => (parseInt(b, 10) || 0) - (parseInt(a, 10) || 0));
+        if (!cancelled) {
+          setAvailableTests(tlist);
+          // default to the most recent test (first item after descending sort)
+          if (tlist.length > 0) setTestNum(prev => prev || tlist[0]);
+          else setTestNum('');
+        }
+      } catch (err) {
+        console.error('Failed to load tests', err);
+        if (!cancelled) {
+          setTestsError('Failed to load available tests');
+          setAvailableTests([]);
+          setTestNum('');
+        }
+      } finally {
+        if (!cancelled) setTestsLoading(false);
+      }
+    };
+
+    loadTests();
+    return () => { cancelled = true; };
+  }, [selectedEducatorId]);
+
+  useEffect(() => {
+    // auto-fetch whenever educator and test are selected
+    if (selectedEducatorId && testNum) {
+      handleFetchPerformance();
+    } else {
+      setPerformanceData(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEducatorId, testNum]);
+
   const getAnswerIcon = (isCorrect, selectedAnswer) => {
     if (selectedAnswer === null || selectedAnswer === undefined || selectedAnswer === '') {
       return <MinusCircle className="w-5 h-5 text-gray-400" />;
     }
-    
+
     return isCorrect ? (
       <CheckCircle2 className="w-5 h-5 text-green-600" />
     ) : (
@@ -65,7 +121,7 @@ const ITestPerformance = () => {
     if (selectedAnswer === null || selectedAnswer === undefined || selectedAnswer === '') {
       return 'text-gray-500 bg-gray-50';
     }
-    
+
     return isCorrect ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50';
   };
 
@@ -76,69 +132,83 @@ const ITestPerformance = () => {
     return { correct, total, percentage };
   };
 
-  if (!selectedEducatorId) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center text-center space-y-2">
-              <AlertCircle className="w-12 h-12 text-gray-400" />
-              <p className="text-gray-600">Please select an educator from the sidebar to view test performance.</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // allow header row to show even when no educator is selected so user can pick a classroom
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Test Performance Analysis</CardTitle>
-          <CardDescription>
-            View detailed student-wise and question-wise performance for a specific test
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4 items-end">
-            <div className="flex-1 max-w-xs">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Test Number
-              </label>
-              <input
-                type="number"
-                placeholder="Enter test number (e.g., 1, 2, 3)"
-                value={testNum}
-                onChange={(e) => setTestNum(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                min="1"
-              />
-            </div>
-            <Button 
-              onClick={handleFetchPerformance}
-              disabled={isLoading || !testNum || !selectedEducatorId}
-              className="px-6"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Loading...
-                </>
-              ) : (
-                'Fetch Performance'
-              )}
-            </Button>
+      <div className="hidden lg:flex lg:flex-row lg:items-center lg:justify-between gap-3 mt-12">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-800">Test Performance Analysis</h1>
+          <p className="text-sm text-gray-500">View detailed student-wise and question-wise performance for a specific test</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400 min-w-max pl-1">Classroom</span>
+            <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
+              <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-[220px] lg:w-auto text-start">
+                <SelectValue placeholder="Select Classroom" />
+              </SelectTrigger>
+              <SelectContent side="bottom" align="start">
+                {sortedEducators.map((edu) => (
+                  <SelectItem key={edu.id} value={String(edu.id)}>
+                    {edu.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          {error && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md flex items-start gap-2">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-800">{error}</p>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400 min-w-max pl-1">Test</span>
+            <Select value={testNum ? String(testNum) : ''} onValueChange={(v) => setTestNum ? setTestNum(v) : null}>
+              <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-28 text-start">
+                <SelectValue placeholder={testsLoading ? 'Loading...' : (availableTests.length ? 'Select Test' : 'No tests')} />
+              </SelectTrigger>
+              <SelectContent side="bottom" align="start">
+                {availableTests.map((t) => (
+                  <SelectItem key={String(t)} value={String(t)}>{String(t)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+      <div className="lg:hidden mb-2">
+        <div className="flex w-full bg-white px-3 border-b justify-between items-center rounded-xl">
+          <div className="text-left py-3 w-full flex items-center justify-between">
+            <h1 className="text-lg font-semibold text-gray-800">Test Performance Analysis</h1>
+            <div className="flex items-center gap-2">
+              <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Classroom" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sortedEducators.map((edu) => (
+                    <SelectItem key={edu.id} value={String(edu.id)}>
+                      {edu.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={testNum ? String(testNum) : ''} onValueChange={(v) => setTestNum ? setTestNum(v) : null}>
+                <SelectTrigger className="w-28">
+                  <SelectValue placeholder={testsLoading ? 'Loading...' : (availableTests.length ? 'Test' : 'No tests')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableTests.map((t) => (
+                    <SelectItem key={String(t)} value={String(t)}>{String(t)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+      </div>
+      {/** Card area now only shows messages; performance summary and table below will render when data exists **/}
+      {testsError && (
+        <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800">{testsError}</div>
+      )}
 
       {isLoading && <LoadingPage />}
 
@@ -184,9 +254,9 @@ const ITestPerformance = () => {
                 <div className="space-y-4">
                   {performanceData.students.map((student) => {
                     const score = calculateStudentScore(student.responses);
-                    
+
                     console.log(`Student: ${student.student_name}, Responses:`, student.responses?.length);
-                    
+
                     return (
                       <details key={student.student_id} className="border rounded-lg overflow-hidden">
                         <summary className="cursor-pointer p-4 bg-gray-50 hover:bg-gray-100 transition-colors flex justify-between items-center">
@@ -203,7 +273,7 @@ const ITestPerformance = () => {
                             </div>
                           </div>
                         </summary>
-                        
+
                         <div className="p-4">
                           {!student.responses || student.responses.length === 0 ? (
                             <div className="text-center py-8 text-gray-500">
@@ -229,7 +299,7 @@ const ITestPerformance = () => {
                                   const question = performanceData.questions.find(
                                     q => q.question_number === response.question_number
                                   );
-                                  
+
                                   return (
                                     <TableRow key={response.question_number} className={getAnswerClass(response.is_correct, response.selected_answer)}>
                                       <TableCell className="font-medium">{response.question_number}</TableCell>

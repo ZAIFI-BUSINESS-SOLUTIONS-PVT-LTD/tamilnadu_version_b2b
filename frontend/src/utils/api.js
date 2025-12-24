@@ -938,7 +938,45 @@ export const fetchInstitutionTestStudentPerformance = async (educatorId, testNum
       }
     );
 
-    return response.data;
+    const data = response.data;
+
+    // Extract a lightweight schema (keys and nested types/sample shapes) without logging full data
+    const extractSchema = (obj) => {
+      if (obj === null) return 'null';
+      if (obj === undefined) return 'undefined';
+      if (Array.isArray(obj)) {
+        const sample = obj.find(item => item !== null && item !== undefined) ?? obj[0];
+        return [extractSchema(sample)];
+      }
+      if (typeof obj === 'object') {
+        const schema = {};
+        Object.keys(obj).forEach((k) => {
+          const val = obj[k];
+          if (Array.isArray(val)) {
+            const sample = val.find(item => item !== null && item !== undefined) ?? val[0];
+            schema[k] = [extractSchema(sample)];
+          } else if (val && typeof val === 'object') {
+            schema[k] = extractSchema(val);
+          } else {
+            schema[k] = typeof val;
+          }
+        });
+        return schema;
+      }
+      return typeof obj;
+    };
+
+    const schema = extractSchema(data);
+
+    // Print ONLY the schema object to the console (no raw data)
+    try {
+      console.log(JSON.stringify(schema, null, 2));
+    } catch (e) {
+      // fallback to simple log if stringify fails for some reason
+      console.log(schema);
+    }
+
+    return data;
   } catch (error) {
     console.error('Error fetching test student performance:', error);
     return { error: error.response?.data?.error || 'Failed to fetch test performance data' };
