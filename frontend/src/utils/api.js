@@ -384,10 +384,12 @@ export const generateBulkPdfReportsZip = async (studentIds, testId, classId = nu
         const link = document.createElement('a');
         link.href = data.downloadUrl;
         link.download = data.filename || 'reports.zip';
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        return { success: true, s3Download: true };
+        return { success: true, s3Download: true, downloadUrl: data.downloadUrl, filename: data.filename };
       }
     }
     

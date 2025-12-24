@@ -537,6 +537,7 @@ class PdfService {
               Key: s3Key,
               Body: zipBuffer,
               ContentType: 'application/zip',
+              ContentDisposition: `attachment; filename="${zipFilename}"`,
               Metadata: {
                 'class-id': String(classId),
                 'test-id': String(testId),
