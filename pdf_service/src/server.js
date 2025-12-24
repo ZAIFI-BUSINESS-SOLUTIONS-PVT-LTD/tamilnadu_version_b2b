@@ -28,7 +28,12 @@ const corsOptions = {
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: config.cors.credentials,
-  optionsSuccessStatus: config.cors.optionsSuccessStatus
+  optionsSuccessStatus: config.cors.optionsSuccessStatus,
+  // Allow these headers from the browser (preflight will include them)
+  allowedHeaders: ['Content-Type', 'Authorization', 'Content-Length', 'Accept'],
+  // Expose these response headers to the browser JS (so Content-Disposition can be read)
+  exposedHeaders: ['Content-Disposition', 'Content-Length', 'X-RateLimit-Limit', 'X-RateLimit-Remaining'],
+  methods: ['GET', 'POST', 'OPTIONS']
 };
 app.use(cors(corsOptions));
 

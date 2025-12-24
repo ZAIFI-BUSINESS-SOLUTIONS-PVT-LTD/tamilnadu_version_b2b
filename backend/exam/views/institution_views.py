@@ -16,6 +16,7 @@ import re
 from exam.graph_utils.delete_graph import delete_db, delete_test_graph
 from exam.models import StudentResponse, Performance, StudentResult, QuestionAnalysis, Test
 from exam.services.update_dashboard import update_single_student_dashboard
+from exam.services.institution_reports import get_test_student_performance
 from exam.utils.student_analysis import analyze_single_student, fetch_student_responses
 from exam.graph_utils.create_graph import create_graph
 import pandas as pd
@@ -1451,4 +1452,86 @@ def reupload_institution_student_responses(request, educator_id):
         
     except Exception as e:
         logger.exception(f"Error in reupload_institution_student_responses: {str(e)}")
+        return Response({"error": str(e)}, status=500)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_institution_test_student_performance(request, educator_id, test_num):
+    """
+    Fetch comprehensive test performance data for all students who attended the test.
+    
+    This endpoint provides detailed question-level data for each student,
+    including their selected answers and correctness evaluation.
+    
+    Args:
+        educator_id (int): The educator ID
+        test_num (int): The test number
+        
+    Returns:
+        JSON response with structure:
+        {
+            "class_id": str,
+            "test_num": int,
+            "questions": [
+                {
+                    "question_number": int,
+                    "question_text": str,
+                    "options": [str, str, str, str],
+                    "correct_answer": str
+                }
+            ],
+            "students": [
+                {
+                    "student_id": str,
+                    "student_name": str,
+                    "responses": [
+                        {
+                            "question_number": int,
+                            "selected_answer": str or None,
+                            "is_correct": bool
+                        }
+                    ]
+                }
+            ]
+        }
+    """
+    try:
+        # Get the logged-in manager
+        manager_email = request.user.email
+        manager = Manager.objects.filter(email=manager_email).first()
+        
+        if not manager:
+            return Response({"error": "Manager not found"}, status=404)
+        
+        institution = manager.institution
+        
+        if not institution:
+            return Response({"error": "Manager has no assigned institution"}, status=400)
+        
+        # Get the educator and verify they belong to this institution
+        educator = Educator.objects.filter(id=educator_id).first()
+        
+        if not educator:
+            return Response({"error": "Educator not found"}, status=404)
+        
+        if educator.institution != institution:
+            return Response({
+                "error": "Unauthorized: Educator does not belong to your institution"
+            }, status=403)
+        
+        class_id = educator.class_id
+        
+        # Generate the performance data
+        try:
+            performance_data = get_test_student_performance(class_id, test_num)
+            return Response(performance_data, status=200)
+        except Exception as e:
+            logger.exception(f"Error generating test performance data: {str(e)}")
+            return Response({
+                "error": f"Failed to generate performance data: {str(e)}"
+            }, status=500)
+        
+    except Exception as e:
+        logger.exception(f"Error in get_institution_test_student_performance: {str(e)}")
         return Response({"error": str(e)}, status=500)

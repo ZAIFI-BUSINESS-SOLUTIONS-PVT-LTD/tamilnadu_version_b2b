@@ -69,6 +69,7 @@ urlpatterns = [
     path('api/institution/teacher/dashboard/', institution_views.get_institution_teacher_dashboard, name='get_institution_teacher_dashboard'),
     path('api/institution/teacher/swot/', institution_views.get_institution_teacher_swot, name='get_institution_teacher_swot'),
     path('api/institution/educator/<int:educator_id>/dashboard/', institution_views.get_institution_educator_dashboard, name='get_institution_educator_dashboard'),
+    path('api/institution/educator/<int:educator_id>/test/<int:test_num>/student-performance/', institution_views.get_institution_test_student_performance, name='get_institution_test_student_performance'),
     path('api/institution/educator/<int:educator_id>/students/results/', institution_views.get_institution_educator_students_result, name='get_institution_educator_students_result'),
     path('api/institution/educator/<int:educator_id>/swot/', institution_views.get_institution_educator_swot, name='get_institution_educator_swot'),
     path('api/institution/educator/<int:educator_id>/swot/tests/', institution_views.list_institution_educator_swot_tests, name='list_institution_educator_swot_tests'),

@@ -91,20 +91,75 @@ export const generateBulkPdfZip = async (req, res) => {
   
   try {
     logger.info('Bulk PDF zip generation request received', { studentCount: studentIds.length, testId, classId, origin });
-    const zipFilePath = await pdfService.generateBulkPdfZip(studentIds, testId, jwtToken, origin, classId, educatorId);
-    const zipFilename = zipFilePath.split(path.sep).pop();
+    const result = await pdfService.generateBulkPdfZip(studentIds, testId, jwtToken, origin, classId, educatorId);
+    
+    // If S3 is enabled and ZIP was uploaded, return presigned URL instead of streaming
+    if (result.s3Key) {
+      try {
+        const presignedUrl = await pdfService.getPresignedDownloadUrl(result.s3Key, 3600); // 1 hour expiry
+        logger.info('Bulk PDF zip available via S3', { s3Key: result.s3Key, filename: result.filename });
+        
+        // Clean up local file immediately since we're not streaming it
+        if (config.nodeEnv === 'production') {
+          pdfService.cleanup(result.filePath);
+        }
+        
+        return res.json({
+          success: true,
+          downloadUrl: presignedUrl,
+          filename: result.filename,
+          expiresIn: 3600
+        });
+      } catch (s3Error) {
+        logger.warn('Failed to generate S3 presigned URL, falling back to streaming', { error: s3Error.message });
+        // Fall through to streaming below
+      }
+    }
+    
+    // Fallback: Stream the ZIP file directly
+    const zipFilePath = result.filePath || result;
+    const zipFilename = result.filename || zipFilePath.split(path.sep).pop();
     const stat = fs.statSync(zipFilePath);
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${zipFilename}"`);
     res.setHeader('Content-Length', stat.size);
+    
     const readStream = fs.createReadStream(zipFilePath);
-    readStream.pipe(res);
-    readStream.on('close', () => {
-      if (config.nodeEnv === 'production') {
+    let cleanedUp = false;
+    
+    // Single cleanup function to avoid double-cleanup
+    const doCleanup = () => {
+      if (!cleanedUp && config.nodeEnv === 'production') {
+        cleanedUp = true;
         pdfService.cleanup(zipFilePath);
       }
-      logger.info('Bulk PDF zip sent successfully', { zipFilename });
+    };
+    
+    // Handle stream errors
+    readStream.on('error', (err) => {
+      logger.error('Error reading zip file stream', { error: err.message, zipFilePath });
+      doCleanup();
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Failed to stream zip file' });
+      }
     });
+    
+    // Cleanup after response is fully sent
+    res.on('finish', () => {
+      logger.info('Bulk PDF zip sent successfully', { zipFilename, size: stat.size });
+      doCleanup();
+    });
+    
+    // Handle client disconnect
+    res.on('close', () => {
+      if (!res.writableFinished) {
+        logger.warn('Client disconnected before zip transfer completed', { zipFilename });
+        readStream.destroy();
+      }
+      doCleanup();
+    });
+    
+    readStream.pipe(res);
   } catch (error) {
     logger.error('Bulk PDF zip generation failed', { error: error.message });
     const isDevelopment = config.nodeEnv === 'development';

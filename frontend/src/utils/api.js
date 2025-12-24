@@ -342,6 +342,7 @@ export const generateBulkPdfReportsZip = async (studentIds, testId, classId = nu
       body.educatorId = educatorId;
     }
     console.log('generateBulkPdfReportsZip called with:', { studentIds, testId, classId, educatorId, body });
+    
     const response = await fetch(
       `${PDF_SERVICE_URL}/generate-bulk-pdf`,
       {
@@ -353,14 +354,61 @@ export const generateBulkPdfReportsZip = async (studentIds, testId, classId = nu
         body: JSON.stringify(body)
       }
     );
+    
+    console.log('generateBulkPdfReportsZip response:', {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      type: response.type,
+      headers: {
+        contentType: response.headers.get('content-type'),
+        contentLength: response.headers.get('content-length'),
+        contentDisposition: response.headers.get('content-disposition')
+      }
+    });
+    
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
     }
+    
+    // Check if response is JSON (S3 presigned URL) or blob (streaming)
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      // S3 presigned URL response
+      const data = await response.json();
+      console.log('Received S3 presigned URL response:', data);
+      
+      if (data.downloadUrl) {
+        // Trigger download from S3 URL
+        const link = document.createElement('a');
+        link.href = data.downloadUrl;
+        link.download = data.filename || 'reports.zip';
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return { success: true, s3Download: true, downloadUrl: data.downloadUrl, filename: data.filename };
+      }
+    }
+    
+    // Fallback: blob response (streaming)
     const blob = await response.blob();
+    console.log('generateBulkPdfReportsZip blob received:', { size: blob.size, type: blob.type });
+    
+    if (blob.size === 0) {
+      throw new Error('Received empty ZIP file from server');
+    }
+    
     return blob;
   } catch (error) {
     console.error('generateBulkPdfReportsZip error:', error);
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    });
     throw error;
   }
 };
@@ -916,6 +964,70 @@ export const fetchInstitutionTeacherSWOT = async (educatorId, testId) => {
   } catch (error) {
     console.error('Error fetching institution teacher SWOT:', error);
     return { error: 'Failed to fetch teacher SWOT' };
+  }
+};
+
+/**
+ * Fetch Test Student Performance (Institution View)
+ * Returns detailed question-level data for all students who attended a specific test
+ */
+export const fetchInstitutionTestStudentPerformance = async (educatorId, testNum) => {
+  try {
+    const token = localStorage.getItem('token');
+    console.log('[API] fetchInstitutionTestStudentPerformance →', { educatorId, testNum });
+    
+    const response = await axios.get(
+      `${API_BASE_URL}/institution/educator/${educatorId}/test/${testNum}/student-performance/`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    const data = response.data;
+
+    // Extract a lightweight schema (keys and nested types/sample shapes) without logging full data
+    const extractSchema = (obj) => {
+      if (obj === null) return 'null';
+      if (obj === undefined) return 'undefined';
+      if (Array.isArray(obj)) {
+        const sample = obj.find(item => item !== null && item !== undefined) ?? obj[0];
+        return [extractSchema(sample)];
+      }
+      if (typeof obj === 'object') {
+        const schema = {};
+        Object.keys(obj).forEach((k) => {
+          const val = obj[k];
+          if (Array.isArray(val)) {
+            const sample = val.find(item => item !== null && item !== undefined) ?? val[0];
+            schema[k] = [extractSchema(sample)];
+          } else if (val && typeof val === 'object') {
+            schema[k] = extractSchema(val);
+          } else {
+            schema[k] = typeof val;
+          }
+        });
+        return schema;
+      }
+      return typeof obj;
+    };
+
+    const schema = extractSchema(data);
+
+    // Print ONLY the schema object to the console (no raw data)
+    try {
+      console.log(JSON.stringify(schema, null, 2));
+    } catch (e) {
+      // fallback to simple log if stringify fails for some reason
+      console.log(schema);
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error fetching test student performance:', error);
+    return { error: error.response?.data?.error || 'Failed to fetch test performance data' };
   }
 };
 
