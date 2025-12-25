@@ -33,9 +33,25 @@ function transformSwotData(rawData) {
     return organized;
 }
 
-const DEFAULT_SUBJECT_ORDER = ["Physics", "Chemistry", "Biology", "Botany", "Zoology"];
+const DEFAULT_SUBJECT_ORDER = ["Physics", "Chemistry", "Botany", "Zoology", "Biology"];
 // Number of question rows per column on A4 pages
 const ROWS_PER_COLUMN = 23;
+
+// Thresholds are centralized so ranges can be tuned without touching rendering code
+const SEVERITY_THRESHOLDS = {
+    noneMax: 0,
+    lowMax: 30,
+    mediumMax: 70,
+};
+
+const getSeverityLevel = (severity, thresholds = SEVERITY_THRESHOLDS) => {
+    const s = Number(severity || 0);
+    const { noneMax = 0, lowMax = 30, mediumMax = 70 } = thresholds || {};
+    if (s <= noneMax) return 'None';
+    if (s <= lowMax) return 'Low';
+    if (s <= mediumMax) return 'Medium';
+    return 'High';
+};
 
 export default function TeacherReport() {
     const [dashboard, setDashboard] = useState(null);
@@ -379,14 +395,6 @@ export default function TeacherReport() {
                     }
                 });
             });
-        }
-
-        const subjects = Object.keys(data);
-        // If Botany/Zoology are missing but Biology exists in SWOT, copy Biology buckets
-        // into Botany and Zoology so the report can render those subject pages.
-        if (!data['Botany'] && !data['Zoology'] && data['Biology']) {
-            data['Botany'] = { ...data['Biology'] };
-            data['Zoology'] = { ...data['Biology'] };
         }
 
         const sorted = Object.keys(data).sort((a, b) => {
@@ -756,15 +764,32 @@ export default function TeacherReport() {
             subjectBuckets[subj].push(r);
         }
         for (const [subj, list] of Object.entries(subjectBuckets)) {
-            // pick top 6 by severity, then order them by question number ascending for display
+            // pick top 6 by severity, then order them by severity descending for display
             const topBySeverity = list
                 .slice()
                 .sort((a, b) => Number(b.severity || 0) - Number(a.severity || 0))
                 .slice(0, 6)
-                .sort((a, b) => Number(a.question_number || 0) - Number(b.question_number || 0));
+                .sort((a, b) => {
+                    const severityDiff = Number(b.severity || 0) - Number(a.severity || 0);
+                    if (severityDiff !== 0) return severityDiff;
+                    return Number(a.question_number || 0) - Number(b.question_number || 0);
+                });
             map[subj] = topBySeverity;
         }
         return map;
+    }, [questionWiseRows]);
+
+    // Subjects present in question-wise data (drives dynamic rendering to avoid empty sections)
+    const subjectsFromQuestions = useMemo(() => {
+        const set = new Set();
+        const rows = questionWiseRows || [];
+        rows.forEach(r => {
+            const subj = r?.subject;
+            if (!subj) return;
+            const name = String(subj).trim();
+            if (name) set.add(name);
+        });
+        return set;
     }, [questionWiseRows]);
 
     // Determine which subjects to render in teacher report pages.
@@ -772,51 +797,47 @@ export default function TeacherReport() {
     // only render a subject if there is actual data to show (chart/donut/SWOT topics).
     // detect which subjects have result data (use normalizedResults for consistency)
     const subjectsFromResults = new Set();
-    let _hasBio = false, _hasBot = false, _hasZoo = false;
+    const hasResultData = (r, prefix) => {
+        const score = Number(r?.[`${prefix}_score`] ?? 0);
+        const total = Number(r?.[`${prefix}_total`] ?? 0);
+        const correct = Number(r?.[`${prefix}_correct`] ?? 0);
+        const attended = Number(r?.[`${prefix}_attended`] ?? 0);
+        return score > 0 || total > 0 || correct > 0 || attended > 0;
+    };
+
     normalizedResults.forEach(r => {
         if (!r) return;
-        if ((r.bio_total || r.bio_score) != null) { subjectsFromResults.add('Biology'); _hasBio = true; }
-        if ((r.phy_total || r.phy_score) != null) subjectsFromResults.add('Physics');
-        if ((r.chem_total || r.chem_score) != null) subjectsFromResults.add('Chemistry');
-        if ((r.bot_total || r.bot_score) != null) { subjectsFromResults.add('Botany'); _hasBot = true; }
-        if ((r.zoo_total || r.zoo_score) != null) { subjectsFromResults.add('Zoology'); _hasZoo = true; }
+        if (hasResultData(r, 'bio')) subjectsFromResults.add('Biology');
+        if (hasResultData(r, 'phy')) subjectsFromResults.add('Physics');
+        if (hasResultData(r, 'chem')) subjectsFromResults.add('Chemistry');
+        if (hasResultData(r, 'bot')) subjectsFromResults.add('Botany');
+        if (hasResultData(r, 'zoo')) subjectsFromResults.add('Zoology');
     });
 
-    // If Botany and Zoology data are not present but Biology is, treat Botany and Zoology
-    // as present by deriving them from Biology so the report still shows subject pages.
-    if (!_hasBot && !_hasZoo && _hasBio) {
-        subjectsFromResults.add('Botany');
-        subjectsFromResults.add('Zoology');
-    }
+    const combined = Array.from(new Set([
+        ...Object.keys(subjectData || {}),
+        ...Array.from(subjectsFromResults),
+        ...Array.from(subjectsFromQuestions),
+    ]));
 
-    const baseSubjects = (sortedSubjectList && sortedSubjectList.length) ? sortedSubjectList.slice() : DEFAULT_SUBJECT_ORDER.slice();
-    const combined = Array.from(new Set([...baseSubjects, ...Array.from(subjectsFromResults)]));
-
-    // Filter subjects: only render subjects that have SWOT topics present.
-    // If a subject's SWOT is missing, hide the whole subject section.
-    // Render a subject if it has result data OR SWOT topics
-    // Special handling: treat `Biology` vs (`Botany` + `Zoology`) as exclusive.
-    // - If both Botany and Zoology are present, skip Biology.
-    // - If Biology is present, skip Botany and Zoology.
-    // Determine which subjects actually have data (either results or SWOT topics).
     const subjectHasData = (sub) => {
         const buckets = subjectData[sub] || { weaknesses: [], strengths: [] };
         const hasSwot = (Array.isArray(buckets.weaknesses) && buckets.weaknesses.length) || (Array.isArray(buckets.strengths) && buckets.strengths.length);
         const hasResults = subjectsFromResults.has(sub);
-        return Boolean(hasSwot || hasResults);
+        const hasQuestions = subjectsFromQuestions.has(sub);
+        return Boolean(hasSwot || hasResults || hasQuestions);
     };
 
-    const hasBiologyData = subjectHasData('Biology');
-    const hasBotanyData = subjectHasData('Botany');
-    const hasZoologyData = subjectHasData('Zoology');
-
-    const renderSubjects = combined.filter(sub => {
-        // exclusive grouping rules should consider only subjects that actually have data.
-        // If both Botany and Zoology have data, prefer showing them and hide Biology.
-        if (sub === 'Biology' && hasBotanyData && hasZoologyData) return false;
-
-        return subjectHasData(sub);
-    });
+    const renderSubjects = combined
+        .filter(sub => subjectHasData(sub))
+        .sort((a, b) => {
+            const ia = DEFAULT_SUBJECT_ORDER.indexOf(a);
+            const ib = DEFAULT_SUBJECT_ORDER.indexOf(b);
+            if (ia === -1 && ib === -1) return a.localeCompare(b);
+            if (ia === -1) return 1;
+            if (ib === -1) return -1;
+            return ia - ib;
+        });
 
     // Debug: expose why subjects are rendered or hidden (helps diagnose missing Botany/Zoology)
     try {
@@ -844,9 +865,6 @@ export default function TeacherReport() {
                 for (let i = 0; i < qpages.length; i++) {
                     pages.push({ type: 'questions', subject, rows: qpages[i], pageIndexForSubject: i });
                 }
-            } else {
-                // render a single 'no data' page
-                pages.push({ type: 'questions', subject, rows: [], pageIndexForSubject: 0 });
             }
         }
         return pages;
@@ -879,11 +897,11 @@ export default function TeacherReport() {
             <style>{`@media print {
                 /* A4 with inner padding so content doesn't get clipped by printer margins */
                 /* Avoid inserting a blank page at the end by only breaking after pages that are not the last one */
-                .print-page { width:210mm; height:297mm; padding:1mm; box-sizing:border-box; page-break-inside:avoid; -webkit-print-color-adjust:exact; }
+                .print-page { width:210mm; height:297mm; padding:1mm; box-sizing:border-box; page-break-inside:avoid; -webkit-print-color-adjust:exact; position:relative; }
                 .print-page:not(:last-child) { page-break-after:always; }
-                .page-content { display:flex; flex-direction:column; height:100%; justify-content:space-between; }
-                .page-body { flex: 1 1 auto; overflow: hidden; }
-                .page-footer { text-align:center; font-size:10px; color:#9CA3AF; }
+                .page-content { display:flex; flex-direction:column; height:100%; max-height:295mm; }
+                .page-body { flex: 1 1 auto; overflow: hidden; max-height:calc(295mm - 25px); padding-bottom:2mm; }
+                .page-footer { flex-shrink:0; height:20px; text-align:center; font-size:10px; color:#9CA3AF; padding-top:2mm; }
                 /* tighten some spacings for print */
                 .print-page .border { border-color: #e5e7eb; }
             }
@@ -1090,16 +1108,14 @@ export default function TeacherReport() {
                                                                     <div className="border border-gray-200 rounded-lg overflow-hidden">
                                                                         <div className="grid grid-cols-12 bg-gray-50 px-4 py-3 text-xs font-semibold text-gray-600">
                                                                             <div className="col-span-2">Q.No</div>
-                                                                            <div className="col-span-3 text-center">Correct %</div>
-                                                                            <div className="col-span-3 text-center">Unattempted %</div>
-                                                                            <div className="col-span-4 text-center">Severity %</div>
+                                                                            <div className="col-span-5 text-center">Severity %</div>
+                                                                            <div className="col-span-5 text-center">Severity Level</div>
                                                                         </div>
                                                                         {left.map((q) => (
                                                                             <div key={`TS-L-${subject}-${q.question_number}`} className="grid grid-cols-12 px-4 py-3 text-xs border-t border-gray-200">
                                                                                 <div className="col-span-2 font-semibold text-gray-800">{q.question_number}</div>
-                                                                                <div className="col-span-3 text-center text-gray-800">{typeof q.percent_correct === 'number' ? `${Number(q.percent_correct).toFixed(1)}%` : '0.0%'}</div>
-                                                                                <div className="col-span-3 text-center text-gray-800">{typeof q.percent_unattempted === 'number' ? `${Number(q.percent_unattempted).toFixed(1)}%` : '0.0%'}</div>
-                                                                                <div className="col-span-4 text-center text-gray-800">{typeof q.severity === 'number' ? `${Number(q.severity).toFixed(1)}%` : '0.0%'}</div>
+                                                                                <div className="col-span-5 text-center text-gray-800">{typeof q.severity === 'number' ? `${Number(q.severity).toFixed(1)}%` : '0.0%'}</div>
+                                                                                <div className="col-span-5 text-center text-gray-800">{getSeverityLevel(q.severity)}</div>
                                                                             </div>
                                                                         ))}
                                                                     </div>
@@ -1107,16 +1123,14 @@ export default function TeacherReport() {
                                                                     <div className="border border-gray-200 rounded-lg overflow-hidden">
                                                                         <div className="grid grid-cols-12 bg-gray-50 px-4 py-3 text-xs font-semibold text-gray-600">
                                                                             <div className="col-span-2">Q.No</div>
-                                                                            <div className="col-span-3 text-center">Correct %</div>
-                                                                            <div className="col-span-3 text-center">Unattempted %</div>
-                                                                            <div className="col-span-4 text-center">Severity %</div>
+                                                                            <div className="col-span-5 text-center">Severity %</div>
+                                                                            <div className="col-span-5 text-center">Severity Level</div>
                                                                         </div>
                                                                         {right.map((q) => (
                                                                             <div key={`TS-R-${subject}-${q.question_number}`} className="grid grid-cols-12 px-4 py-3 text-xs border-t border-gray-200">
                                                                                 <div className="col-span-2 font-semibold text-gray-800">{q.question_number}</div>
-                                                                                <div className="col-span-3 text-center text-gray-800">{typeof q.percent_correct === 'number' ? `${Number(q.percent_correct).toFixed(1)}%` : '0.0%'}</div>
-                                                                                <div className="col-span-3 text-center text-gray-800">{typeof q.percent_unattempted === 'number' ? `${Number(q.percent_unattempted).toFixed(1)}%` : '0.0%'}</div>
-                                                                                <div className="col-span-4 text-center text-gray-800">{typeof q.severity === 'number' ? `${Number(q.severity).toFixed(1)}%` : '0.0%'}</div>
+                                                                                <div className="col-span-5 text-center text-gray-800">{typeof q.severity === 'number' ? `${Number(q.severity).toFixed(1)}%` : '0.0%'}</div>
+                                                                                <div className="col-span-5 text-center text-gray-800">{getSeverityLevel(q.severity)}</div>
                                                                             </div>
                                                                         ))}
                                                                     </div>
@@ -1165,34 +1179,30 @@ export default function TeacherReport() {
                                                     {/* Left column */}
                                                     <div className="border border-gray-200 rounded-lg overflow-hidden">
                                                         <div className="grid grid-cols-12 bg-gray-50 px-4 py-3 text-xs font-semibold text-gray-600">
-                                                            <div className="col-span-1">Q.No</div>
-                                                            <div className="col-span-3 text-center">Correct %</div>
-                                                            <div className="col-span-3 text-center">Unattempted %</div>
+                                                            <div className="col-span-2">Q.No</div>
                                                             <div className="col-span-5 text-center">Severity %</div>
+                                                            <div className="col-span-5 text-center">Severity Level</div>
                                                         </div>
                                                         {leftRows.map((r) => (
                                                             <div key={`L-${r.question_number}`} className="grid grid-cols-12 px-4 py-3 text-xs border-t border-gray-200">
-                                                                <div className="col-span-1 font-semibold text-gray-800">{r.question_number}</div>
-                                                                <div className="col-span-3 text-center text-gray-800">{typeof r.percent_correct === 'number' ? `${Number(r.percent_correct).toFixed(1)}%` : '0.0%'}</div>
-                                                                <div className="col-span-3 text-center text-gray-800">{typeof r.percent_unattempted === 'number' ? `${Number(r.percent_unattempted).toFixed(1)}%` : '0.0%'}</div>
+                                                                <div className="col-span-2 font-semibold text-gray-800">{r.question_number}</div>
                                                                 <div className="col-span-5 text-center text-gray-800">{typeof r.severity === 'number' ? `${Number(r.severity).toFixed(1)}%` : '0.0%'}</div>
+                                                                <div className="col-span-5 text-center text-gray-800">{getSeverityLevel(r.severity)}</div>
                                                             </div>
                                                         ))}
                                                     </div>
                                                     {/* Right column */}
                                                     <div className="border border-gray-200 rounded-lg overflow-hidden">
                                                         <div className="grid grid-cols-12 bg-gray-50 px-4 py-3 text-xs font-semibold text-gray-600">
-                                                            <div className="col-span-1">Q.No</div>
-                                                            <div className="col-span-3 text-center">Correct %</div>
-                                                            <div className="col-span-3 text-center">Unattempted %</div>
+                                                            <div className="col-span-2">Q.No</div>
                                                             <div className="col-span-5 text-center">Severity %</div>
+                                                            <div className="col-span-5 text-center">Severity Level</div>
                                                         </div>
                                                         {rightRows.map((r) => (
                                                             <div key={`R-${r.question_number}`} className="grid grid-cols-12 px-4 py-3 text-xs border-t border-gray-200">
-                                                                <div className="col-span-1 font-semibold text-gray-800">{r.question_number}</div>
-                                                                <div className="col-span-3 text-center text-gray-800">{typeof r.percent_correct === 'number' ? `${Number(r.percent_correct).toFixed(1)}%` : '0.0%'}</div>
-                                                                <div className="col-span-3 text-center text-gray-800">{typeof r.percent_unattempted === 'number' ? `${Number(r.percent_unattempted).toFixed(1)}%` : '0.0%'}</div>
+                                                                <div className="col-span-2 font-semibold text-gray-800">{r.question_number}</div>
                                                                 <div className="col-span-5 text-center text-gray-800">{typeof r.severity === 'number' ? `${Number(r.severity).toFixed(1)}%` : '0.0%'}</div>
+                                                                <div className="col-span-5 text-center text-gray-800">{getSeverityLevel(r.severity)}</div>
                                                             </div>
                                                         ))}
                                                     </div>

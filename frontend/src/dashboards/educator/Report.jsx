@@ -783,11 +783,18 @@ export default function Report() {
                 {/* Custom legend that uses SVG patterns for print-friendly swatches */}
                 <Legend isAnimationActive={false} content={({ payload }) => {
                   if (!payload) return null;
-                  // Determine available keys from payload
-                  const available = payload.map(p => p.dataKey);
+                  // Filter out subjects with all zero/null/undefined values across all tests
+                  const subjectsWithData = payload.filter(entry => {
+                    const subj = entry.dataKey;
+                    return Array.isArray(trendData) && trendData.some(test => {
+                      const val = test[subj];
+                      return val && Number(val) > 0;
+                    });
+                  }).map(p => p.dataKey);
+                  
                   // Use preferred subject order when possible, then append any extras
-                  const preferredOrder = PREFERRED_SUBJECT_ORDER.filter(s => available.includes(s));
-                  const remainder = available.filter(a => !PREFERRED_SUBJECT_ORDER.includes(a));
+                  const preferredOrder = PREFERRED_SUBJECT_ORDER.filter(s => subjectsWithData.includes(s));
+                  const remainder = subjectsWithData.filter(a => !PREFERRED_SUBJECT_ORDER.includes(a));
                   const orderedKeys = preferredOrder.concat(remainder);
                   // Map payload entries into the ordered sequence
                   const ordered = orderedKeys.map(k => payload.find(p => p.dataKey === k)).filter(Boolean);
@@ -809,9 +816,17 @@ export default function Report() {
                 }} />
                 {
                   // Render bars dynamically based on keys available in trendData entries
+                  // Filter out subjects that have no data (all zeros)
                   (() => {
                     const first = Array.isArray(trendData) && trendData.length ? trendData[0] : null;
-                    const barSubjects = first ? Object.keys(first).filter(k => k !== 'name' && k !== 'total') : ['Physics', 'Chemistry', 'Botany', 'Zoology'];
+                    const allSubjects = first ? Object.keys(first).filter(k => k !== 'name' && k !== 'total') : ['Physics', 'Chemistry', 'Botany', 'Zoology'];
+                    // Only include subjects that have at least one non-zero value across all tests
+                    const barSubjects = allSubjects.filter(subj => {
+                      return Array.isArray(trendData) && trendData.some(test => {
+                        const val = test[subj];
+                        return val && Number(val) > 0;
+                      });
+                    });
                     return barSubjects.map((subj, i) => (
                       <Bar
                         key={`bar-${subj}-${i}`}
