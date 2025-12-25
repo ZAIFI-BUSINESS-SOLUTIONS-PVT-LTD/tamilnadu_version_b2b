@@ -75,19 +75,37 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
     setSubjectCounts(prev => ({ ...prev, [subject]: numValue }));
   };
 
-  const calculateTotal = () => Object.values(subjectCounts).reduce((sum, count) => sum + count, 0);
+  // Calculate total questions by summing counts for all subjects
+  // Treat missing or blank values as 0 so that partial input is allowed
+  const calculateTotal = () => {
+    if (!Array.isArray(subjects) || subjects.length === 0) return 0;
+    return subjects.reduce((sum, subj) => {
+      const val = Number(subjectCounts[subj]);
+      return sum + (Number.isFinite(val) ? val : 0);
+    }, 0);
+  };
 
   const isConfigValid = () => {
     const total = calculateTotal();
-    return total > 0 && Object.values(subjectCounts).every(c => c > 0);
+    return total > 0;
   };
 
   const handleSaveConfig = () => {
+    // Ensure section_counts contains an explicit entry for every subject
+    const finalCounts = {};
+    (subjects || []).forEach((s) => {
+      // treat undefined / blank as 0
+      const v = Number(subjectCounts[s]);
+      finalCounts[s] = Number.isFinite(v) ? v : 0;
+    });
+
+    const total = Object.values(finalCounts).reduce((a, b) => a + b, 0);
+
     const cfg = {
       pattern,
       subject_order: subjects,
-      total_questions: calculateTotal(),
-      section_counts: subjectCounts
+      total_questions: total,
+      section_counts: finalCounts,
     };
     setMetadata(cfg);
     setShowConfig(false);
