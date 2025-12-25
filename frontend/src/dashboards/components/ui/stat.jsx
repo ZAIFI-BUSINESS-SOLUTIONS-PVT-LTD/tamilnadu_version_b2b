@@ -12,7 +12,7 @@ import Tooltip from './tooltip';
  * @param {string} [props.className] - Additional classes for the card
  * @param {Object} [props.style] - Inline style for the card
  */
-const Stat = ({ icon, label, value, badge, info, className = '', style = {}, compact = false }) => {
+const Stat = ({ icon, label, value, badge, info, className = '', style = {}, compact = false, iconBg = 'bg-gray-100', iconClass = '' }) => {
   // compact: reduce vertical spacing and sizes while keeping outer padding intact (p-4 sm:p-6)
   const iconSizes = compact ? 'w-8 h-8 sm:w-10 sm:h-10 text-[1rem] sm:text-[1.25rem]' : 'w-10 h-10 sm:w-12 sm:h-12 text-[1.25rem] sm:text-[1.5rem]';
   const containerGap = compact ? 'gap-2 mb-2 sm:mb-3' : 'gap-3 mb-4 sm:mb-6';
@@ -25,8 +25,8 @@ const Stat = ({ icon, label, value, badge, info, className = '', style = {}, com
       style={{ minHeight: 'auto', ...style }}
     >
       <div className={`flex items-center ${containerGap}`}>
-        <span className={`inline-flex items-center justify-center ${iconSizes} rounded-lg bg-gray-100`}>
-          {icon}
+        <span className={`inline-flex items-center justify-center ${iconSizes} rounded-lg ${iconBg}`}>
+          {icon && React.isValidElement(icon) ? React.cloneElement(icon, { className: `${(icon.props && icon.props.className) || ''} ${iconClass}`.trim() }) : icon}
         </span>
       </div>
       <span className={labelClass}>

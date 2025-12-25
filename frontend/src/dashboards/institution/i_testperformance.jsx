@@ -210,7 +210,11 @@ const ITestPerformance = () => {
         <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800">{testsError}</div>
       )}
 
-      {isLoading && <LoadingPage />}
+      {isLoading && (
+        <div className="relative min-h-screen">
+          <LoadingPage fixed={false} className="bg-white/80 dark:bg-gray-900/80 z-10" />
+        </div>
+      )}
 
       {!isLoading && performanceData && (
         <>
