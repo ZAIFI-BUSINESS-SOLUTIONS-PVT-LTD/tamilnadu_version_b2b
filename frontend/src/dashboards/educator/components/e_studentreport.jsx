@@ -40,9 +40,16 @@ export const StudentPDFReportModal = ({ onClose, students = [], availableTests =
       if (selectedStudent === 'ALL') {
         // Download all students as zip
         const allStudentIds = students.map(s => s.student_id);
-        blob = await generateBulkPdfReportsZip(allStudentIds, selectedTest, classId);
-        if (blob && blob.size > 0) {
-          const url = window.URL.createObjectURL(blob);
+        const result = await generateBulkPdfReportsZip(allStudentIds, selectedTest, classId);
+        
+        // Check if S3 download was triggered (result will be {success: true, s3Download: true})
+        if (result && result.s3Download) {
+          setTimeout(() => {
+            onClose();
+          }, 1000);
+        } else if (result && result.size > 0) {
+          // Fallback: blob response from streaming
+          const url = window.URL.createObjectURL(result);
           const a = document.createElement('a');
           a.href = url;
           a.download = `inzighted_reports_${selectedTest}.zip`;
