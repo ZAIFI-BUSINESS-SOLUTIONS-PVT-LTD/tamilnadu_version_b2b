@@ -924,7 +924,7 @@ export default function TeacherReport() {
                     </defs>
                 </svg>
 
-                <div className="max-w-4xl mx-auto font-sans text-gray-900 bg-white space-y-6">
+                <div className="max-w-4xl mx-auto font-sans text-gray-900 bg-white">
 
 
                     {/* Render combined pages: each subject page followed by its question-analysis pages */}
