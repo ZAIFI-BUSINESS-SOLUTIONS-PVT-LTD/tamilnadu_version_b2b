@@ -54,6 +54,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
         initialCounts[subj] = Math.floor(equalCount);
       });
       setSubjectCounts(initialCounts);
+      
     } else {
       // Unknown pattern (eg. 'AUTO_DETECT') or cleared selection -> reset subjects/counts
       setSubjects([]);
