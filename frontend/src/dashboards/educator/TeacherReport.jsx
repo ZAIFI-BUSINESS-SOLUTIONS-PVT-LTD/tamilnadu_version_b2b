@@ -34,6 +34,8 @@ function transformSwotData(rawData) {
 }
 
 const DEFAULT_SUBJECT_ORDER = ["Physics", "Chemistry", "Biology", "Botany", "Zoology"];
+// Number of question rows per column on A4 pages
+const ROWS_PER_COLUMN = 23;
 
 export default function TeacherReport() {
     const [dashboard, setDashboard] = useState(null);
@@ -571,7 +573,7 @@ export default function TeacherReport() {
 
         const map = {};
 
-        Object.keys({ Physics:1, Chemistry:1, Biology:1, Botany:1, Zoology:1 }).forEach((subject) => {
+        Object.keys({ Physics: 1, Chemistry: 1, Biology: 1, Botany: 1, Zoology: 1 }).forEach((subject) => {
             const prefix = resolvePrefix(subject);
             let totalCorrect = 0, totalIncorrect = 0, totalSkipped = 0, count = 0;
 
@@ -668,13 +670,33 @@ export default function TeacherReport() {
                     }
                 }
 
+                const pct = (val) => (totalStudents ? Math.round((val / totalStudents) * 1000) / 10 : 0);
+                let percent_correct = pct(correct);
+                const percent_unattempted = pct(unattempted);
+                const percent_incorrect = pct(incorrect);
+
+                // New severity: Total Failure Rate = incorrect + unattempted (as percent)
+                const severityRaw = incorrect + unattempted;
+                const severity = pct(severityRaw);
+
+                // Safety check: ensure percent_correct + severity == 100% within rounding margins.
+                // If small rounding difference exists, adjust percent_correct to make the sum exactly 100.0
+                const sumRounded = Math.round((percent_correct + severity) * 10) / 10;
+                if (Math.abs(100 - sumRounded) <= 0.3) {
+                    percent_correct = Math.round((100 - severity) * 10) / 10;
+                }
+
                 return {
                     question_number: qn,
-                    question_text: q?.question_text ?? '',
+                    subject: q?.subject ?? q?.subject_name ?? q?.topic ?? null,
                     correct,
                     incorrect,
                     unattempted,
                     totalStudents,
+                    percent_correct,
+                    percent_unattempted,
+                    // severity stored as a numeric percentage (one-decimal precision)
+                    severity,
                 };
             })
             .filter(Boolean)
@@ -695,25 +717,55 @@ export default function TeacherReport() {
         return pages;
     }, [questionWiseRows]);
 
-    // Quick failure / loading states
-    if (error) {
-        return <div className="p-8 text-center text-red-600">{error}</div>;
-    }
+    // Group question rows by subject and paginate per-subject into two-column pages
+    const questionPagesBySubject = useMemo(() => {
+        const map = {};
+        const rows = questionWiseRows || [];
+        const rowsPerColumn = ROWS_PER_COLUMN; // rows that fit in one column on A4
+        const pageCapacity = ROWS_PER_COLUMN * 2; // two columns per page
+        for (const r of rows) {
+            const subj = (r.subject && String(r.subject).trim()) || 'Unknown';
+            if (!map[subj]) map[subj] = [];
+            map[subj].push(r);
+        }
 
-    // Show loading only if testId exists but dashboard hasn't loaded yet
-    if (testId && !dashboard && !dashboardLoaded) {
-        return <div className="p-8 text-center text-gray-600">Generating teacher report...</div>;
-    }
+        // paginate each subject's rows into pages that hold up to `pageCapacity` rows
+        const paged = {};
+        for (const [subj, rrows] of Object.entries(map)) {
+            if (!rrows || !rrows.length) {
+                paged[subj] = [[]];
+                continue;
+            }
+            const pages = [];
+            for (let i = 0; i < rrows.length; i += pageCapacity) pages.push(rrows.slice(i, i + pageCapacity));
+            paged[subj] = pages;
+        }
 
-    // If no testId yet, show minimal loading
-    if (!testId) {
-        return <div className="p-8 text-center text-gray-600">Loading...</div>;
-    }
+        return paged;
+    }, [questionWiseRows]);
 
-    const summaryCards = dashboard?.summaryCardsData || [];
-
-    // parsed test id for display and logic
-    const parsedTestId = Number(testId);
+    // Top severity questions per subject (highest `severity` first, up to 6)
+    const topSeverityBySubject = useMemo(() => {
+        const map = {};
+        const rows = questionWiseRows || [];
+        if (!rows.length) return map;
+        const subjectBuckets = {};
+        for (const r of rows) {
+            const subj = (r.subject && String(r.subject).trim()) || 'Unknown';
+            if (!subjectBuckets[subj]) subjectBuckets[subj] = [];
+            subjectBuckets[subj].push(r);
+        }
+        for (const [subj, list] of Object.entries(subjectBuckets)) {
+            // pick top 6 by severity, then order them by question number ascending for display
+            const topBySeverity = list
+                .slice()
+                .sort((a, b) => Number(b.severity || 0) - Number(a.severity || 0))
+                .slice(0, 6)
+                .sort((a, b) => Number(a.question_number || 0) - Number(b.question_number || 0));
+            map[subj] = topBySeverity;
+        }
+        return map;
+    }, [questionWiseRows]);
 
     // Determine which subjects to render in teacher report pages.
     // Prefer subjects found in SWOT (`sortedSubjectList`) or default order, but
@@ -781,17 +833,53 @@ export default function TeacherReport() {
         // swallow logging errors in non-browser environments
     }
 
-    // Page counts for print pagination: subject pages + question pages (at least 1 page reserved for question section)
-    const subjectPagesCount = (Array.isArray(renderSubjects) ? renderSubjects.length : 0);
-    const questionCountPages = (questionPages && questionPages.length) ? questionPages.length : 1;
-    const totalPages = subjectPagesCount + questionCountPages;
+    // Build a combined ordered list of pages: for each subject, subject page then its question pages
+    const combinedPages = useMemo(() => {
+        const pages = [];
+        const subjects = renderSubjects || [];
+        for (const subject of subjects) {
+            pages.push({ type: 'subject', subject });
+            const qpages = questionPagesBySubject[subject] || [];
+            if (qpages.length) {
+                for (let i = 0; i < qpages.length; i++) {
+                    pages.push({ type: 'questions', subject, rows: qpages[i], pageIndexForSubject: i });
+                }
+            } else {
+                // render a single 'no data' page
+                pages.push({ type: 'questions', subject, rows: [], pageIndexForSubject: 0 });
+            }
+        }
+        return pages;
+    }, [renderSubjects, questionPagesBySubject]);
+
+    // Quick failure / loading states
+    if (error) {
+        return <div className="p-8 text-center text-red-600">{error}</div>;
+    }
+
+    // Show loading only if testId exists but dashboard hasn't loaded yet
+    if (testId && !dashboard && !dashboardLoaded) {
+        return <div className="p-8 text-center text-gray-600">Generating teacher report...</div>;
+    }
+
+    // If no testId yet, show minimal loading
+    if (!testId) {
+        return <div className="p-8 text-center text-gray-600">Loading...</div>;
+    }
+
+    const summaryCards = dashboard?.summaryCardsData || [];
+
+    // parsed test id for display and logic
+    const parsedTestId = Number(testId);
+
+    // (Moved earlier) renderSubjects is computed above to avoid TDZ.
 
     return (
         <>
             <style>{`@media print {
                 /* A4 with inner padding so content doesn't get clipped by printer margins */
                 /* Avoid inserting a blank page at the end by only breaking after pages that are not the last one */
-                .print-page { width:210mm; height:297mm; padding:2mm; box-sizing:border-box; page-break-inside:avoid; -webkit-print-color-adjust:exact; }
+                .print-page { width:210mm; height:297mm; padding:1mm; box-sizing:border-box; page-break-inside:avoid; -webkit-print-color-adjust:exact; }
                 .print-page:not(:last-child) { page-break-after:always; }
                 .page-content { display:flex; flex-direction:column; height:100%; justify-content:space-between; }
                 .page-body { flex: 1 1 auto; overflow: hidden; }
@@ -818,198 +906,26 @@ export default function TeacherReport() {
                     </defs>
                 </svg>
 
-                <div className="max-w-4xl mx-auto font-sans text-gray-900 bg-white p-8 space-y-6">
+                <div className="max-w-4xl mx-auto font-sans text-gray-900 bg-white space-y-6">
 
 
-                    {/* Grouped subject sections: header, subject chart, then FES card (one subject at a time) */}
-                    {renderSubjects.map((subject, idx) => {
-                        const chartEntry = subjectCharts.find(s => s.subject === subject) || { data: [], yAxis: { max: 100, ticks: [50, 100] } };
-                        const { data, yAxis } = chartEntry;
-                        const thisDonutData = subjectDonutMap[subject] || [];
-                        const averageLineValue = data && data.length ? data.reduce((s, d) => s + Number(d.averageScore || 0), 0) / data.length : null;
-                        const buckets = subjectData[subject] || { weaknesses: [], strengths: [] };
-                        return (
-                            <div key={subject} className="print-page">
-                                <div className="page-content">
-                                    <div className="page-body space-y-8">
-                                        {/* Header for the subject group */}
-                                        <div className="flex justify-between items-center px-6 py-6 border border-gray-200 rounded-xl">
-                                            <div>
-                                                <h1 className="text-3xl font-bold text-gray-800">Teacher Report - {subject}</h1>
-                                                <p className="text-sm text-gray-400">
-                                                    powered by <span className="text-lg font-bold text-gray-800">Inzight</span>
-                                                    <span className="text-lg font-bold text-gray-800">Ed</span>
-                                                </p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-sm text-gray-500">Test Num: {Number.isNaN(parsedTestId) ? (testId || 'Overall') : (parsedTestId === 0 ? 'Overall' : parsedTestId)}</p>
-                                                <p className="text-sm font-medium text-gray-700">Classroom: {classroomName || educatorInfo?.class_id || educatorInfo?.name || 'Loading...'}</p>
-                                            </div>
-                                        </div>
-                                        {/* Subject performance chart */}
-                                        <div>
-                                            <h4 className="text-lg font-semibold mb-3 text-gray-800 uppercase">{`Student Performance Overview`}</h4>
-                                            <div className="flex gap-4">
-                                                <div className="flex-1 border border-gray-200 bg-white p-2 rounded-lg">
-                                                    <div className="pb-6">
-                                                        {data && data.length ? (
-                                                            <div className="flex">
-                                                                <div className="flex-1">
-                                                                    <div className="flex justify-end items-center gap-4 mb-2">
-                                                                        {averageLineValue != null && (
-                                                                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                                                <span>{`Avg: ${averageLineValue.toFixed(1)}`}</span>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                    <ResponsiveContainer width="100%" height={260}>
-                                                                        <LineChart data={data} margin={{ top: 20, right: 60, left: 30, bottom: 5 }}>
-                                                                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                                                                            {averageLineValue != null && (
-                                                                                <ReferenceLine
-                                                                                    y={Number(averageLineValue.toFixed(2))}
-                                                                                    stroke="#9CA3AF"
-                                                                                    strokeDasharray="4 4"
-                                                                                    strokeWidth={1}
-                                                                                    strokeOpacity={0.9}
-                                                                                />
-                                                                            )}
-                                                                            <XAxis dataKey="testNum" stroke="#9CA3AF" padding={{ left: 20, right: 20 }} interval={0} tick={{ fontSize: 12 }} label={{ value: 'Test', position: 'insideBottom', offset: -5, fontSize: 14 }} />
-                                                                            <YAxis stroke="#9CA3AF" domain={[0, yAxis?.max ?? 100]} ticks={yAxis?.ticks ?? [50, 100]} tick={{ fontSize: 12 }} label={{ value: 'Avg Score', angle: -90, position: 'insideLeft', fontSize: 14 }} />
-                                                                            <Tooltip />
-                                                                            {/* legend rendered externally above the chart */}
-                                                                            <Line type="monotone" dataKey="averageScore" stroke="#9CA3AF" strokeWidth={2} dot={{ r: 1, fill: "#9CA3AF" }} isAnimationActive={false} animationDuration={0}>
-                                                                                <LabelList dataKey="averageScore" position="top" fill="#000000" fontSize={12} formatter={(value) => (value != null && value !== '' ? Number(value).toFixed(1) : '')} />
-                                                                            </Line>
-                                                                        </LineChart>
-                                                                    </ResponsiveContainer>
-                                                                </div>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="flex items-center justify-center h-full text-gray-400 italic">No data available for {subject}</div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <div className="w-64 border border-gray-200 bg-white p-4 rounded-lg">
-                                                    {thisDonutData && thisDonutData.length ? (
-                                                        <>
-                                                            <ResponsiveContainer width="100%" height={160}>
-                                                                <PieChart>
-                                                                    <Pie
-                                                                        data={thisDonutData}
-                                                                        cx="50%"
-                                                                        cy="50%"
-                                                                        innerRadius={50}
-                                                                        outerRadius={80}
-                                                                        dataKey="value"
-                                                                        labelLine={false}
-                                                                        isAnimationActive={false}
-                                                                    >
-                                                                        {thisDonutData.map((entry, index) => (
-                                                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                                                        ))}
-                                                                    </Pie>
-                                                                    <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" fontSize="12" fill="#374151" fontWeight="500">Class Avg</text>
-                                                                    <Tooltip formatter={(value) => [Number(value).toFixed(1), 'Average']} />
-                                                                </PieChart>
-                                                            </ResponsiveContainer>
+                    {/* Render combined pages: each subject page followed by its question-analysis pages */}
+                    {combinedPages.map((page, globalIdx) => {
+                        if (page.type === 'subject') {
+                            const subject = page.subject;
+                            const chartEntry = subjectCharts.find(s => s.subject === subject) || { data: [], yAxis: { max: 100, ticks: [50, 100] } };
+                            const { data, yAxis } = chartEntry;
+                            const thisDonutData = subjectDonutMap[subject] || [];
+                            const averageLineValue = data && data.length ? data.reduce((s, d) => s + Number(d.averageScore || 0), 0) / data.length : null;
+                            const buckets = subjectData[subject] || { weaknesses: [], strengths: [] };
 
-                                                            {/* Legend below the chart for print-friendly view */}
-                                                            <div className="mt-2">
-                                                                {(() => {
-                                                                    const total = thisDonutData.reduce((s, d) => s + (Number(d.value) || 0), 0) || 0;
-                                                                    return (
-                                                                        <div className="flex flex-col gap-4 text-sm text-gray-800 pt-6">
-                                                                            {thisDonutData.map((d, i) => (
-                                                                                <div key={d.name} className="flex items-center justify-between">
-                                                                                    <div className="flex items-center gap-2">
-                                                                                        <svg width="16" height="16" aria-hidden>
-                                                                                            <rect width="16" height="16" fill={d.color} />
-                                                                                        </svg>
-                                                                                        <span className="font-medium">{d.name}</span>
-                                                                                    </div>
-                                                                                    <div className="text-right text-gray-600">
-                                                                                        <div className="text-sm">{total ? ((Number(d.value) / total) * 100).toFixed(0) : 0}%</div>
-                                                                                    </div>
-                                                                                </div>
-                                                                            ))}
-                                                                        </div>
-                                                                    );
-                                                                })()}
-                                                            </div>
-                                                        </>
-                                                    ) : (
-                                                        <div className="flex items-center justify-center h-48 text-gray-400 italic">No data</div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* FES/ SWOT card for the subject */}
-                                        {parsedTestId === 0 && (
-                                            <div className="text-sm italic text-gray-500">* The above donut chart shows data only from the last uploaded test</div>
-                                        )}
-                                        <div>
-                                            <h3 className="text-lg font-semibold mb-3 text-gray-800 uppercase">AI Generated Tips</h3>
-                                            <div className="border border-gray-200 bg-white p-6 rounded-lg space-y-6 mb-32">
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-3 h-3 bg-gray-100 border border-gray-300 rounded-sm"></div>
-                                                        <h4 className="font-semibold text-sm text-gray-700">Focus Zone</h4>
-                                                    </div>
-                                                    <ul className="space-y-2 text-sm ml-5">
-                                                        {buckets.weaknesses.length ? (
-                                                            buckets.weaknesses.map((topic, idx) => (
-                                                                <li key={idx} className="text-gray-600 relative before:content-['•'] before:absolute before:-left-4 before:text-gray-400 before:font-bold">
-                                                                    {topic}
-                                                                </li>
-                                                            ))
-                                                        ) : (
-                                                            <li className="italic text-gray-400 text-sm">No areas need focus</li>
-                                                        )}
-                                                    </ul>
-                                                </div>
-
-                                                {/* Edge Zone removed - only Focus and Steady zones shown */}
-
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-3 h-3 bg-gray-100 border border-gray-300 rounded-sm"></div>
-                                                        <h4 className="font-semibold text-sm text-gray-700">Steady Zone</h4>
-                                                    </div>
-                                                    <ul className="space-y-2 text-sm ml-5">
-                                                        {buckets.strengths.length ? (
-                                                            buckets.strengths.map((topic, idx) => (
-                                                                <li key={idx} className="text-gray-600 relative before:content-['•'] before:absolute before:-left-4 before:text-gray-400 before:font-bold">
-                                                                    {topic}
-                                                                </li>
-                                                            ))
-                                                        ) : (
-                                                            <li className="italic text-gray-400 text-sm">No established strengths</li>
-                                                        )}
-                                                    </ul>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="page-footer">Generated by InzightEd — Page {idx + 1} of {totalPages}</div>
-                                </div>
-                            </div>
-
-                        );
-                    })}
-
-                    {/* Question-wise analysis pages (after subject pages) */}
-                    {questionPages.length > 0 && (
-                        questionPages.map((rows, pageIdx) => (
-                            <div key={`qwise-${pageIdx}`} className="print-page">
-                                <div className="page-content">
-                                    <div className="page-body space-y-6">
-                                        {pageIdx === 0 && (
-                                            <div className="flex justify-between items-center px-6 py-6 border border-gray-200 rounded-xl">
+                            return (
+                                <div key={`subject-${subject}-${globalIdx}`} className="print-page">
+                                    <div className="page-content">
+                                        <div className="page-body space-y-4">
+                                            <div className="flex justify-between items-center px-6 py-4 border border-gray-200 rounded-xl">
                                                 <div>
-                                                    <h1 className="text-3xl font-bold text-gray-800">Question-wise Analysis</h1>
+                                                    <h1 className="text-3xl font-bold text-gray-800">Teacher Report - {subject}</h1>
                                                     <p className="text-sm text-gray-400">
                                                         powered by <span className="text-lg font-bold text-gray-800">Inzight</span>
                                                         <span className="text-lg font-bold text-gray-800">Ed</span>
@@ -1020,57 +936,279 @@ export default function TeacherReport() {
                                                     <p className="text-sm font-medium text-gray-700">Classroom: {classroomName || educatorInfo?.class_id || educatorInfo?.name || 'Loading...'}</p>
                                                 </div>
                                             </div>
-                                        )}
 
-                                        <div className="border border-gray-200 rounded-lg overflow-hidden">
-                                            <div className="grid grid-cols-12 bg-gray-50 px-4 py-3 text-xs font-semibold text-gray-600">
-                                                <div className="col-span-1">Q.No</div>
-                                                <div className="col-span-7">Question</div>
-                                                <div className="col-span-1 text-center">Correct</div>
-                                                <div className="col-span-1 text-center">Incorrect</div>
-                                                <div className="col-span-2 text-center">Unattempted</div>
-                                            </div>
-                                            {rows.map((r) => (
-                                                <div key={r.question_number} className="grid grid-cols-12 px-4 py-3 text-xs border-t border-gray-200">
-                                                    <div className="col-span-1 font-semibold text-gray-800">{r.question_number}</div>
-                                                    <div className="col-span-7 text-gray-700 line-clamp-2 whitespace-pre-wrap">{r.question_text || '—'}</div>
-                                                    <div className="col-span-1 text-center text-gray-800">{r.correct}</div>
-                                                    <div className="col-span-1 text-center text-gray-800">{r.incorrect}</div>
-                                                    <div className="col-span-2 text-center text-gray-800">{r.unattempted}</div>
+                                            <div>
+                                                <h4 className="text-lg font-semibold mb-3 text-gray-800 uppercase">{`Student Performance Overview`}</h4>
+                                                <div className="flex gap-3">
+                                                    <div className="flex-1 border border-gray-200 bg-white p-2 rounded-lg overflow-hidden">
+                                                        <div>
+                                                            {data && data.length ? (
+                                                                <div className="flex">
+                                                                    <div className="flex-1 overflow-hidden">
+                                                                        <div className="flex justify-end items-center gap-2">
+                                                                            {averageLineValue != null && (
+                                                                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                                                    <span>{`Avg: ${averageLineValue.toFixed(1)}`}</span>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                        <ResponsiveContainer width="75%" height={260}>
+                                                                            <LineChart data={data} margin={{ top: 20, right: 20, left: 20, bottom: 10 }}>
+                                                                                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                                                                                {averageLineValue != null && (
+                                                                                    <ReferenceLine
+                                                                                        y={Number(averageLineValue.toFixed(2))}
+                                                                                        stroke="#9CA3AF"
+                                                                                        strokeDasharray="4 4"
+                                                                                        strokeWidth={1}
+                                                                                        strokeOpacity={0.9}
+                                                                                    />
+                                                                                )}
+                                                                                <XAxis dataKey="testNum" stroke="#9CA3AF" padding={{ left: 10, right: 0 }} interval="preserveStartEnd" tickMargin={6} tick={{ fontSize: 12 }} label={{ position: 'insideBottom', offset: -5, fontSize: 14 }} />
+                                                                                <YAxis stroke="#9CA3AF" domain={[0, yAxis?.max ?? 100]} ticks={yAxis?.ticks ?? [50, 100]} tick={{ fontSize: 12 }} label={{ angle: -90, position: 'insideLeft', fontSize: 14 }} />
+                                                                                <Tooltip />
+                                                                                <Line type="monotone" dataKey="averageScore" stroke="#9CA3AF" strokeWidth={2} dot={{ r: 1, fill: "#9CA3AF" }} isAnimationActive={false} animationDuration={0}>
+                                                                                    <LabelList dataKey="averageScore" position="top" fill="#000000" fontSize={12} formatter={(value) => (value != null && value !== '' ? Number(value).toFixed(1) : '')} />
+                                                                                </Line>
+                                                                            </LineChart>
+                                                                        </ResponsiveContainer>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex items-center justify-center h-full text-gray-400 italic">No data available for {subject}</div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="w-64 border border-gray-200 bg-white p-4 rounded-lg">
+                                                        {thisDonutData && thisDonutData.length ? (
+                                                            <>
+                                                                <ResponsiveContainer width="100%" height={160}>
+                                                                    <PieChart>
+                                                                        <Pie
+                                                                            data={thisDonutData}
+                                                                            cx="50%"
+                                                                            cy="50%"
+                                                                            innerRadius={50}
+                                                                            outerRadius={80}
+                                                                            dataKey="value"
+                                                                            labelLine={false}
+                                                                            isAnimationActive={false}
+                                                                        >
+                                                                            {thisDonutData.map((entry, index) => (
+                                                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                                                            ))}
+                                                                        </Pie>
+                                                                        <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" fontSize="12" fill="#374151" fontWeight="500">Class Avg</text>
+                                                                        <Tooltip formatter={(value) => [Number(value).toFixed(1), 'Average']} />
+                                                                    </PieChart>
+                                                                </ResponsiveContainer>
+
+                                                                <div className="mt-2">
+                                                                    {(() => {
+                                                                        const total = thisDonutData.reduce((s, d) => s + (Number(d.value) || 0), 0) || 0;
+                                                                        return (
+                                                                            <div className="flex flex-col gap-4 text-sm text-gray-800 pt-6">
+                                                                                {thisDonutData.map((d, i) => (
+                                                                                    <div key={d.name} className="flex items-center justify-between">
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <svg width="16" height="16" aria-hidden>
+                                                                                                <rect width="16" height="16" fill={d.color} />
+                                                                                            </svg>
+                                                                                            <span className="font-medium">{d.name}</span>
+                                                                                        </div>
+                                                                                        <div className="text-right text-gray-600">
+                                                                                            <div className="text-sm">{total ? ((Number(d.value) / total) * 100).toFixed(0) : 0}%</div>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        );
+                                                                    })()}
+                                                                </div>
+                                                            </>
+                                                        ) : (
+                                                            <div className="flex items-center justify-center h-48 text-gray-400 italic">No data</div>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            ))}
-                                        </div>
-                                        <div className="text-xs text-gray-500 italic">Unattempted includes missing response or blank selected answer.</div>
-                                    </div>
-                                    <div className="page-footer">Generated by InzightEd — Page {subjectPagesCount + pageIdx + 1} of {totalPages}</div>
-                                </div>
-                            </div>
-                        ))
-                    )}
+                                            </div>
 
-                    {/* Show an informative message if endpoint isn't available */}
-                    {isInstitutionView && questionPages.length === 0 && (
-                        <div className="print-page">
-                            <div className="page-content">
-                                <div className="page-body space-y-6">
-                                    <div className="flex justify-between items-center px-6 py-6 border border-gray-200 rounded-xl">
-                                        <div>
-                                            <h1 className="text-3xl font-bold text-gray-800">Question-wise Analysis</h1>
-                                            <p className="text-sm text-gray-400">powered by <span className="text-lg font-bold text-gray-800">Inzight</span><span className="text-lg font-bold text-gray-800">Ed</span></p>
+                                            {parsedTestId === 0 && (
+                                                <div className="text-sm italic text-gray-500">* The above donut chart shows data only from the last uploaded test</div>
+                                            )}
+                                            <div>
+                                                <h3 className="text-lg font-semibold mb-3 text-gray-800 uppercase">AI Generated Tips</h3>
+                                                <div className="border border-gray-200 bg-white p-6 rounded-lg space-y-6 mb-2">
+                                                    <div className="space-y-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-3 h-3 bg-gray-100 border border-gray-300 rounded-sm"></div>
+                                                            <h4 className="font-semibold text-sm text-gray-700">Focus Zone</h4>
+                                                        </div>
+                                                        <ul className="space-y-2 text-sm ml-5">
+                                                            {buckets.weaknesses.length ? (
+                                                                buckets.weaknesses.map((topic, idx) => (
+                                                                    <li key={idx} className="text-gray-600 relative before:content-['•'] before:absolute before:-left-4 before:text-gray-400 before:font-bold">
+                                                                        {topic}
+                                                                    </li>
+                                                                ))
+                                                            ) : (
+                                                                <li className="italic text-gray-400 text-sm">No areas need focus</li>
+                                                            )}
+                                                        </ul>
+                                                    </div>
+
+                                                    <div className="space-y-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-3 h-3 bg-gray-100 border border-gray-300 rounded-sm"></div>
+                                                            <h4 className="font-semibold text-sm text-gray-700">Steady Zone</h4>
+                                                        </div>
+                                                        <ul className="space-y-2 text-sm ml-5">
+                                                            {buckets.strengths.length ? (
+                                                                buckets.strengths.map((topic, idx) => (
+                                                                    <li key={idx} className="text-gray-600 relative before:content-['•'] before:absolute before:-left-4 before:text-gray-400 before:font-bold">
+                                                                        {topic}
+                                                                    </li>
+                                                                ))
+                                                            ) : (
+                                                                <li className="italic text-gray-400 text-sm">No established strengths</li>
+                                                            )}
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                                {/* Top Severity Questions for this subject */}
+                                                <div>
+                                                    <h3 className="text-lg font-semibold mb-3 text-gray-800 uppercase">Top Severity Questions</h3>
+                                                    {Array.isArray(topSeverityBySubject[subject]) && topSeverityBySubject[subject].length ? (
+                                                        (() => {
+                                                            const list = topSeverityBySubject[subject];
+                                                            const mid = Math.ceil(list.length / 2);
+                                                            const left = list.slice(0, mid);
+                                                            const right = list.slice(mid);
+                                                            return (
+                                                                <div className="grid grid-cols-2 gap-4">
+                                                                    {/* Left column */}
+                                                                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                                                        <div className="grid grid-cols-12 bg-gray-50 px-4 py-3 text-xs font-semibold text-gray-600">
+                                                                            <div className="col-span-2">Q.No</div>
+                                                                            <div className="col-span-3 text-center">Correct %</div>
+                                                                            <div className="col-span-3 text-center">Unattempted %</div>
+                                                                            <div className="col-span-4 text-center">Severity %</div>
+                                                                        </div>
+                                                                        {left.map((q) => (
+                                                                            <div key={`TS-L-${subject}-${q.question_number}`} className="grid grid-cols-12 px-4 py-3 text-xs border-t border-gray-200">
+                                                                                <div className="col-span-2 font-semibold text-gray-800">{q.question_number}</div>
+                                                                                <div className="col-span-3 text-center text-gray-800">{typeof q.percent_correct === 'number' ? `${Number(q.percent_correct).toFixed(1)}%` : '0.0%'}</div>
+                                                                                <div className="col-span-3 text-center text-gray-800">{typeof q.percent_unattempted === 'number' ? `${Number(q.percent_unattempted).toFixed(1)}%` : '0.0%'}</div>
+                                                                                <div className="col-span-4 text-center text-gray-800">{typeof q.severity === 'number' ? `${Number(q.severity).toFixed(1)}%` : '0.0%'}</div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                    {/* Right column */}
+                                                                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                                                        <div className="grid grid-cols-12 bg-gray-50 px-4 py-3 text-xs font-semibold text-gray-600">
+                                                                            <div className="col-span-2">Q.No</div>
+                                                                            <div className="col-span-3 text-center">Correct %</div>
+                                                                            <div className="col-span-3 text-center">Unattempted %</div>
+                                                                            <div className="col-span-4 text-center">Severity %</div>
+                                                                        </div>
+                                                                        {right.map((q) => (
+                                                                            <div key={`TS-R-${subject}-${q.question_number}`} className="grid grid-cols-12 px-4 py-3 text-xs border-t border-gray-200">
+                                                                                <div className="col-span-2 font-semibold text-gray-800">{q.question_number}</div>
+                                                                                <div className="col-span-3 text-center text-gray-800">{typeof q.percent_correct === 'number' ? `${Number(q.percent_correct).toFixed(1)}%` : '0.0%'}</div>
+                                                                                <div className="col-span-3 text-center text-gray-800">{typeof q.percent_unattempted === 'number' ? `${Number(q.percent_unattempted).toFixed(1)}%` : '0.0%'}</div>
+                                                                                <div className="col-span-4 text-center text-gray-800">{typeof q.severity === 'number' ? `${Number(q.severity).toFixed(1)}%` : '0.0%'}</div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })()
+                                                    ) : (
+                                                        <div className="border border-gray-200 rounded-lg overflow-hidden px-4 py-6 text-sm text-gray-500 italic">No question-wise severity available</div>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="text-sm text-gray-500">Test Num: {Number.isNaN(parsedTestId) ? (testId || 'Overall') : (parsedTestId === 0 ? 'Overall' : parsedTestId)}</p>
-                                            <p className="text-sm font-medium text-gray-700">Classroom: {classroomName || educatorInfo?.class_id || educatorInfo?.name || 'Loading...'}</p>
-                                        </div>
-                                    </div>
-                                    <div className="border border-gray-200 bg-white p-6 rounded-lg text-sm text-gray-500 italic">
-                                        Question-wise data is not available for this selection.
+
+                                        <div className="page-footer">Generated by InzightEd — Page {globalIdx + 1} of {combinedPages.length}</div>
                                     </div>
                                 </div>
-                                <div className="page-footer">Generated by InzightEd — Page {subjectPagesCount + 1} of {totalPages}</div>
-                            </div>
-                        </div>
-                    )}
+                            );
+                        }
+
+                        // question pages for a subject
+                        if (page.type === 'questions') {
+                            const subject = page.subject;
+                            const rows = page.rows || [];
+                            const isEmpty = !rows.length;
+                            const firstPageForSubject = page.pageIndexForSubject === 0;
+
+                            const leftRows = rows.slice(0, ROWS_PER_COLUMN);
+                            const rightRows = rows.slice(ROWS_PER_COLUMN, ROWS_PER_COLUMN * 2);
+
+                            return (
+                                <div key={`q-${subject}-${page.pageIndexForSubject}-${globalIdx}`} className="print-page">
+                                    <div className="page-content">
+                                        <div className="page-body space-y-6">
+                                            {firstPageForSubject && (
+                                                <div className="flex justify-between items-center">
+                                                    <div>
+                                                        <h1 className="text-3xl font-bold text-gray-800">Question-wise Analysis: {subject}</h1>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {isEmpty ? (
+                                                <div className="border border-gray-200 rounded-lg overflow-hidden px-4 py-6 text-sm text-gray-500 italic">Question-wise data is not available for this subject.</div>
+                                            ) : (
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    {/* Left column */}
+                                                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                                        <div className="grid grid-cols-12 bg-gray-50 px-4 py-3 text-xs font-semibold text-gray-600">
+                                                            <div className="col-span-1">Q.No</div>
+                                                            <div className="col-span-3 text-center">Correct %</div>
+                                                            <div className="col-span-3 text-center">Unattempted %</div>
+                                                            <div className="col-span-5 text-center">Severity %</div>
+                                                        </div>
+                                                        {leftRows.map((r) => (
+                                                            <div key={`L-${r.question_number}`} className="grid grid-cols-12 px-4 py-3 text-xs border-t border-gray-200">
+                                                                <div className="col-span-1 font-semibold text-gray-800">{r.question_number}</div>
+                                                                <div className="col-span-3 text-center text-gray-800">{typeof r.percent_correct === 'number' ? `${Number(r.percent_correct).toFixed(1)}%` : '0.0%'}</div>
+                                                                <div className="col-span-3 text-center text-gray-800">{typeof r.percent_unattempted === 'number' ? `${Number(r.percent_unattempted).toFixed(1)}%` : '0.0%'}</div>
+                                                                <div className="col-span-5 text-center text-gray-800">{typeof r.severity === 'number' ? `${Number(r.severity).toFixed(1)}%` : '0.0%'}</div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    {/* Right column */}
+                                                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                                        <div className="grid grid-cols-12 bg-gray-50 px-4 py-3 text-xs font-semibold text-gray-600">
+                                                            <div className="col-span-1">Q.No</div>
+                                                            <div className="col-span-3 text-center">Correct %</div>
+                                                            <div className="col-span-3 text-center">Unattempted %</div>
+                                                            <div className="col-span-5 text-center">Severity %</div>
+                                                        </div>
+                                                        {rightRows.map((r) => (
+                                                            <div key={`R-${r.question_number}`} className="grid grid-cols-12 px-4 py-3 text-xs border-t border-gray-200">
+                                                                <div className="col-span-1 font-semibold text-gray-800">{r.question_number}</div>
+                                                                <div className="col-span-3 text-center text-gray-800">{typeof r.percent_correct === 'number' ? `${Number(r.percent_correct).toFixed(1)}%` : '0.0%'}</div>
+                                                                <div className="col-span-3 text-center text-gray-800">{typeof r.percent_unattempted === 'number' ? `${Number(r.percent_unattempted).toFixed(1)}%` : '0.0%'}</div>
+                                                                <div className="col-span-5 text-center text-gray-800">{typeof r.severity === 'number' ? `${Number(r.severity).toFixed(1)}%` : '0.0%'}</div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="page-footer">Generated by InzightEd — Page {globalIdx + 1} of {combinedPages.length}</div>
+                                    </div>
+                                </div>
+                            );
+                        }
+
+                        return null;
+                    })}
+
+                    {/* Combined pages render handles question pages per-subject; no global question pages block needed */}
 
 
                 </div>
