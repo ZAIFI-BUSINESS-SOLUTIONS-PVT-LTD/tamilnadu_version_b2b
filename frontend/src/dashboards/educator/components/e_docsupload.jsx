@@ -79,7 +79,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
 
   const isConfigValid = () => {
     const total = calculateTotal();
-    return total > 0 && Object.values(subjectCounts).every(c => c > 0);
+    return total >= 0;
   };
 
   const handleSaveConfig = () => {
