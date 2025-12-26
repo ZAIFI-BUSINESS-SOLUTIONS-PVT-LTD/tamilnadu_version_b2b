@@ -11,7 +11,7 @@ import { Tooltip as UITooltip, TooltipTrigger as UITooltipTrigger, TooltipConten
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../../components/ui/dropdown-menu.jsx';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select.jsx';
 import { Button } from '../../components/ui/button.jsx';
-import EStudentListMock from './components/e_StudentListMock';
+import EStudentListMock from '../components/StudentListMock';
 import EDashboardMobile from './e_dashboard-mobile.jsx';
 import LoadingPage from '../components/LoadingPage.jsx';
 

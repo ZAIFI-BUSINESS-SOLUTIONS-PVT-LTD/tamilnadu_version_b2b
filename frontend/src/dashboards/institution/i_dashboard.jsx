@@ -10,7 +10,7 @@ import { Card } from '../../components/ui/card.jsx';
 import { Tooltip as UITooltip, TooltipTrigger as UITooltipTrigger, TooltipContent as UITooltipContent, TooltipProvider as UITooltipProvider } from '../../components/ui/tooltip.jsx';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select.jsx';
 import { Button } from '../../components/ui/button.jsx';
-import EStudentListMock from '../educator/components/e_StudentListMock';
+import EStudentListMock from '../components/StudentListMock';
 import LoadingPage from '../components/LoadingPage.jsx';
 import { useInstitution } from './index.jsx';
 
@@ -782,7 +782,7 @@ function IDashboard() {
                 See All
               </Button>
             </div>
-            <EStudentListMock rawResults={rawResults} />
+            <EStudentListMock rawResults={rawResults} mode="institution" educatorId={selectedEducatorId} />
           </Card>
         </div>
       </div>

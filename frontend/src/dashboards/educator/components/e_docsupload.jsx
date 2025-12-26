@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { FileText, Key, File, Loader, ArrowLeft, ArrowRight, CheckCircle, Download } from 'lucide-react';
+import { FileText, Loader, ArrowLeft, ArrowRight, CheckCircle, Download, Atom, Key, File, FlaskConical, Sprout, PawPrint } from 'lucide-react';
 import Modal from '../../components/ui/modal.jsx';
 import { validateAnswerKeyCSV, validateResponseSheetCSV, formatValidationErrors } from '../../../utils/csvValidation.js';
 import { toast } from 'react-hot-toast';
@@ -35,12 +35,14 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
     }
   };
 
+  // (No auto-detect option — user must pick a syllabus pattern)
+
   const subjectIcons = {
-    Physics: <FileText size={18} className="text-blue-500" />, // placeholder icon
-    Chemistry: <Key size={18} className="text-purple-500" />,
-    Botany: <File size={18} className="text-green-500" />,
-    Zoology: <File size={18} className="text-orange-500" />,
-    Biology: <File size={18} className="text-teal-500" />
+    Physics: [Atom],
+    Chemistry: [FlaskConical],
+    Botany: [Sprout],
+    Zoology: [PawPrint],
+    Biology: [Sprout, PawPrint]
   };
 
   useEffect(() => {
@@ -48,15 +50,23 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
     if (pattern && patterns[pattern]) {
       const patternSubjects = patterns[pattern].subjects;
       setSubjects(patternSubjects);
-      const equalCount = 180 / patternSubjects.length;
       const initialCounts = {};
-      patternSubjects.forEach(subj => {
-        initialCounts[subj] = Math.floor(equalCount);
-      });
+      if (pattern === 'PHY_CHEM_BIO') {
+        // Specific counts for Physics, Chemistry, Biology: 45, 45, 90
+        initialCounts['Physics'] = 45;
+        initialCounts['Chemistry'] = 45;
+        initialCounts['Biology'] = 90;
+      } else {
+        // Equal division for other patterns
+        const equalCount = 180 / patternSubjects.length;
+        patternSubjects.forEach(subj => {
+          initialCounts[subj] = Math.floor(equalCount);
+        });
+      }
       setSubjectCounts(initialCounts);
-      
+
     } else {
-      // Unknown pattern (eg. 'AUTO_DETECT') or cleared selection -> reset subjects/counts
+      // Unknown pattern or cleared selection -> reset subjects/counts
       setSubjects([]);
       setSubjectCounts({});
     }
@@ -289,28 +299,54 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
         <div className="flex justify-between items-center w-full">
           <div className="flex items-center gap-2">
             {currentStep.type === 'file' && currentStep.key === 'answerKey' && (
-              <a
-                href="https://github.com/ZAIFI-BUSINESS-SOLUTIONS-PVT-LTD/inzighted-public-files/raw/main/sample%20answer%20key.csv"
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('https://api.github.com/repos/ZAIFI-BUSINESS-SOLUTIONS-PVT-LTD/inzighted-public-files/contents/sample%20answer%20key.csv');
+                    const data = await response.json();
+                    const content = atob(data.content);
+                    const blob = new Blob([content], { type: 'text/csv' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'sample_answer_key.csv';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  } catch (error) {
+                    toast.error('Failed to download sample answer key');
+                  }
+                }}
                 className="btn btn-sm btn-ghost flex items-center gap-1"
                 aria-label="Download sample answer key"
               >
                 <Download size={14} />
                 <span className="text-xs hidden sm:inline">Sample answer key</span>
-              </a>
+              </button>
             )}
             {currentStep.type === 'file' && currentStep.key === 'responseSheets' && (
-              <a
-                href="https://github.com/ZAIFI-BUSINESS-SOLUTIONS-PVT-LTD/inzighted-public-files/raw/main/sample%20response%20sheet.csv"
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('https://api.github.com/repos/ZAIFI-BUSINESS-SOLUTIONS-PVT-LTD/inzighted-public-files/contents/sample%20response%20sheet.csv');
+                    const data = await response.json();
+                    const content = atob(data.content);
+                    const blob = new Blob([content], { type: 'text/csv' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'sample_response_sheet.csv';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  } catch (error) {
+                    toast.error('Failed to download sample response sheet');
+                  }
+                }}
                 className="btn btn-base btn-ghost flex items-center gap-1"
                 aria-label="Download sample response sheet"
               >
                 <Download size={14} />
                 <span className="text-sm hidden sm:inline">Sample response sheet</span>
-              </a>
+              </button>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -330,13 +366,6 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
                     handleSaveConfig();
                     setStep(step + 1);
                     return;
-                  }
-                  if (currentStep.key === 'syllabus') {
-                    // If user selected Auto-detect, skip counts and go to first file step
-                    if (pattern === 'AUTO_DETECT') {
-                      setStep(2);
-                      return;
-                    }
                   }
                   setStep(step + 1);
                 }}
@@ -422,7 +451,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
             <div>
               <div className="mb-3">
                 <div className="text-sm text-gray-600">Select subject syllabus</div>
-                <div className="text-xs text-gray-500">Choose a known syllabus or use auto-detect</div>
+                <div className="text-xs text-gray-500">Choose the syllabus pattern that matches your test</div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -431,16 +460,21 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
                   return (
                     <button
                       key={key}
-                      onClick={() => { setPattern(key); /* select only - do not auto advance */ }}
-                      className={`card relative p-4 text-left border flex flex-col justify-between min-h-[80px] ${selected ? 'border-primary ring-2 ring-primary/20' : 'hover:border-primary'}`}>
-                      <div className="flex items-start justify-between">
-                        <div className="text-sm font-medium flex items-center gap-2">
-                          {selected && <CheckCircle size={16} className="text-primary" />}
-                          <span>{value.label}</span>
-                        </div>
-                        <div className="text-xs text-gray-500">{value.icon}</div>
+                      onClick={() => { setPattern(key); }}
+                      aria-pressed={selected}
+                      aria-label={value.label}
+                      className={`relative p-3 text-left border flex items-center justify-center min-h-[56px] rounded-xl transition-all ${selected ? 'border-blue-300 bg-blue-50' : 'border-slate-100 bg-white hover:bg-blue-50 hover:border-blue-300'}`}>
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        {(value.subjects || []).map(s => {
+                          const Icons = subjectIcons[s] || [FileText];
+                          return (
+                            <span key={s} className={`px-3 py-1 rounded-full text-sm flex items-center gap-2 ${selected ? 'bg-blue-100 text-blue-700 border border-blue-100' : 'bg-white text-gray-700 border border-gray-100'}`}>
+                              {Icons.map((Icon, idx) => <Icon key={idx} size={14} className={`${selected ? 'text-blue-600' : 'text-gray-600'}`} />)}
+                              <span>{s}</span>
+                            </span>
+                          );
+                        })}
                       </div>
-                      <div className="text-xs text-gray-500 mt-2">Select this syllabus pattern</div>
                     </button>
                   );
                 })}
@@ -458,27 +492,30 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
               </div>
 
               <div className="space-y-3">
-                {subjects.map((s, idx) => (
-                  <div key={s} className="grid grid-cols-12 items-center gap-3 py-2">
-                    <div className="col-span-6 flex items-center gap-3">
-                      <span className="text-sm">{subjectIcons[s]}</span>
-                      <span className="text-sm font-medium">{s}</span>
+                {subjects.map((s, idx) => {
+                  const CountIcons = subjectIcons[s] || [FileText];
+                  return (
+                    <div key={s} className="grid grid-cols-12 items-center gap-3 py-2">
+                      <div className="col-span-6 flex items-center gap-3">
+                        {CountIcons.map((Icon, idx) => <Icon key={idx} size={16} className="text-gray-600" />)}
+                        <span className="text-sm font-medium">{s}</span>
+                      </div>
+                      <div className="col-span-3 flex justify-center">
+                        <input
+                          type="number"
+                          value={subjectCounts[s] || ''}
+                          onChange={e => handleCountChange(s, e.target.value)}
+                          className="input input-bordered w-24 text-center"
+                          aria-label={`${s} question count`}
+                        />
+                      </div>
+                      <div className="col-span-3 flex justify-end gap-2">
+                        <button onClick={() => moveSubject(idx, 'up')} className="btn btn-xs btn-ghost" aria-label={`Move ${s} up`}>↑</button>
+                        <button onClick={() => moveSubject(idx, 'down')} className="btn btn-xs btn-ghost" aria-label={`Move ${s} down`}>↓</button>
+                      </div>
                     </div>
-                    <div className="col-span-3 flex justify-center">
-                      <input
-                        type="number"
-                        value={subjectCounts[s] || ''}
-                        onChange={e => handleCountChange(s, e.target.value)}
-                        className="input input-bordered w-24 text-center"
-                        aria-label={`${s} question count`}
-                      />
-                    </div>
-                    <div className="col-span-3 flex justify-end gap-2">
-                      <button onClick={() => moveSubject(idx, 'up')} className="btn btn-xs btn-ghost" aria-label={`Move ${s} up`}>↑</button>
-                      <button onClick={() => moveSubject(idx, 'down')} className="btn btn-xs btn-ghost" aria-label={`Move ${s} down`}>↓</button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 <div className="mt-2 text-sm text-gray-600">Total: <span className="font-medium">{calculateTotal()}</span> questions</div>
               </div>
