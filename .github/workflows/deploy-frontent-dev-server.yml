@@ -2,14 +2,14 @@ name: 🚀 Deploy Frontend to S3 + Invalidate CloudFront
 
 on:
   push:
-    branches: [dev]  # ✅ Set this to your deployment branch
+    branches: [dev]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend  # ✅ Make sure all commands run in /frontend
+        working-directory: frontend
 
     steps:
     - name: 🧾 Checkout code
@@ -18,13 +18,19 @@ jobs:
     - name: 🧰 Set up Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: 18  # ✅ Adjust to match your local Node version
+        node-version: 18
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
 
     - name: 📦 Install dependencies
-      run: npm install
+      run: npm ci
 
-    - name: 🏗️ Build frontend with development mode
-      run: npm run build -- --mode development  # ✅ Adjust build command if necessary
+    - name: 🏗️ Build frontend
+      # Vite injects these variables during the build process
+      run: npm run build
+      env:
+        VITE_API_URL: https://tamilnaduapi.inzighted.com/api
+        VITE_PDF_SERVICE_URL: https://tamilnadupdf.inzighted.com/pdf
 
     - name: 🚀 Sync to S3
       run: aws s3 sync ./dist s3://${{ secrets.S3_BUCKET_NAME_DEV }} --delete
