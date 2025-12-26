@@ -12,7 +12,7 @@ import { useInstitution } from './index.jsx';
 import FeedbackModal from '../components/feedback/FeedbackModal.jsx';
 
 // Reuse the educator upload modal
-const UploadModal = lazy(() => import('../educator/components/e_docsupload.jsx'));
+const UploadModal = lazy(() => import('../components/e_docsupload.jsx'));
 
 const IUpload = () => {
   const { selectedEducatorId, setSelectedEducatorId, educators } = useInstitution();
@@ -428,7 +428,7 @@ const IUpload = () => {
             files={files}
             setFiles={setFiles}
             onSubmit={handleUploadAndClose}
-            onClose={() => setIsModalOpen(false)}
+            onClose={() => { setIsModalOpen(false); setStep(0); }}
             isUploading={isUploading}
           />
         </Suspense>

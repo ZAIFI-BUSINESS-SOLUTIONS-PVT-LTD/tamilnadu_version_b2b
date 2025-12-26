@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { institutionLogin } from '../../utils/api';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Eye, EyeOff, Lock, Mail, Sparkles } from 'lucide-react';
-import educatorLoginImg from '../../assets/auth images/educatorlogin.svg';
+import instituteLoginImg from '../../assets/auth images/institutelogin.svg';
 import {
   Card,
   CardContent,
@@ -84,7 +84,7 @@ const InstitutionLogin = () => {
 
           <CardContent className="p-6">
             <motion.div className="flex justify-center mb-4" initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.12 }}>
-              <img src={educatorLoginImg} alt="Institution Login" className="h-28 object-contain" />
+              <img src={instituteLoginImg} alt="Institution Login" className="h-28 object-contain" />
             </motion.div>
 
             {error && (
@@ -121,12 +121,6 @@ const InstitutionLogin = () => {
                 </div>
               </div>
 
-                <div className="flex justify-end">
-                  <button type="button" onClick={() => navigate('/auth/forgot-password?role=manager')} className="text-sm text-blue-600 hover:underline">
-                    Forgot password?
-                  </button>
-                </div>
-
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1">
                   Password
@@ -159,6 +153,11 @@ const InstitutionLogin = () => {
                     )}
                   </motion.button>
                 </div>
+                <div className="flex justify-end mt-2">
+                  <button type="button" onClick={() => navigate('/auth/forgot-password?role=manager')} className="text-sm text-blue-600 hover:underline">
+                    Forgot password?
+                  </button>
+                </div>
               </div>
 
               <motion.button
@@ -187,12 +186,9 @@ const InstitutionLogin = () => {
 
           </CardContent>
           <div className="bg-slate-50 px-6 py-3 text-center border-t border-slate-100">
-            <p className="text-xs text-gray-500">Need help? <a href="/contact" className="text-blue-600 hover:underline">Contact support</a></p>
+            <p className="text-xs text-gray-500">Need help? <a href="https://inzighted.com/contact" className="text-blue-600 hover:underline">Contact support</a></p>
           </div>
         </Card>
-        <motion.div className="mt-4 text-center text-xs text-slate-500">
-          By continuing, you agree to our <a href="#" className="underline">Terms</a> and <a href="#" className="underline">Privacy</a>.
-        </motion.div>
       </motion.div>
     </div>
   );

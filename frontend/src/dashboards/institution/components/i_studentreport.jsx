@@ -133,11 +133,16 @@ export const StudentPDFReportModal = ({ onClose, students = [], availableTests =
     })),
   ];
   const testOptions = [
-    ...(!localTests.includes('Overall') ? [{ value: 'Overall', label: 'Overall' }] : []),
-    ...localTests.map((test) => ({
+    { value: 'Overall', label: 'Overall' },
+    ...localTests.filter(t => t !== 'Overall').map((test) => ({
       value: test,
       label: test,
-    })),
+    })).sort((a, b) => {
+      const aMatch = a.label.match(/Test (\d+)/);
+      const bMatch = b.label.match(/Test (\d+)/);
+      if (!aMatch || !bMatch) return 0;
+      return parseInt(bMatch[1]) - parseInt(aMatch[1]);
+    }),
   ];
 
   const educatorOptions = educators.map((e) => ({ value: String(e.id ?? e.educator_id), label: e.name || e.email || `Educator ${e.id ?? e.educator_id}` }));

@@ -353,7 +353,7 @@ const IAnalysis = () => {
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="Select Educator" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-60">
                 {sortedEducators.map((edu) => (
                   <SelectItem key={edu.id} value={String(edu.id)}>
                     {edu.name}
@@ -404,7 +404,7 @@ const IAnalysis = () => {
               <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-[220px] lg:w-auto text-start">
                 <SelectValue placeholder="Select Classroom" />
               </SelectTrigger>
-              <SelectContent side="bottom" align="start">
+              <SelectContent side="bottom" align="start" className="max-h-60">
                 {sortedEducators.map((edu) => (
                   <SelectItem key={edu.id} value={String(edu.id)}>
                     {edu.name}
@@ -418,7 +418,7 @@ const IAnalysis = () => {
               <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full lg:w-auto text-start">
                 <SelectValue placeholder="Select Test" />
               </SelectTrigger>
-              <SelectContent side="bottom" align="end">
+              <SelectContent side="bottom" align="end" className="max-h-60">
                 {testOptions.map(opt => (
                   <SelectItem key={String(opt.value)} value={opt.value}>
                     {opt.label}
@@ -432,7 +432,7 @@ const IAnalysis = () => {
               <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full lg:w-auto text-start">
                 <SelectValue placeholder="Select Subject" />
               </SelectTrigger>
-              <SelectContent side="bottom" align="end">
+              <SelectContent side="bottom" align="end" className="max-h-60">
                 {subjectOptions.map(opt => (
                   <SelectItem key={String(opt.value)} value={opt.value}>
                     {opt.label}
@@ -453,7 +453,7 @@ const IAnalysis = () => {
                   <SelectTrigger className="w-36">
                     <SelectValue placeholder="Classroom" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-60">
                     {sortedEducators.map((edu) => (
                       <SelectItem key={edu.id} value={String(edu.id)}>
                         {edu.name}

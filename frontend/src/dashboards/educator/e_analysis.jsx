@@ -194,33 +194,20 @@ const metricToCategoryMap = {
  * Expected structure: `{ [subjectName]: { Strengths: [], Weaknesses: [], ... } }`.
  * @param {string} props.selectedSubject - The name of the subject for which to display SWOT data.
  */
-const SwotSection = ({ label, displayLabel, icon, color, border, data, selectedSubject }) => {
+const SwotSection = ({ label, displayLabel, color, data, selectedSubject }) => {
   const displayText = displayLabel || label;
-  // Safely access the data for the selected subject and the current label.
-  // Fallback to an empty array if the path doesn't exist to prevent errors.
   const itemsToRender = data?.[selectedSubject]?.[label] || [];
 
-  // Small subtitle mapping for each zone (used under the title in mobile view)
   const zoneSubtitleMap = {
     'Focus Zone': 'Areas to improve',
     'Steady Zone': 'Strong areas',
   };
 
-  // Gradient/background map for each zone
-  const zoneBgMap = {
-    'Focus Zone': 'bg-gradient-to-br from-pink-100 via-pink-50 to-pink-50',
-    'Steady Zone': 'bg-gradient-to-br from-green-100 via-green-50 to-green-50',
-  };
-
   const subtitle = zoneSubtitleMap[displayText] || '';
-  const outerBg = zoneBgMap[displayText] || 'bg-base-100';
 
   return (
-    // Make card a column flex container and full height so siblings in the desktop grid can match heights
-    // Add a thin border whose color is provided via the `border` prop so the border is slightly
-    // darker than the background gradient.
-    <Card className={`${outerBg} rounded-2xl overflow-hidden h-full flex flex-col border ${border}`}>
-      <CardHeader className="px-4 py-2">
+    <Card className="bg-white h-full flex flex-col border-none rounded-none">
+      <CardHeader className="p-0 pb-2">
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center">
             <div>
@@ -231,29 +218,36 @@ const SwotSection = ({ label, displayLabel, icon, color, border, data, selectedS
         </div>
       </CardHeader>
 
-      <CardContent className="px-4 pb-4 pt-0 flex-1">
-        {/* Inner white rounded box that holds the items (matches design in screenshot) */}
-        <div className="bg-white p-4 rounded-lg flex flex-col h-full">
-          <div className="space-y-4 flex-1 overflow-auto">
+      <CardContent className="p-0 flex-1 border border-yellow-200 rounded-2xl bg-yellow-100/20">
+        <div className="flex flex-col h-full">
+          <div className="flex-1 overflow-auto">
             {itemsToRender.length > 0 ? (
-              itemsToRender.map((item, idx) => (
-                <div key={item.id || `${displayText}-${selectedSubject}-${item.title || ''}-${idx}`} className={`p-3 rounded-lg`}>
-                  {item.topics && item.topics.length > 0 && (
-                    <ul className="list-disc list-inside text-sm md:text-base text-gray-700 space-y-2">
-                      {item.topics.map((topic, i) => (
-                        <li
-                          key={`${item.id || item.title || ''}-topic-${topic}-${i}`}
-                          className="py-1 leading-relaxed break-words whitespace-pre-wrap"
-                        >
-                          {topic}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              ))
+              <div className="divide-y divide-yellow-200">
+                {itemsToRender.map((item, idx) => (
+                  <div
+                    key={item.id || `${displayText}-${selectedSubject}-${item.title || ''}-${idx}`}
+                    className="px-4 py-3 border-t border-yellow-200 first:border-t-0"
+                  >
+                    {item.topics && item.topics.length > 0 ? (
+                      <div className="divide-y divide-yellow-200">
+                        {item.topics.map((topic, i) => (
+                          <div
+                            key={`${item.id || item.title || ''}-topic-${topic}-${i}`}
+                            className="flex items-start gap-2 py-2 text-sm md:text-base text-gray-700"
+                          >
+                            <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary/70" aria-hidden="true" />
+                            <span className="leading-relaxed break-words whitespace-pre-wrap">{topic}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">No data available for this category.</p>
+                    )}
+                  </div>
+                ))}
+              </div>
             ) : (
-              <p className="text-sm text-gray-500 italic">No data available for this category.</p>
+              <p className="px-4 py-3 text-sm text-gray-500 italic">No data available for this category.</p>
             )}
           </div>
         </div>
@@ -266,9 +260,7 @@ const SwotSection = ({ label, displayLabel, icon, color, border, data, selectedS
 SwotSection.propTypes = {
   label: PropTypes.string.isRequired,
   displayLabel: PropTypes.string, // Optional display label, defaults to label
-  icon: PropTypes.element.isRequired, // Expects a React element (e.g., <Icon />)
   color: PropTypes.string.isRequired, // Tailwind CSS class for text color
-  border: PropTypes.string.isRequired, // Tailwind CSS class for border color
   selectedSubject: PropTypes.string.isRequired,
   data: PropTypes.objectOf( // data is an object where keys are subject names
     PropTypes.objectOf( // each subject value is an object where keys are SWOT labels (Strengths, Weaknesses, etc.)
@@ -329,18 +321,12 @@ const ESWOT = () => {
     {
       label: 'Weaknesses',
       displayLabel: 'Focus Zone',
-      icon: <Target className="mr-2" />,
-      color: 'text-red-600',
-      // slightly darker than the pink/red background
-      border: 'border-red-200'
+      color: 'text-red-600'
     },
     {
       label: 'Strengths',
       displayLabel: 'Steady Zone',
-      icon: <CheckCircle className="mr-2" />,
-      color: 'text-green-600',
-      // slightly darker than the green background
-      border: 'border-green-200'
+      color: 'text-green-600'
     }
   ];
 
@@ -423,38 +409,41 @@ const ESWOT = () => {
   // --- Main Component Render (after loading and error checks) ---
   return (
     <div className="md:mt-12 lg:px-4 lg:space-y-6">
-      {/* Selector Section */}
-      <div className="hidden lg:flex lg:flex-row items-start lg:items-center space-y-2 lg:space-y-0 lg:space-x-4 mb-4 pb-4 bg-white lg:pt-4 px-4 pt-2 rounded-xl shadow-xl">
-        <Filter className="text-gray-400 w-5 h-5" />
-        {/* Desktop: keep original Select dropdowns */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-400 min-w-max pl-1">Test</span>
-          <Select value={selectedTest} onValueChange={(v) => setSelectedTest && setSelectedTest(v)}>
-            <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full lg:w-auto text-start">
-              <SelectValue placeholder="Select Test" />
-            </SelectTrigger>
-            <SelectContent side="bottom" align="end">
-              {testOptions.map(opt => (
-                <SelectItem key={String(opt.value)} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <div className="hidden lg:flex lg:flex-row lg:items-start lg:justify-between gap-6">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-3xl font-semibold text-gray-800">Test Wise Analysis</h2>
+          <p className="text-sm text-gray-500">Review strengths and focus areas by subject and test.</p>
+        </div>
+        <div className="flex items-start gap-4 flex-wrap justify-end">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400 min-w-max pl-1">Test</span>
+            <Select value={selectedTest} onValueChange={(v) => setSelectedTest && setSelectedTest(v)}>
+              <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full lg:w-auto text-start">
+                <SelectValue placeholder="Select Test" />
+              </SelectTrigger>
+              <SelectContent side="bottom" align="end" className="max-h-60">
+                {testOptions.map(opt => (
+                  <SelectItem key={String(opt.value)} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <span className="text-sm text-gray-400 min-w-max pl-1">Subject</span>
-          <Select value={selectedSubject} onValueChange={(v) => setSelectedSubject && setSelectedSubject(v)}>
-            <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full lg:w-auto text-start">
-              <SelectValue placeholder="Select Subject" />
-            </SelectTrigger>
-            <SelectContent side="bottom" align="end">
-              {subjectOptions.map(opt => (
-                <SelectItem key={String(opt.value)} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <span className="text-sm text-gray-400 min-w-max pl-1">Subject</span>
+            <Select value={selectedSubject} onValueChange={(v) => setSelectedSubject && setSelectedSubject(v)}>
+              <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full lg:w-auto text-start">
+                <SelectValue placeholder="Select Subject" />
+              </SelectTrigger>
+              <SelectContent side="bottom" align="end" className="max-h-60">
+                {subjectOptions.map(opt => (
+                  <SelectItem key={String(opt.value)} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -471,7 +460,7 @@ const ESWOT = () => {
                   <SelectValue placeholder="Select Test" />
                   <ChevronDown size={16} className="ml-1" />
                 </SelectTrigger>
-                <SelectContent side="bottom" align="end">
+                <SelectContent side="bottom" align="end" className="max-h-60">
                   {testOptions.map(opt => (
                     <SelectItem key={String(opt.value)} value={opt.value}>
                       {opt.label}
@@ -643,15 +632,13 @@ const ESWOT = () => {
       </div>
 
       {/* Desktop/large screens: stacked vertical layout to make it look more filled */}
-      <div className="hidden lg:flex flex-col space-y-6">
-        {sections.map(({ label, displayLabel, icon, color, border }) => (
+      <div className="hidden lg:flex flex-col space-y-6 bg-white rounded-2xl p-6 border border-gray-200">
+        {sections.map(({ label, displayLabel, color }) => (
           <SwotSection
             key={displayLabel}
             label={label}
             displayLabel={displayLabel}
-            icon={icon}
             color={color}
-            border={border}
             data={filteredSwotData}
             selectedSubject={selectedSubject}
           />

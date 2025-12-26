@@ -168,12 +168,11 @@ const EducatorLogin = () => {
                     )}
                   </motion.button>
                 </div>
-              </div>
-
-              <div className="flex justify-end">
-                <button type="button" onClick={() => navigate('/auth/forgot-password?role=educator')} className="text-sm text-blue-600 hover:underline">
-                  Forgot password?
-                </button>
+                <div className="flex justify-end mt-2">
+                  <button type="button" onClick={() => navigate('/auth/forgot-password?role=educator')} className="text-sm text-blue-600 hover:underline">
+                    Forgot password?
+                  </button>
+                </div>
               </div>
 
               <motion.button
@@ -202,12 +201,9 @@ const EducatorLogin = () => {
 
           </CardContent>
           <div className="bg-slate-50 px-6 py-3 text-center border-t border-slate-100">
-            <p className="text-xs text-gray-500">Need help? <a href="/contact" className="text-blue-600 hover:underline">Contact support</a></p>
+            <p className="text-xs text-gray-500">Need help? <a href="https://inzighted.com/contact" className="text-blue-600 hover:underline">Contact support</a></p>
           </div>
         </Card>
-        <motion.div className="mt-4 text-center text-xs text-slate-500">
-          By continuing, you agree to our <a href="#" className="underline">Terms</a> and <a href="#" className="underline">Privacy</a>.
-        </motion.div>
       </motion.div>
     </div>
   );

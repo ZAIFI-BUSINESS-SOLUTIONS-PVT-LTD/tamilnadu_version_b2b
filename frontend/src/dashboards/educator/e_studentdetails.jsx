@@ -65,19 +65,35 @@ function EResults() {
     const fetchNames = async () => {
       try {
         const res = await fetcheducatorstudent();
-        if (res && Array.isArray(res.students)) {
-          const map = {};
-          res.students.forEach(s => {
-            map[s.student_id] = s.name;
-          });
-          setStudentNameMap(map);
-        }
+
+        let students = [];
+        if (!res) students = [];
+        else if (Array.isArray(res)) students = res;
+        else if (Array.isArray(res.students)) students = res.students;
+        else if (Array.isArray(res.data)) students = res.data;
+        else students = [];
+
+        const map = {};
+        students.forEach(s => {
+          const id = s.student_id ?? s.studentId ?? s.id;
+          const name = s.student_name ?? s.name ?? s.full_name ?? '';
+          if (id) map[id] = name && String(name).trim() !== '' ? String(name).trim() : `Student ${id}`;
+        });
+        setStudentNameMap(map);
       } catch (err) {
-        // Optionally handle error
+        console.error('Failed to fetch educator students:', err);
       }
     };
     fetchNames();
   }, []);
+
+  const getStudentName = (student) => {
+    if (!student) return '';
+    const mapped = studentNameMap[student.student_id];
+    if (mapped && String(mapped).trim() !== '') return String(mapped).trim();
+    if (student.student_name && String(student.student_name).trim() !== '') return String(student.student_name).trim();
+    return `Student ${student.student_id}`;
+  };
 
   useEffect(() => {
     fetchResults();
@@ -129,7 +145,7 @@ function EResults() {
       case 'student_id':
         return student.student_id;
       case 'student_name':
-        return studentNameMap[student.student_id] || student.student_name;
+        return getStudentName(student);
       case 'average_score':
         return student.average_score;
       case 'rank':
@@ -142,7 +158,7 @@ function EResults() {
       student.average_score >= scoreRange[0] &&
       student.average_score <= scoreRange[1] &&
       (student.student_id.toString().includes(searchTerm) ||
-        (studentNameMap[student.student_id] || student.student_name).toLowerCase().includes(searchTerm.toLowerCase()))
+        getStudentName(student).toLowerCase().includes(searchTerm.toLowerCase()))
     )
     .sort((a, b) => {
       if (sortField === 'rank') {
@@ -174,7 +190,7 @@ function EResults() {
         student.average_score >= scoreRange[0] &&
         student.average_score <= scoreRange[1] &&
         (student.student_id.toString().includes(searchTerm) ||
-          (studentNameMap[student.student_id] || student.student_name).toLowerCase().includes(searchTerm.toLowerCase()))
+          getStudentName(student).toLowerCase().includes(searchTerm.toLowerCase()))
       )
       .sort((a, b) => b.average_score - a.average_score);
     const map = {};
@@ -238,7 +254,7 @@ function EResults() {
     >
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{rankMap[student.student_id]}</td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{student.student_id}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{studentNameMap[student.student_id] || student.student_name}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{getStudentName(student)}</td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{student.tests_taken}</td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{student.average_score}</td>
     </tr>
@@ -343,7 +359,7 @@ function EResults() {
           onClose={() => setModalStudent(null)}
           title={modalStudent ? (
             <>
-              {studentNameMap[modalStudent.student_id] || modalStudent.student_name}
+                {getStudentName(modalStudent)}
               <span className="text-xs text-gray-400 ml-2">(ID: {modalStudent.student_id})</span>
             </>
           ) : ''}

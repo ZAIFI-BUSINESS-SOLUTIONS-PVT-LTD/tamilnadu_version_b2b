@@ -97,8 +97,8 @@ const Carousel = ({ sections = [], emptyMessage = 'No content available', height
                 onClick={() => setCurrent(i)}
                 aria-label={`Go to section ${i + 1}`}
                 className={`w-2 h-2 rounded-full transition-all duration-300 ${current === i
-                  ? 'bg-secondary w-6'
-                  : 'bg-gray-300 hover:bg-gray-400'
+                  ? 'bg-blue-600 w-6'
+                  : 'bg-blue-200 hover:bg-blue-400'
                   }`}
               />
             ))}

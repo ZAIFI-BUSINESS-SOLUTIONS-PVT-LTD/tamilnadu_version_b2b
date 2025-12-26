@@ -148,7 +148,7 @@ const ITestPerformance = () => {
               <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-[220px] lg:w-auto text-start">
                 <SelectValue placeholder="Select Classroom" />
               </SelectTrigger>
-              <SelectContent side="bottom" align="start">
+              <SelectContent side="bottom" align="start" className="max-h-60">
                 {sortedEducators.map((edu) => (
                   <SelectItem key={edu.id} value={String(edu.id)}>
                     {edu.name}
@@ -164,9 +164,9 @@ const ITestPerformance = () => {
               <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-28 text-start">
                 <SelectValue placeholder={testsLoading ? 'Loading...' : (availableTests.length ? 'Select Test' : 'No tests')} />
               </SelectTrigger>
-              <SelectContent side="bottom" align="start">
+              <SelectContent side="bottom" align="start" className="max-h-60">
                 {availableTests.map((t) => (
-                  <SelectItem key={String(t)} value={String(t)}>{String(t)}</SelectItem>
+                  <SelectItem key={String(t)} value={String(t)}>Test {String(t)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -182,7 +182,7 @@ const ITestPerformance = () => {
                 <SelectTrigger className="w-36">
                   <SelectValue placeholder="Classroom" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-60">
                   {sortedEducators.map((edu) => (
                     <SelectItem key={edu.id} value={String(edu.id)}>
                       {edu.name}
@@ -195,9 +195,9 @@ const ITestPerformance = () => {
                 <SelectTrigger className="w-28">
                   <SelectValue placeholder={testsLoading ? 'Loading...' : (availableTests.length ? 'Test' : 'No tests')} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-60">
                   {availableTests.map((t) => (
-                    <SelectItem key={String(t)} value={String(t)}>{String(t)}</SelectItem>
+                    <SelectItem key={String(t)} value={String(t)}>Test {String(t)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -210,7 +210,11 @@ const ITestPerformance = () => {
         <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800">{testsError}</div>
       )}
 
-      {isLoading && <LoadingPage />}
+      {isLoading && (
+        <div className="relative min-h-screen">
+          <LoadingPage fixed={false} className="bg-white/80 dark:bg-gray-900/80 z-10" />
+        </div>
+      )}
 
       {!isLoading && performanceData && (
         <>

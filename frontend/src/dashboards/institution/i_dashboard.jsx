@@ -10,7 +10,7 @@ import { Card } from '../../components/ui/card.jsx';
 import { Tooltip as UITooltip, TooltipTrigger as UITooltipTrigger, TooltipContent as UITooltipContent, TooltipProvider as UITooltipProvider } from '../../components/ui/tooltip.jsx';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select.jsx';
 import { Button } from '../../components/ui/button.jsx';
-import EStudentListMock from '../educator/components/e_StudentListMock';
+import EStudentListMock from '../components/StudentListMock';
 import LoadingPage from '../components/LoadingPage.jsx';
 import { useInstitution } from './index.jsx';
 
@@ -294,46 +294,52 @@ function IDashboard() {
           return;
         }
 
-        let allStudents = new Set();
-        let allTeachers = new Set();
-        let totalClassrooms = educators.length;
+        // Immediately set a lightweight placeholder so Stat cards render quickly
+        setInstituteOverview(prev => ({
+          ...prev,
+          totalClassrooms: educators.length,
+          overallAttendance: 'Calculating...'
+        }));
+
+        // Run per-educator network calls in parallel to speed up aggregation
+        const educatorPromises = educators.map(async (educator) => {
+          try {
+            const [resultsResp, teachersResp] = await Promise.all([
+              fetchInstitutionEducatorAllStudentResults(educator.id),
+              educator.class_id ? getTeachersByClass(educator.class_id) : Promise.resolve(null)
+            ]);
+
+            return { educatorId: educator.id, resultsResp, teachersResp };
+          } catch (err) {
+            console.error(`Error fetching data for educator ${educator.id}:`, err);
+            return { educatorId: educator.id, resultsResp: null, teachersResp: null };
+          }
+        });
+
+        const educatorResults = await Promise.all(educatorPromises);
+
+        const allStudents = new Set();
+        const allTeachers = new Set();
         let lastTestAttendanceCount = 0;
         let totalStudentsForAttendance = 0;
 
-        // Fetch data for each educator to aggregate statistics
-        for (const educator of educators) {
-          try {
-            // Fetch student results for attendance calculation
-            const results = await fetchInstitutionEducatorAllStudentResults(educator.id);
-            if (results && Array.isArray(results.results)) {
-              // Count unique students
-              results.results.forEach(r => {
-                if (r.student_id) allStudents.add(r.student_id);
-              });
+        educatorResults.forEach(({ resultsResp, teachersResp }) => {
+          if (resultsResp && Array.isArray(resultsResp.results)) {
+            resultsResp.results.forEach(r => { if (r.student_id) allStudents.add(r.student_id); });
 
-              // Calculate attendance from the latest test
-              if (results.results.length > 0) {
-                const maxTestNum = Math.max(...results.results.map(r => r.test_num));
-                const lastTestResults = results.results.filter(r => r.test_num === maxTestNum);
-                const lastTestStudents = new Set(lastTestResults.map(r => r.student_id));
-                lastTestAttendanceCount += lastTestStudents.size;
-                totalStudentsForAttendance += new Set(results.results.map(r => r.student_id)).size;
-              }
+            if (resultsResp.results.length > 0) {
+              const maxTestNum = Math.max(...resultsResp.results.map(r => r.test_num));
+              const lastTestResults = resultsResp.results.filter(r => r.test_num === maxTestNum);
+              const uniqueLast = new Set(lastTestResults.map(r => r.student_id));
+              lastTestAttendanceCount += uniqueLast.size;
+              totalStudentsForAttendance += new Set(resultsResp.results.map(r => r.student_id)).size;
             }
-
-            // Fetch teachers for this class/educator using class_id
-            if (educator.class_id) {
-              const teachersResponse = await getTeachersByClass(educator.class_id);
-              if (teachersResponse && teachersResponse.success && Array.isArray(teachersResponse.data)) {
-                teachersResponse.data.forEach(teacher => {
-                  if (teacher.id) allTeachers.add(teacher.id);
-                });
-              }
-            }
-          } catch (error) {
-            console.error(`Error fetching data for educator ${educator.id}:`, error);
           }
-        }
+
+          if (teachersResp && teachersResp.success && Array.isArray(teachersResp.data)) {
+            teachersResp.data.forEach(t => { if (t.id) allTeachers.add(t.id); });
+          }
+        });
 
         const overallAttendance = totalStudentsForAttendance > 0
           ? `${Math.round((lastTestAttendanceCount / totalStudentsForAttendance) * 100)}%`
@@ -342,8 +348,8 @@ function IDashboard() {
         setInstituteOverview({
           totalStudents: allStudents.size,
           totalTeachers: allTeachers.size,
-          totalClassrooms: totalClassrooms,
-          overallAttendance: overallAttendance
+          totalClassrooms: educators.length,
+          overallAttendance
         });
       } catch (error) {
         console.error('Error fetching institute overview:', error);
@@ -378,24 +384,62 @@ function IDashboard() {
           <div className="grid grid-cols-1 gap-3 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <Stat
               icon={ICON_MAPPING.Users}
+              iconBg="bg-blue-50"
+              iconClass="text-blue-600"
               label="Students Enrolled"
               info={"Total number of students enrolled across all classrooms."}
               value={formatStatValue(instituteOverview.totalStudents)}
+              badge={(
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-full text-blue-400 hover:text-blue-700 bg-transparent hover:bg-blue-50"
+                  onClick={() => navigate('/institution/students')}
+                >
+                  View More
+                </Button>
+              )}
             />
             <Stat
               icon={ICON_MAPPING.BookOpen}
+              iconBg="bg-violet-50"
+              iconClass="text-violet-600"
               label="Teachers Assigned"
               info={"Total number of educators assigned across all classrooms."}
               value={formatStatValue(instituteOverview.totalTeachers)}
+              badge={(
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-full text-blue-400 hover:text-blue-700 bg-transparent hover:bg-blue-50"
+                  onClick={() => navigate('/institution/students')}
+                >
+                  View More
+                </Button>
+              )}
             />
             <Stat
               icon={ICON_MAPPING.Building}
+              iconBg="bg-yellow-50"
+              iconClass="text-yellow-600"
               label="Classrooms Enrolled"
               info={"Total number of classrooms with enrollment."}
               value={formatStatValue(instituteOverview.totalClassrooms)}
+              badge={(
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-full text-blue-400 hover:text-blue-700 bg-transparent hover:bg-blue-50"
+                  onClick={() => navigate('/institution/students')}
+                >
+                  View More
+                </Button>
+              )}
             />
             <Stat
               icon={ICON_MAPPING.Percent}
+              iconBg="bg-green-50"
+              iconClass="text-green-600"
               label="Overall Test Attendance"
               info={"Overall attendance percentage across all classrooms in the latest test."}
               value={instituteOverview.overallAttendance}
@@ -738,7 +782,7 @@ function IDashboard() {
                 See All
               </Button>
             </div>
-            <EStudentListMock rawResults={rawResults} />
+            <EStudentListMock rawResults={rawResults} mode="institution" educatorId={selectedEducatorId} />
           </Card>
         </div>
       </div>
