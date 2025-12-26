@@ -23,8 +23,8 @@ jobs:
     - name: 📦 Install dependencies
       run: npm install
 
-    - name: 🏗️ Build frontend with production mode
-      run: npm run build
+    - name: 🏗️ Build frontend with development mode
+      run: npm run build -- --mode development  # ✅ Adjust build command if necessary
 
     - name: 🚀 Sync to S3
       run: aws s3 sync ./dist s3://${{ secrets.S3_BUCKET_NAME_DEV }} --delete

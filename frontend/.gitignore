@@ -15,7 +15,7 @@ yarn-error.log*
 Thumbs.db
 
 # Env files
-!.env
+!.env.*
 
 # Vite cache
 .vite/
