@@ -1297,6 +1297,7 @@ def reupload_institution_student_responses(request, educator_id):
                 return Response({"error": "No valid responses found in CSV for this student"}, status=400)
             
             logger.info(f"[REUPLOAD_STUDENT] Parsed {len(responses_data)} responses for student {student_id}")
+            logger.debug(f"[REUPLOAD_STUDENT] Sample responses: {responses_data[:3]}")
             
         except Exception as e:
             logger.exception(f"[REUPLOAD_STUDENT] Error parsing CSV: {str(e)}")
@@ -1362,8 +1363,15 @@ def reupload_institution_student_responses(request, educator_id):
                 analysis_message = "No QuestionAnalysis data found for this test"
                 logger.warning(f"[REUPLOAD_STUDENT] No questions found for class {class_id}, test {test_num}")
             else:
-                # Fetch updated responses
-                response_map = fetch_student_responses(student_id, class_id, test_num)
+                logger.info(f"[REUPLOAD_STUDENT] Found {len(questions)} questions for analysis")
+                
+                # Fetch updated responses - FIX: convert keys to strings for StudentAnalyzer compatibility
+                response_map_raw = fetch_student_responses(student_id, class_id, test_num)
+                # Convert integer keys to string keys to match StudentAnalyzer.analyze() expectations
+                response_map = {str(k): v for k, v in response_map_raw.items()}
+                
+                logger.info(f"[REUPLOAD_STUDENT] Fetched {len(response_map)} responses from database")
+                logger.debug(f"[REUPLOAD_STUDENT] Sample response_map: {dict(list(response_map.items())[:3])}")
                 
                 if not response_map:
                     analysis_status = "failed"
@@ -1374,6 +1382,8 @@ def reupload_institution_student_responses(request, educator_id):
                     test_date = test.date
                     db_name = str(student.neo4j_db).lower()
                     
+                    logger.info(f"[REUPLOAD_STUDENT] Starting analysis for student {student_id}, db={db_name}, test_date={test_date}")
+                    
                     # Delete existing Neo4j test data first
                     try:
                         delete_test_graph(db_name, test_num)
@@ -1382,8 +1392,9 @@ def reupload_institution_student_responses(request, educator_id):
                         logger.warning(f"[REUPLOAD_STUDENT] Failed to delete old Neo4j data: {str(e)}")
                     
                     # Delete existing Result and StudentResult rows
-                    Result.objects.filter(student_id=student_id, class_id=class_id, test_num=test_num).delete()
-                    StudentResult.objects.filter(student_id=student_id, class_id=class_id, test_num=test_num).delete()
+                    result_delete_count = Result.objects.filter(student_id=student_id, class_id=class_id, test_num=test_num).delete()
+                    student_result_delete_count = StudentResult.objects.filter(student_id=student_id, class_id=class_id, test_num=test_num).delete()
+                    logger.info(f"[REUPLOAD_STUDENT] Deleted {result_delete_count[0]} Result rows and {student_result_delete_count[0]} StudentResult rows")
                     
                     # Run synchronous analysis (not as Celery task since this is immediate)
                     from exam.utils.student_analysis import StudentAnalyzer
@@ -1391,12 +1402,25 @@ def reupload_institution_student_responses(request, educator_id):
                     analyzer = StudentAnalyzer(
                         student_id, class_id, test_num, db_name, test_date, questions, response_map
                     )
-                    analyzer.analyze()
+                    analysis_result = analyzer.analyze()
+                    logger.info(f"[REUPLOAD_STUDENT] Analysis completed, processed {len(analysis_result)} questions")
+                    
+                    # Log sample of analysis results for debugging
+                    correct_count = sum(1 for q in analysis_result if q.get('IsCorrect'))
+                    attempted_count = sum(1 for q in analysis_result if q.get('OptedAnswer'))
+                    logger.info(f"[REUPLOAD_STUDENT] Analysis summary: {correct_count} correct, {attempted_count} attempted out of {len(analysis_result)} total")
+                    logger.debug(f"[REUPLOAD_STUDENT] Sample analysis: {analysis_result[:2]}")
+                    
                     summary_df = analyzer.get_summary()
+                    logger.info(f"[REUPLOAD_STUDENT] Summary DataFrame:\n{summary_df.to_string()}")
+                    
                     analyzer.save_results(summary_df)
+                    logger.info(f"[REUPLOAD_STUDENT] Results saved to Result table")
                     
                     # Create knowledge graph
-                    create_graph(student_id, db_name, pd.DataFrame(analyzer.analysis), test_num)
+                    analysis_df = pd.DataFrame(analyzer.analysis)
+                    create_graph(student_id, db_name, analysis_df, test_num)
+                    logger.info(f"[REUPLOAD_STUDENT] Neo4j graph created with {len(analysis_df)} questions")
                     
                     logger.info(f"[REUPLOAD_STUDENT] Analysis completed for student {student_id}, test {test_num}")
                     
@@ -1412,10 +1436,13 @@ def reupload_institution_student_responses(request, educator_id):
         if analysis_status == "ok":
             try:
                 db_name = str(student.neo4j_db).lower()
+                logger.info(f"[REUPLOAD_STUDENT] Starting dashboard regeneration for student {student_id}")
+                
                 dashboard_result = update_single_student_dashboard(student_id, class_id, test_num, db_name)
                 
                 if dashboard_result.get('ok'):
                     logger.info(f"[REUPLOAD_STUDENT] Dashboard regenerated successfully for {student_id}")
+                    logger.debug(f"[REUPLOAD_STUDENT] Dashboard result: {dashboard_result}")
                 else:
                     dashboard_status = "partial"
                     dashboard_message = dashboard_result.get('error', 'Unknown error')
@@ -1428,6 +1455,7 @@ def reupload_institution_student_responses(request, educator_id):
         else:
             dashboard_status = "skipped"
             dashboard_message = "Skipped due to analysis failure"
+            logger.warning(f"[REUPLOAD_STUDENT] Dashboard regeneration skipped due to analysis failure")
         
         # Prepare response
         response_data = {
@@ -1447,7 +1475,12 @@ def reupload_institution_student_responses(request, educator_id):
             }
         }
         
-        logger.info(f"[REUPLOAD_STUDENT] Completed reupload for student {student_id}, test {test_num}")
+        logger.info(f"[REUPLOAD_STUDENT] ===== REUPLOAD COMPLETED =====")
+        logger.info(f"[REUPLOAD_STUDENT] Student: {student_id}, Test: {test_num}")
+        logger.info(f"[REUPLOAD_STUDENT] Response Status: {response_status}")
+        logger.info(f"[REUPLOAD_STUDENT] Analysis Status: {analysis_status}")
+        logger.info(f"[REUPLOAD_STUDENT] Dashboard Status: {dashboard_status}")
+        logger.info(f"[REUPLOAD_STUDENT] ================================")
         return Response(response_data, status=200)
         
     except Exception as e:
