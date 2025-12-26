@@ -23,9 +23,11 @@ jobs:
     - name: 📦 Install dependencies
       run: npm install
 
-    - name: 🏗️ Build frontend with production mode
-      run: npm run build -- --mode production
-      # ✅ This ensures .env.production is picked up correctly
+    - name: 🏗️ Build frontend
+      run: npm run build
+      env:
+        VITE_API_URL: "https://api.inzighted.com/api"
+        VITE_PDF_SERVICE_URL: "https://pdf.inzighted.com/pdf"
 
     - name: 🚀 Sync to S3
       run: aws s3 sync ./dist s3://${{ secrets.S3_BUCKET_NAME }} --delete
