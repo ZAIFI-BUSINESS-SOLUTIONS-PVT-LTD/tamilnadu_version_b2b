@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { fetchInstitutionEducatorAllStudentResults, createInstitutionStudent, updateInstitutionStudent, deleteInstitutionStudent, deleteInstitutionStudentTest, reuploadInstitutionStudentResponses, createTeacher, getTeachersByClass, updateTeacher, deleteTeacher } from '../../utils/api';
+import { fetchInstitutionEducatorAllStudentResults, fetchInstitutionEducatorStudents, createInstitutionStudent, updateInstitutionStudent, deleteInstitutionStudent, deleteInstitutionStudentTest, reuploadInstitutionStudentResponses, createTeacher, getTeachersByClass, updateTeacher, deleteTeacher } from '../../utils/api';
 import toast from 'react-hot-toast';
 import {
   Search,
@@ -27,6 +27,14 @@ import Modal from '../components/ui/modal.jsx';
 import LoadingPage from '../components/LoadingPage.jsx';
 import { useInstitution } from './index.jsx';
 
+const SUBJECTS = [
+  { key: 'phy_score', label: 'Physics' },
+  { key: 'chem_score', label: 'Chemistry' },
+  { key: 'bio_score', label: 'Biology' },
+  { key: 'bot_score', label: 'Botany' },
+  { key: 'zoo_score', label: 'Zoology' },
+];
+
 function IStudentDetails() {
   const { selectedEducatorId, setSelectedEducatorId, educators } = useInstitution();
   const sortedEducators = React.useMemo(() => {
@@ -40,11 +48,11 @@ function IStudentDetails() {
   const [modalStudent, setModalStudent] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({ name: '', dob: '', password: '' });
-  const [studentNameMap] = useState({});
+  const [studentNameMap, setStudentNameMap] = useState({});
   const [sortModalOpen, setSortModalOpen] = useState(false);
   const [deleteSummary, setDeleteSummary] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [newStudent, setNewStudent] = useState({ class_id: '', student_id: '', name: '', dob: '' });
+  const [newStudent, setNewStudent] = useState({ student_id: '', name: '', dob: '' });
   const [sortField, setSortField] = useState('rank');
   const [sortDirection, setSortDirection] = useState('desc');
   const [deleteTestModalOpen, setDeleteTestModalOpen] = useState(false);
@@ -65,6 +73,7 @@ function IStudentDetails() {
   const [editingSubject, setEditingSubject] = useState(null);
   const [subjForm, setSubjForm] = useState({ subject: '', educator: '', email: '', phone_number: '', test_range: '' });
   const [classIdForTeachers, setClassIdForTeachers] = useState(null);
+  const [availableSubjects, setAvailableSubjects] = useState([]);
 
   const fetchResults = useCallback(async () => {
     if (!selectedEducatorId) return;
@@ -76,8 +85,53 @@ function IStudentDetails() {
 
       if (results && !results.error) {
         if (Array.isArray(results.results)) {
-          const grouped = groupResultsByStudent(results.results);
+          let grouped = groupResultsByStudent(results.results);
+
+          // Also fetch known students for this educator and include any students
+          // who have no test results so they still appear in the list.
+          try {
+            const studentsRes = await fetchInstitutionEducatorStudents(selectedEducatorId);
+            let students = [];
+            if (!studentsRes) students = [];
+            else if (Array.isArray(studentsRes)) students = studentsRes;
+            else if (Array.isArray(studentsRes.students)) students = studentsRes.students;
+            else if (Array.isArray(studentsRes.data)) students = studentsRes.data;
+
+            const existingIds = new Set(grouped.map(g => String(g.student_id)));
+            students.forEach(s => {
+              const id = s.student_id ?? s.studentId ?? s.id;
+              const name = s.student_name ?? s.name ?? s.full_name ?? '';
+              if (!id) return;
+              if (!existingIds.has(String(id))) {
+                const displayName = name && String(name).trim() !== '' ? String(name).trim() : `Student ${id}`;
+                grouped.push({
+                  student_id: id,
+                  student_name: displayName,
+                  test_results: [],
+                  total_score: 0,
+                  tests_taken: 0,
+                  average_score: 0,
+                });
+                // Ensure studentNameMap contains this name so UI shows it immediately
+                setStudentNameMap(prev => ({ ...prev, [id]: displayName }));
+              }
+            });
+          } catch (err) {
+            console.warn('Could not fetch students to merge with results:', err);
+          }
+
+          // Sort final list by average score (students without results will be at the bottom)
+          grouped = grouped.sort((a, b) => b.average_score - a.average_score);
           setGroupedResults(grouped);
+
+          // Compute available subjects based on data
+          const availableSubjects = SUBJECTS.filter(sub =>
+            results.results.some(result => {
+              const val = result[sub.key];
+              return val != null && val !== undefined && val !== '' && val !== 0;
+            })
+          );
+          setAvailableSubjects(availableSubjects);
         } else {
           console.error("Unexpected results shape:", results);
           setError("Unexpected response structure from API.");
@@ -170,6 +224,42 @@ function IStudentDetails() {
 
     fetchTeachers();
   }, [selectedEducatorId, educators]);
+
+  // Load student names for selected educator and populate studentNameMap
+  useEffect(() => {
+    if (!selectedEducatorId) {
+      setStudentNameMap({});
+      return;
+    }
+
+    let cancelled = false;
+    const loadStudentNames = async () => {
+      try {
+        const res = await fetchInstitutionEducatorStudents(selectedEducatorId);
+
+        let students = [];
+        if (!res) students = [];
+        else if (Array.isArray(res)) students = res;
+        else if (Array.isArray(res.students)) students = res.students;
+        else if (Array.isArray(res.data)) students = res.data;
+        else students = [];
+
+        const map = {};
+        students.forEach((s) => {
+          const id = s.student_id ?? s.studentId ?? s.id;
+          const name = s.student_name ?? s.name ?? s.full_name ?? '';
+          if (id) map[id] = name && String(name).trim() !== '' ? String(name).trim() : `Student ${id}`;
+        });
+
+        if (!cancelled) setStudentNameMap(map);
+      } catch (err) {
+        console.error('Failed to load student names:', err);
+      }
+    };
+
+    loadStudentNames();
+    return () => { cancelled = true; };
+  }, [selectedEducatorId]);
 
   const groupResultsByStudent = (results) => {
     const grouped = {};
@@ -314,11 +404,11 @@ function IStudentDetails() {
     { field: 'actions', label: 'Actions', sortable: false, headerClass: 'justify-end' },
   ];
 
-  const educatorRows = ['Physics', 'Chemistry', 'Botany', 'Zoology'].map((sub) => {
-    const entry = (subjectEducators || []).find(s => String(s.subject).toLowerCase() === String(sub).toLowerCase());
+  const educatorRows = availableSubjects.map((sub) => {
+    const entry = (subjectEducators || []).find(s => String(s.subject).toLowerCase() === String(sub.label).toLowerCase());
     const name = entry ? (entry.teacher_name || entry.educator || 'Not assigned') : 'Not assigned';
     const phone = entry ? (entry.phone_number || 'N/A') : 'N/A';
-    return { subject: sub, name, phone, entry };
+    return { subject: sub.label, name, phone, entry };
   });
 
   const columns = [
@@ -562,7 +652,7 @@ function IStudentDetails() {
                     <Sliders className="w-5 h-5" />
                     <span>Sort</span>
                   </Button>
-                  <Button className="flex items-center gap-2 w-full sm:w-auto" onClick={() => { setCreateModalOpen(true); setNewStudent({ class_id: '', student_id: '', name: '', dob: '' }); }}>
+                  <Button className="flex items-center gap-2 w-full sm:w-auto" onClick={() => { setCreateModalOpen(true); setNewStudent({ student_id: '', name: '', dob: '' }); }}>
                     <span>Add Student</span>
                   </Button>
                 </div>
@@ -649,15 +739,7 @@ function IStudentDetails() {
                 maxWidth="max-w-lg"
               >
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Class ID</label>
-                    <Input
-                      className="input input-bordered w-full"
-                      value={newStudent.class_id}
-                      placeholder="Optional: class id (will default to educator's class)"
-                      onChange={e => setNewStudent(prev => ({ ...prev, class_id: e.target.value }))}
-                    />
-                  </div>
+                  {/* Class is selected from the educator context; no class_id input needed */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Student ID</label>
                     <Input
@@ -696,12 +778,15 @@ function IStudentDetails() {
                             return;
                           }
                           const payload = { student_id: newStudent.student_id.trim(), name: newStudent.name.trim(), dob: newStudent.dob };
-                          if (newStudent.class_id && newStudent.class_id.trim() !== '') payload.class_id = newStudent.class_id.trim();
                           const res = await createInstitutionStudent(selectedEducatorId, payload);
                           if (res.error) {
                             setError(res.error);
                           } else {
                             setDeleteSummary({ message: res.message || 'Student created', counts: {} });
+                            // Ensure the in-memory name map includes the newly created student so the list shows the name
+                            if (payload.name) {
+                              setStudentNameMap(prev => ({ ...prev, [payload.student_id]: payload.name }));
+                            }
                             await fetchResults();
                             setCreateModalOpen(false);
                           }
@@ -733,10 +818,9 @@ function IStudentDetails() {
                         <SelectValue placeholder="Select a subject" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Physics">Physics</SelectItem>
-                        <SelectItem value="Chemistry">Chemistry</SelectItem>
-                        <SelectItem value="Botany">Botany</SelectItem>
-                        <SelectItem value="Zoology">Zoology</SelectItem>
+                        {availableSubjects.map(sub => (
+                          <SelectItem key={sub.label} value={sub.label}>{sub.label}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -759,7 +843,7 @@ function IStudentDetails() {
                     <Input
                       type="tel"
                       className="input input-bordered w-full"
-                      placeholder="+1234567890"
+                      placeholder="+91"
                       value={subjForm.phone_number}
                       onChange={e => setSubjForm(prev => ({ ...prev, phone_number: e.target.value }))}
                     />
@@ -769,6 +853,21 @@ function IStudentDetails() {
                       if (!subjForm.subject || !subjForm.educator) {
                         toast.error('Subject and Educator Name are required');
                         return;
+                      }
+
+                      // Validate email if provided
+                      if (subjForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(subjForm.email)) {
+                        toast.error("Please enter a valid email address");
+                        return;
+                      }
+
+                      // Validate phone number if provided (Indian mobile: 10 digits starting with 6-9)
+                      if (subjForm.phone_number) {
+                        const phoneDigits = subjForm.phone_number.replace(/\D/g, '');
+                        if (!/^[6-9]\d{9}$/.test(phoneDigits)) {
+                          toast.error("Please enter a valid Indian mobile number (10 digits starting with 6-9)");
+                          return;
+                        }
                       }
 
                       if (!classIdForTeachers) {
@@ -837,217 +936,216 @@ function IStudentDetails() {
                 ) : ''}
                 maxWidth="max-w-3xl"
               >
-                {modalStudent && (
-                  <>
-                    {isEditing ? (
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Name</label>
-                          <Input
-                            className="input input-bordered w-full"
-                            value={editForm.name}
-                            onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">DOB</label>
-                          <Input
-                            type="date"
-                            className="input input-bordered w-full"
-                            value={editForm.dob}
-                            onChange={e => setEditForm(prev => ({ ...prev, dob: e.target.value }))}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Password</label>
-                          <Input
-                            type="password"
-                            className="input input-bordered w-full"
-                            value={editForm.password}
-                            placeholder="Leave blank to keep current password"
-                            onChange={e => setEditForm(prev => ({ ...prev, password: e.target.value }))}
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <div className="flex flex-wrap gap-x-6 gap-y-2 mb-4">
-                          <div className="flex items-center gap-2">
-                            <FileText className="text-gray-400" />
-                            <div>
-                              <p className="text-sm text-gray-500">Tests</p>
-                              <p className="font-medium">{modalStudent.tests_taken}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <BarChart2 className="text-gray-400" />
-                            <div>
-                              <p className="text-sm text-gray-500">Average</p>
-                              <p className="font-medium">{modalStudent.average_score}</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <h4 className="text-md font-semibold text-gray-800 mb-2">Test Performance</h4>
-                        <div className="overflow-x-auto">
-                          <table className="table table-zebra table-sm">
-                            <thead>
-                              <tr>
-                                <th>Test #</th>
-                                <th>Total Score</th>
-                                <th>Physics</th>
-                                <th>Chemistry</th>
-                                <th>Biology</th>
-                                <th>Botany</th>
-                                <th>Zoology</th>
-                                <th>Accuracy</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {modalStudent.test_results.map((test, index) => (
-                                <tr key={index}>
-                                  <td>{test.test_num}</td>
-                                  <td className="font-medium">{test.total_score}</td>
-                                  <td>{test.phy_score || "-"}</td>
-                                  <td>{test.chem_score || "-"}</td>
-                                  <td>{test.bio_score || "-"}</td>
-                                  <td>{test.bot_score || "-"}</td>
-                                  <td>{test.zoo_score || "-"}</td>
-                                  <td>
-                                    {test.total_attended ? Math.round((test.total_correct / test.total_attended) * 100) + '%' : '-'}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
-
-                    {!isEditing && modalStudent && modalStudent.test_results && modalStudent.test_results.length > 0 && (
-                      <div className="mt-4">
-                        <p className="text-xs text-gray-500 mb-2">Manage individual tests:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {modalStudent.test_results.map((test) => (
-                            <div key={test.test_num} className="flex gap-1">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-red-600 hover:bg-red-50"
-                                onClick={() => {
-                                  setTestToDelete({ studentId: modalStudent.student_id, testNum: test.test_num });
-                                  setDeleteTestModalOpen(true);
-                                }}
-                              >
-                                <Trash2 className="w-3 h-3 mr-1" />
-                                Test {test.test_num}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-blue-600 hover:bg-blue-50"
-                                onClick={() => {
-                                  setReuploadData({ studentId: modalStudent.student_id, testNum: test.test_num });
-                                  setReuploadModalOpen(true);
-                                }}
-                              >
-                                <FileText className="w-3 h-3 mr-1" />
-                                Re-upload
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="modal-action mt-6 flex justify-between">
+                <div className="max-h-[80vh] overflow-y-auto pr-2">
+                  {modalStudent && (
+                    <>
                       {isEditing ? (
-                        <>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="default"
-                              onClick={async () => {
-                                try {
-                                  // Build payload with only non-empty fields (all fields are optional)
-                                  const payload = {};
-                                  if (editForm.name && editForm.name.trim() !== '') payload.name = editForm.name.trim();
-                                  if (editForm.dob && editForm.dob.trim() !== '') payload.dob = editForm.dob.trim();
-                                  if (editForm.password && editForm.password.trim() !== '') payload.password = editForm.password.trim();
-
-                                  // Ensure at least one field is being updated
-                                  if (Object.keys(payload).length === 0) {
-                                    setError('Please enter at least one field to update');
-                                    return;
-                                  }
-
-                                  const res = await updateInstitutionStudent(selectedEducatorId, modalStudent.student_id, payload);
-                                  if (res.error) {
-                                    setError(res.error);
-                                  } else {
-                                    // Refresh and close edit mode
-                                    await fetchResults();
-                                    setIsEditing(false);
-                                    setModalStudent(null);
-                                  }
-                                } catch (err) {
-                                  console.error(err);
-                                  setError('Failed to update student');
-                                }
-                              }}
-                            >
-                              Save
-                            </Button>
-                            <Button variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">Name</label>
+                            <Input
+                              className="input input-bordered w-full"
+                              value={editForm.name}
+                              onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                            />
                           </div>
-                          <Button variant="ghost" onClick={() => setModalStudent(null)}>Close</Button>
-                        </>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">DOB</label>
+                            <Input
+                              type="date"
+                              className="input input-bordered w-full"
+                              value={editForm.dob}
+                              onChange={e => setEditForm(prev => ({ ...prev, dob: e.target.value }))}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">Password</label>
+                            <Input
+                              type="password"
+                              className="input input-bordered w-full"
+                              value={editForm.password}
+                              placeholder="Leave blank to keep current password"
+                              onChange={e => setEditForm(prev => ({ ...prev, password: e.target.value }))}
+                            />
+                          </div>
+                        </div>
                       ) : (
-                        <>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-red-600 rounded-full hover:bg-red-100 hover:text-red-700"
-                              onClick={async () => {
-                                if (!window.confirm('Delete this student and all related data?')) return;
-                                try {
-                                  const res = await deleteInstitutionStudent(selectedEducatorId, modalStudent.student_id);
-                                  if (res.error) {
-                                    setError(res.error);
-                                  } else {
-                                    // Save deletion summary to show to the user
-                                    setDeleteSummary({ message: res.message || 'Deleted', counts: res.deleted_counts || {} });
-                                    await fetchResults();
-                                    setModalStudent(null);
-                                  }
-                                } catch (err) {
-                                  console.error(err);
-                                  setError('Failed to delete student');
-                                }
-                              }}
-                              aria-label="Delete student"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="rounded-full"
-                              onClick={() => {
-                                setIsEditing(true);
-                                setEditForm({ name: modalStudent.student_name || '', dob: modalStudent.dob || '', password: '' });
-                              }}
-                              aria-label="Edit student"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
+                        <div>
+                          <div className="flex flex-wrap gap-x-6 gap-y-2 mb-4">
+                            <div className="flex items-center gap-2">
+                              <FileText className="text-gray-400" />
+                              <div>
+                                <p className="text-sm text-gray-500">Tests</p>
+                                <p className="font-medium">{modalStudent.tests_taken}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <BarChart2 className="text-gray-400" />
+                              <div>
+                                <p className="text-sm text-gray-500">Average</p>
+                                <p className="font-medium">{modalStudent.average_score}</p>
+                              </div>
+                            </div>
                           </div>
-                          <Button variant="ghost" onClick={() => setModalStudent(null)}>Close</Button>
-                        </>
+
+                          {(() => {
+                            const activeSubjects = SUBJECTS.filter(sub =>
+                              modalStudent.test_results.some(test => {
+                                const val = test[sub.key];
+                                return val != null && val !== undefined && val !== '' && val !== 0;
+                              })
+                            );
+                            return (
+                              <>
+                                <h4 className="text-md font-semibold text-gray-800 mb-2">Test Performance</h4>
+                                <div className="overflow-x-auto">
+                                  <table className="table table-zebra table-sm">
+                                    <thead>
+                                      <tr>
+                                        <th>Test #</th>
+                                        <th>Total Score</th>
+                                        {activeSubjects.map(sub => <th key={sub.key}>{sub.label}</th>)}
+                                        <th className="text-right">Actions</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {modalStudent.test_results.map((test, index) => (
+                                        <tr key={index}>
+                                          <td>{test.test_num}</td>
+                                          <td className="font-medium">{test.total_score}</td>
+                                          {activeSubjects.map(sub => <td key={sub.key}>{test[sub.key] != null && test[sub.key] !== undefined && test[sub.key] !== '' && test[sub.key] !== 0 ? test[sub.key] : "-"}</td>)}
+                                          <td className="whitespace-nowrap">
+                                            <div className="flex items-center gap-2 justify-end">
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="text-red-600 hover:bg-red-50"
+                                                onClick={() => {
+                                                  setTestToDelete({ studentId: modalStudent.student_id, testNum: test.test_num });
+                                                  setDeleteTestModalOpen(true);
+                                                }}
+                                              >
+                                                <Trash2 className="w-3 h-3 mr-1" />
+                                                Delete
+                                              </Button>
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="text-blue-600 hover:bg-blue-50"
+                                                onClick={() => {
+                                                  setReuploadData({ studentId: modalStudent.student_id, testNum: test.test_num });
+                                                  setReuploadModalOpen(true);
+                                                }}
+                                              >
+                                                <FileText className="w-3 h-3 mr-1" />
+                                                Re-upload
+                                              </Button>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
                       )}
-                    </div>
-                  </>
-                )}
+
+                      <div className="modal-action mt-6 flex justify-between">
+                        {isEditing ? (
+                          <>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="default"
+                                onClick={async () => {
+                                  try {
+                                    // Build payload with only non-empty fields (all fields are optional)
+                                    const payload = {};
+                                    if (editForm.name && editForm.name.trim() !== '') payload.name = editForm.name.trim();
+                                    if (editForm.dob && editForm.dob.trim() !== '') payload.dob = editForm.dob.trim();
+                                    if (editForm.password && editForm.password.trim() !== '') payload.password = editForm.password.trim();
+
+                                    // Ensure at least one field is being updated
+                                    if (Object.keys(payload).length === 0) {
+                                      setError('Please enter at least one field to update');
+                                      return;
+                                    }
+
+                                    const res = await updateInstitutionStudent(selectedEducatorId, modalStudent.student_id, payload);
+                                    if (res.error) {
+                                      setError(res.error);
+                                    } else {
+                                      // If name was updated, ensure it shows immediately in the list
+                                      if (payload.name) {
+                                        setStudentNameMap(prev => ({ ...prev, [modalStudent.student_id]: payload.name }));
+                                      }
+                                      // Refresh and close edit mode
+                                      await fetchResults();
+                                      setIsEditing(false);
+                                      setModalStudent(null);
+                                    }
+                                  } catch (err) {
+                                    console.error(err);
+                                    setError('Failed to update student');
+                                  }
+                                }}
+                              >
+                                Save
+                              </Button>
+                              <Button variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
+                            </div>
+                            <Button variant="ghost" onClick={() => setModalStudent(null)}>Close</Button>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-red-600 rounded-full hover:bg-red-100 hover:text-red-700"
+                                onClick={async () => {
+                                  if (!window.confirm('Delete this student and all related data?')) return;
+                                  try {
+                                    const res = await deleteInstitutionStudent(selectedEducatorId, modalStudent.student_id);
+                                    if (res.error) {
+                                      setError(res.error);
+                                    } else {
+                                      // Save deletion summary to show to the user
+                                      setDeleteSummary({ message: res.message || 'Deleted', counts: res.deleted_counts || {} });
+                                      await fetchResults();
+                                      setModalStudent(null);
+                                    }
+                                  } catch (err) {
+                                    console.error(err);
+                                    setError('Failed to delete student');
+                                  }
+                                }}
+                                aria-label="Delete student"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-full"
+                                onClick={() => {
+                                  setIsEditing(true);
+                                  setEditForm({ name: modalStudent.student_name || '', dob: modalStudent.dob || '', password: '' });
+                                }}
+                                aria-label="Edit student"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            </div>
+                            <Button variant="ghost" onClick={() => setModalStudent(null)}>Close</Button>
+                          </>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
               </Modal>
 
               {sortModalOpen && (
