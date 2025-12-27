@@ -936,225 +936,216 @@ function IStudentDetails() {
                 ) : ''}
                 maxWidth="max-w-3xl"
               >
-                {modalStudent && (
-                  <>
-                    {isEditing ? (
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Name</label>
-                          <Input
-                            className="input input-bordered w-full"
-                            value={editForm.name}
-                            onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">DOB</label>
-                          <Input
-                            type="date"
-                            className="input input-bordered w-full"
-                            value={editForm.dob}
-                            onChange={e => setEditForm(prev => ({ ...prev, dob: e.target.value }))}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Password</label>
-                          <Input
-                            type="password"
-                            className="input input-bordered w-full"
-                            value={editForm.password}
-                            placeholder="Leave blank to keep current password"
-                            onChange={e => setEditForm(prev => ({ ...prev, password: e.target.value }))}
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <div className="flex flex-wrap gap-x-6 gap-y-2 mb-4">
-                          <div className="flex items-center gap-2">
-                            <FileText className="text-gray-400" />
-                            <div>
-                              <p className="text-sm text-gray-500">Tests</p>
-                              <p className="font-medium">{modalStudent.tests_taken}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <BarChart2 className="text-gray-400" />
-                            <div>
-                              <p className="text-sm text-gray-500">Average</p>
-                              <p className="font-medium">{modalStudent.average_score}</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {(() => {
-                          const activeSubjects = SUBJECTS.filter(sub =>
-                            modalStudent.test_results.some(test => {
-                              const val = test[sub.key];
-                              return val != null && val !== undefined && val !== '' && val !== 0;
-                            })
-                          );
-                          return (
-                            <>
-                              <h4 className="text-md font-semibold text-gray-800 mb-2">Test Performance</h4>
-                              <div className="overflow-x-auto">
-                                <table className="table table-zebra table-sm">
-                                  <thead>
-                                    <tr>
-                                      <th>Test #</th>
-                                      <th>Total Score</th>
-                                      {activeSubjects.map(sub => <th key={sub.key}>{sub.label}</th>)}
-                                      <th>Accuracy</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {modalStudent.test_results.map((test, index) => (
-                                      <tr key={index}>
-                                        <td>{test.test_num}</td>
-                                        <td className="font-medium">{test.total_score}</td>
-                                        {activeSubjects.map(sub => <td key={sub.key}>{test[sub.key] != null && test[sub.key] !== undefined && test[sub.key] !== '' && test[sub.key] !== 0 ? test[sub.key] : "-"}</td>)}
-                                        <td>
-                                          {test.total_attended ? Math.round((test.total_correct / test.total_attended) * 100) + '%' : '-'}
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </>
-                          );
-                        })()}
-                      </div>
-                    )}
-
-                    {!isEditing && modalStudent && modalStudent.tests && modalStudent.tests.length > 0 && (
-                      <div className="mt-4">
-                        <p className="text-xs text-gray-500 mb-2">Manage individual tests:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {modalStudent.tests.map((test) => (
-                            <div key={test.test_num} className="flex gap-1">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-red-600 hover:bg-red-50"
-                                onClick={() => {
-                                  setTestToDelete({ studentId: modalStudent.student_id, testNum: test.test_num });
-                                  setDeleteTestModalOpen(true);
-                                }}
-                              >
-                                <Trash2 className="w-3 h-3 mr-1" />
-                                Test {test.test_num}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-blue-600 hover:bg-blue-50"
-                                onClick={() => {
-                                  setReuploadData({ studentId: modalStudent.student_id, testNum: test.test_num });
-                                  setReuploadModalOpen(true);
-                                }}
-                              >
-                                <FileText className="w-3 h-3 mr-1" />
-                                Re-upload
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="modal-action mt-6 flex justify-between">
+                <div className="max-h-[80vh] overflow-y-auto pr-2">
+                  {modalStudent && (
+                    <>
                       {isEditing ? (
-                        <>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="default"
-                              onClick={async () => {
-                                try {
-                                  // Build payload with only non-empty fields (all fields are optional)
-                                  const payload = {};
-                                  if (editForm.name && editForm.name.trim() !== '') payload.name = editForm.name.trim();
-                                  if (editForm.dob && editForm.dob.trim() !== '') payload.dob = editForm.dob.trim();
-                                  if (editForm.password && editForm.password.trim() !== '') payload.password = editForm.password.trim();
-
-                                  // Ensure at least one field is being updated
-                                  if (Object.keys(payload).length === 0) {
-                                    setError('Please enter at least one field to update');
-                                    return;
-                                  }
-
-                                  const res = await updateInstitutionStudent(selectedEducatorId, modalStudent.student_id, payload);
-                                  if (res.error) {
-                                    setError(res.error);
-                                  } else {
-                                    // If name was updated, ensure it shows immediately in the list
-                                    if (payload.name) {
-                                      setStudentNameMap(prev => ({ ...prev, [modalStudent.student_id]: payload.name }));
-                                    }
-                                    // Refresh and close edit mode
-                                    await fetchResults();
-                                    setIsEditing(false);
-                                    setModalStudent(null);
-                                  }
-                                } catch (err) {
-                                  console.error(err);
-                                  setError('Failed to update student');
-                                }
-                              }}
-                            >
-                              Save
-                            </Button>
-                            <Button variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">Name</label>
+                            <Input
+                              className="input input-bordered w-full"
+                              value={editForm.name}
+                              onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                            />
                           </div>
-                          <Button variant="ghost" onClick={() => setModalStudent(null)}>Close</Button>
-                        </>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">DOB</label>
+                            <Input
+                              type="date"
+                              className="input input-bordered w-full"
+                              value={editForm.dob}
+                              onChange={e => setEditForm(prev => ({ ...prev, dob: e.target.value }))}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">Password</label>
+                            <Input
+                              type="password"
+                              className="input input-bordered w-full"
+                              value={editForm.password}
+                              placeholder="Leave blank to keep current password"
+                              onChange={e => setEditForm(prev => ({ ...prev, password: e.target.value }))}
+                            />
+                          </div>
+                        </div>
                       ) : (
-                        <>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-red-600 rounded-full hover:bg-red-100 hover:text-red-700"
-                              onClick={async () => {
-                                if (!window.confirm('Delete this student and all related data?')) return;
-                                try {
-                                  const res = await deleteInstitutionStudent(selectedEducatorId, modalStudent.student_id);
-                                  if (res.error) {
-                                    setError(res.error);
-                                  } else {
-                                    // Save deletion summary to show to the user
-                                    setDeleteSummary({ message: res.message || 'Deleted', counts: res.deleted_counts || {} });
-                                    await fetchResults();
-                                    setModalStudent(null);
-                                  }
-                                } catch (err) {
-                                  console.error(err);
-                                  setError('Failed to delete student');
-                                }
-                              }}
-                              aria-label="Delete student"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="rounded-full"
-                              onClick={() => {
-                                setIsEditing(true);
-                                setEditForm({ name: modalStudent.student_name || '', dob: modalStudent.dob || '', password: '' });
-                              }}
-                              aria-label="Edit student"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
+                        <div>
+                          <div className="flex flex-wrap gap-x-6 gap-y-2 mb-4">
+                            <div className="flex items-center gap-2">
+                              <FileText className="text-gray-400" />
+                              <div>
+                                <p className="text-sm text-gray-500">Tests</p>
+                                <p className="font-medium">{modalStudent.tests_taken}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <BarChart2 className="text-gray-400" />
+                              <div>
+                                <p className="text-sm text-gray-500">Average</p>
+                                <p className="font-medium">{modalStudent.average_score}</p>
+                              </div>
+                            </div>
                           </div>
-                          <Button variant="ghost" onClick={() => setModalStudent(null)}>Close</Button>
-                        </>
+
+                          {(() => {
+                            const activeSubjects = SUBJECTS.filter(sub =>
+                              modalStudent.test_results.some(test => {
+                                const val = test[sub.key];
+                                return val != null && val !== undefined && val !== '' && val !== 0;
+                              })
+                            );
+                            return (
+                              <>
+                                <h4 className="text-md font-semibold text-gray-800 mb-2">Test Performance</h4>
+                                <div className="overflow-x-auto">
+                                  <table className="table table-zebra table-sm">
+                                    <thead>
+                                      <tr>
+                                        <th>Test #</th>
+                                        <th>Total Score</th>
+                                        {activeSubjects.map(sub => <th key={sub.key}>{sub.label}</th>)}
+                                        <th className="text-right">Actions</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {modalStudent.test_results.map((test, index) => (
+                                        <tr key={index}>
+                                          <td>{test.test_num}</td>
+                                          <td className="font-medium">{test.total_score}</td>
+                                          {activeSubjects.map(sub => <td key={sub.key}>{test[sub.key] != null && test[sub.key] !== undefined && test[sub.key] !== '' && test[sub.key] !== 0 ? test[sub.key] : "-"}</td>)}
+                                          <td className="whitespace-nowrap">
+                                            <div className="flex items-center gap-2 justify-end">
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="text-red-600 hover:bg-red-50"
+                                                onClick={() => {
+                                                  setTestToDelete({ studentId: modalStudent.student_id, testNum: test.test_num });
+                                                  setDeleteTestModalOpen(true);
+                                                }}
+                                              >
+                                                <Trash2 className="w-3 h-3 mr-1" />
+                                                Delete
+                                              </Button>
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="text-blue-600 hover:bg-blue-50"
+                                                onClick={() => {
+                                                  setReuploadData({ studentId: modalStudent.student_id, testNum: test.test_num });
+                                                  setReuploadModalOpen(true);
+                                                }}
+                                              >
+                                                <FileText className="w-3 h-3 mr-1" />
+                                                Re-upload
+                                              </Button>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
                       )}
-                    </div>
-                  </>
-                )}
+
+                      <div className="modal-action mt-6 flex justify-between">
+                        {isEditing ? (
+                          <>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="default"
+                                onClick={async () => {
+                                  try {
+                                    // Build payload with only non-empty fields (all fields are optional)
+                                    const payload = {};
+                                    if (editForm.name && editForm.name.trim() !== '') payload.name = editForm.name.trim();
+                                    if (editForm.dob && editForm.dob.trim() !== '') payload.dob = editForm.dob.trim();
+                                    if (editForm.password && editForm.password.trim() !== '') payload.password = editForm.password.trim();
+
+                                    // Ensure at least one field is being updated
+                                    if (Object.keys(payload).length === 0) {
+                                      setError('Please enter at least one field to update');
+                                      return;
+                                    }
+
+                                    const res = await updateInstitutionStudent(selectedEducatorId, modalStudent.student_id, payload);
+                                    if (res.error) {
+                                      setError(res.error);
+                                    } else {
+                                      // If name was updated, ensure it shows immediately in the list
+                                      if (payload.name) {
+                                        setStudentNameMap(prev => ({ ...prev, [modalStudent.student_id]: payload.name }));
+                                      }
+                                      // Refresh and close edit mode
+                                      await fetchResults();
+                                      setIsEditing(false);
+                                      setModalStudent(null);
+                                    }
+                                  } catch (err) {
+                                    console.error(err);
+                                    setError('Failed to update student');
+                                  }
+                                }}
+                              >
+                                Save
+                              </Button>
+                              <Button variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
+                            </div>
+                            <Button variant="ghost" onClick={() => setModalStudent(null)}>Close</Button>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-red-600 rounded-full hover:bg-red-100 hover:text-red-700"
+                                onClick={async () => {
+                                  if (!window.confirm('Delete this student and all related data?')) return;
+                                  try {
+                                    const res = await deleteInstitutionStudent(selectedEducatorId, modalStudent.student_id);
+                                    if (res.error) {
+                                      setError(res.error);
+                                    } else {
+                                      // Save deletion summary to show to the user
+                                      setDeleteSummary({ message: res.message || 'Deleted', counts: res.deleted_counts || {} });
+                                      await fetchResults();
+                                      setModalStudent(null);
+                                    }
+                                  } catch (err) {
+                                    console.error(err);
+                                    setError('Failed to delete student');
+                                  }
+                                }}
+                                aria-label="Delete student"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-full"
+                                onClick={() => {
+                                  setIsEditing(true);
+                                  setEditForm({ name: modalStudent.student_name || '', dob: modalStudent.dob || '', password: '' });
+                                }}
+                                aria-label="Edit student"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            </div>
+                            <Button variant="ghost" onClick={() => setModalStudent(null)}>Close</Button>
+                          </>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
               </Modal>
 
               {sortModalOpen && (
