@@ -30,6 +30,7 @@ export const useTests = (educatorId = null, { enabled = true } = {}) => {
       // Process the fetched test data to the desired format
       const processedTests = fetched.tests.map((test) => ({
         test_num: test.test_num,
+        test_name: test.test_name, // Include test name for duplicate validation
         createdAt: test.date,
         progress: test.status?.toLowerCase(), // Convert status to lowercase
       }));

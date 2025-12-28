@@ -196,8 +196,10 @@ def get_educator_tests(request):
         test_data = []
         for test in tests:
             status_entry = TestProcessingStatus.objects.filter(class_id=class_id, test_num=test.test_num).first()
+            metadata = TestMetadata.objects.filter(class_id=class_id, test_num=test.test_num).first()
             test_data.append({
                 "test_num": test.test_num,
+                "test_name": metadata.test_name if metadata else None,
                 "date": test.date,
                 "status": status_entry.status if status_entry else "PENDING"
             })
@@ -206,6 +208,62 @@ def get_educator_tests(request):
 
     except Exception as e:
         logger.exception(f"Error in get_educator_tests: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def update_educator_test(request, test_num):
+    """Update test metadata (currently only test_name)."""
+    try:
+        educator = None
+        if isinstance(request.user, Educator):
+            educator = request.user
+        elif isinstance(request.user, Manager):
+            educator_id = request.data.get('educator_id')
+            if not educator_id:
+                return JsonResponse({'error': 'Educator ID is required for institution view'}, status=400)
+            educator = Educator.objects.filter(id=educator_id).first()
+            if not educator:
+                return JsonResponse({'error': 'Educator not found'}, status=404)
+            
+            if request.user.institution != educator.institution:
+                return JsonResponse({'error': 'Unauthorized: Educator does not belong to your institution'}, status=403)
+        else:
+            return JsonResponse({'error': 'Unauthorized user type'}, status=403)
+
+        class_id = educator.class_id
+        
+        # Get the test to verify it exists
+        test = Test.objects.filter(class_id=class_id, test_num=test_num).first()
+        if not test:
+            return JsonResponse({'error': 'Test not found'}, status=404)
+
+        # Get or create metadata
+        metadata, created = TestMetadata.objects.get_or_create(
+            class_id=class_id,
+            test_num=test_num,
+            defaults={
+                'pattern': 'PHY_CHEM_BIO',
+                'subject_order': ['Physics', 'Chemistry', 'Biology'],
+                'total_questions': 180,
+            }
+        )
+
+        # Update test_name if provided
+        test_name = request.data.get('test_name')
+        if test_name is not None:
+            metadata.test_name = test_name.strip()
+            metadata.save()
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Test updated successfully',
+            'test_name': metadata.test_name
+        }, status=200)
+
+    except Exception as e:
+        logger.exception(f"Error in update_educator_test: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
 
 

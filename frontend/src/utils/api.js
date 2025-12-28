@@ -553,6 +553,28 @@ export const fetchTests = async (educatorId = null) => {
 };
 
 /**
+ * Update Test Name
+ * @param {number} testNum - Test number to update
+ * @param {string} testName - New test name
+ * @param {string|number} educatorId - Optional educator ID for institution view
+ */
+export const updateTestName = async (testNum, testName, educatorId = null) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.patch(
+      `${API_BASE_URL}/educator/tests/${testNum}/`,
+      { test_name: testName, educator_id: educatorId },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    return { error: error.response?.data?.error || 'Failed to update test name' };
+  }
+};
+
+/**
  * Fetch Educator Dashboard Data
  */
 export const getEducatorDashboardData = async () => {

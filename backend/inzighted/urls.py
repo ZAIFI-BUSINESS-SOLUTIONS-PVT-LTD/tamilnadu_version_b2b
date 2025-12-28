@@ -46,6 +46,7 @@ urlpatterns = [
 
     #educator tests
     path("api/educator/tests/", educator_views.get_educator_tests, name="get_educator_tests"),
+    path("api/educator/tests/<int:test_num>/", educator_views.update_educator_test, name="update_educator_test"),
 
     # Educator student details
     path("api/educator/students/", educator_views.get_student_details, name="get_student_details"),

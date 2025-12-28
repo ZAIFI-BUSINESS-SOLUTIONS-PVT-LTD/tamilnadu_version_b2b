@@ -10,14 +10,37 @@ import DropZone from './ui/dropzone.jsx';
 const EducatorDropZone = (props) => <DropZone {...props} />;
 
 // Modal component for handling multi-step file uploads
-const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUploading }) => {
+const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUploading, existingTests = [] }) => {
   // Subject configurator state (in-modal)
   const [showConfig, setShowConfig] = useState(false);
   const [configStep, setConfigStep] = useState(1); // 1: pattern, 2: order/counts
   const [pattern, setPattern] = useState(null);
   const [testName, setTestName] = useState('');
+  const [testNameError, setTestNameError] = useState('');
   const [subjects, setSubjects] = useState([]);
   const [questionMode, setQuestionMode] = useState('perSubject');
+
+  // Validate test name for duplicates and emptiness
+  const validateTestName = (name) => {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setTestNameError('Test name is required');
+      return false;
+    }
+    
+    // Check for duplicate test names (case-insensitive)
+    const isDuplicate = existingTests.some(
+      test => test.test_name && test.test_name.toLowerCase() === trimmedName.toLowerCase()
+    );
+    
+    if (isDuplicate) {
+      setTestNameError('This test name already exists. Please choose a different name.');
+      return false;
+    }
+    
+    setTestNameError('');
+    return true;
+  };
   const [subjectCounts, setSubjectCounts] = useState({});
   const [metadata, setMetadata] = useState(null);
   const [answerKeyValidation, setAnswerKeyValidation] = useState(null);
@@ -96,20 +119,26 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
   };
 
   const handleSaveConfig = () => {
+    if (!validateTestName(testName)) {
+      return false;
+    }
     const cfg = {
       pattern,
-      test_name: testName,
+      test_name: testName.trim(),
       subject_order: subjects,
       total_questions: calculateTotal(),
       section_counts: subjectCounts
     };
     setMetadata(cfg);
     setShowConfig(false);
+    return true;
   };
 
   const handleClearConfig = () => {
     setMetadata(null);
     setPattern(null);
+    setTestName('');
+    setTestNameError('');
     setSubjects([]);
     setQuestionMode('perSubject');
     setSubjectCounts({});
@@ -273,7 +302,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
   // Determine if user can proceed from the current step
   const canProceed = (() => {
     if (currentStep.type === 'file') return !!currentStep.file;
-    if (currentStep.key === 'syllabus') return !!pattern; // require pattern selection before proceeding via Next
+    if (currentStep.key === 'syllabus') return !!pattern && !!testName.trim() && !testNameError; // require pattern and valid test name
     if (currentStep.key === 'counts') return isConfigValid();
     return true;
   })();
@@ -367,8 +396,10 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
                   onClick={() => {
                     if (!canProceed) return;
                     if (currentStep.key === 'counts') {
-                      handleSaveConfig();
-                      setStep(step + 1);
+                      const saved = handleSaveConfig();
+                      if (saved) {
+                        setStep(step + 1);
+                      }
                       return;
                     }
                     setStep(step + 1);
@@ -453,8 +484,44 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
           <div className="p-6 border rounded-2xl mb-6">
             {currentStep.key === 'syllabus' ? (
               <div>
+                <div className="mb-4">
+                  <label className="label">
+                    <span className="label-text font-medium">Test name <span className="text-error">*</span></span>
+                  </label>
+                  <input
+                    type="text"
+                    value={testName}
+                    onChange={(e) => {
+                      setTestName(e.target.value);
+                      if (e.target.value.trim()) {
+                        validateTestName(e.target.value);
+                      } else {
+                        setTestNameError('Test name is required');
+                      }
+                    }}
+                    onBlur={() => validateTestName(testName)}
+                    placeholder="Enter a unique name (e.g., Midterm Physics - Oct 2024)"
+                    className={`input input-bordered w-full ${testNameError ? 'input-error border-error' : ''}`}
+                    aria-label="Test name"
+                    aria-required="true"
+                    aria-invalid={!!testNameError}
+                  />
+                  {testNameError && (
+                    <label className="label">
+                      <span className="label-text-alt text-error">{testNameError}</span>
+                    </label>
+                  )}
+                  {!testNameError && testName.trim() && (
+                    <label className="label">
+                      <span className="label-text-alt text-success flex items-center gap-1">
+                        <CheckCircle size={12} /> Valid test name
+                      </span>
+                    </label>
+                  )}
+                </div>
+
                 <div className="mb-3">
-                  <div className="text-sm text-gray-600">Select subject syllabus</div>
+                  <div className="text-sm text-gray-600 font-medium">Select subject syllabus <span className="text-error">*</span></div>
                   <div className="text-xs text-gray-500">Choose the syllabus pattern that matches your test</div>
                 </div>
 
@@ -483,17 +550,6 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
                     );
                   })}
 
-                </div>
-                <div className="mt-4">
-                  <label className="label"><span className="label-text">Test name (optional)</span></label>
-                  <input
-                    type="text"
-                    value={testName}
-                    onChange={e => setTestName(e.target.value)}
-                    placeholder="Enter a name for this test (e.g., Midterm Physics - Oct)"
-                    className="input input-bordered w-full"
-                    aria-label="Test name"
-                  />
                 </div>
               </div>
             ) : (
