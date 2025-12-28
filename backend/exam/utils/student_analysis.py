@@ -1,5 +1,6 @@
 import pandas as pd
 from exam.models import Student, QuestionAnalysis, StudentResponse, Test, Result
+from exam.models.result import StudentResult
 from exam.graph_utils.create_graph import create_graph
 from exam.models.test_status import TestProcessingStatus
 import logging
@@ -55,6 +56,34 @@ class StudentAnalyzer:
                 "Error_Desp": error_desp
             })
         return self.analysis
+    
+    def save_student_results(self):
+        """
+        Save question-level results to StudentResult table for PostgreSQL-based queries.
+        This enables the new PG-based retrieval functions to work correctly.
+        """
+        try:
+            for item in self.analysis:
+                # Determine if question was attempted
+                opted_answer = item.get('OptedAnswer')
+                was_attempted = opted_answer is not None and str(opted_answer).strip() != ''
+                
+                StudentResult.objects.update_or_create(
+                    student_id=self.student_id,
+                    class_id=self.class_id,
+                    test_num=self.test_num,
+                    question_number=item['QuestionNumber'],
+                    defaults={
+                        'is_correct': item['IsCorrect'],
+                        'was_attempted': was_attempted,
+                        'subject': item['Subject'],
+                        'chapter': item['Chapter'],
+                        'topic': item['Topic']
+                    }
+                )
+            logger.info(f"✅ Saved {len(self.analysis)} question-level results to StudentResult for student {self.student_id}")
+        except Exception as e:
+            logger.error(f"❌ Error saving StudentResult records for {self.student_id}: {e}", exc_info=True)
 
     def get_summary(self):
         # Get unique subjects from the analyzed questions
@@ -149,6 +178,9 @@ class StudentAnalyzer:
                       f"Total: {total_score}")
         except Exception as e:
             logger.error(f"Error saving results for student {self.student_id}: {str(e)}")
+        
+        # NEW: Save question-level results to StudentResult table for PostgreSQL queries
+        self.save_student_results()
 
 # Utility functions
 
@@ -184,7 +216,10 @@ def analyze_single_student(student_id, class_id, student_db, questions, test_dat
     summary_df = analyzer.get_summary()
     #print(f"📊 Summary for {student_id} in class {class_id}, test {test_num}:\n{summary_df}")
     analyzer.save_results(summary_df)
-    create_graph(student_id, student_db.lower(), pd.DataFrame(analyzer.analysis), test_num)
+    try:
+        create_graph(student_id, student_db.lower(), pd.DataFrame(analyzer.analysis), test_num)
+    except Exception as e:
+        logger.exception(f"Failed to create Neo4j graph for {student_id}: {e}")
 
 @shared_task
 def analyse_students(class_id, test_num, subject=None):

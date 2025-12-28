@@ -505,6 +505,9 @@ export const uploadTest = async (questionPaper, answerKey, answerSheet, metadata
       if (metadata.pattern && metadata.pattern !== undefined) {
         formData.append('pattern', metadata.pattern);
       }
+      if (metadata.test_name && metadata.test_name !== undefined) {
+        formData.append('test_name', metadata.test_name);
+      }
       if (metadata.subject_order && metadata.subject_order !== undefined) {
         formData.append('subject_order', JSON.stringify(metadata.subject_order));
       }

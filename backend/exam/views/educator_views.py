@@ -257,7 +257,7 @@ def get_educator_dashboard(request):
         # Include compact test metadata mapping for the educator's class
         try:
             metas = TestMetadata.objects.filter(class_id=class_id).order_by('test_num')
-            test_metadata_map = {str(m.test_num): {'pattern': m.pattern, 'subject_order': m.subject_order} for m in metas}
+            test_metadata_map = {str(m.test_num): {'pattern': m.pattern, 'subject_order': m.subject_order, 'test_name': m.test_name} for m in metas}
         except Exception:
             test_metadata_map = {}
 

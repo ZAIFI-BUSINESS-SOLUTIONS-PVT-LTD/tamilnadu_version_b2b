@@ -10,6 +10,8 @@ import re
 
 import pandas as pd
 
+# Note: KnowledgeGraphManager import kept for legacy functions only
+# Active functions (generate_all_test_swot_with_AI, generate_swot_data_with_AI) use PostgreSQL
 from exam.graph_utils.knowledge_graph_manager import KnowledgeGraphManager
 import logging
 import sentry_sdk
@@ -109,28 +111,36 @@ output format (JSON):
 
 # --------------------- Main Execution ---------------------
 @traceable()
-def generate_all_test_swot_with_AI(db_name):
-    from exam.graph_utils.retrieve_swot_data_cumulative import (
-    best_topics, improvement_over_time, strongest_question_type, most_challenging_topics,
-    weakness_over_time, low_retention_topics, practice_recommendation, missed_opportunities,
-    rapid_learning, recurring_mistake_conceptual_gap, weakness_on_high_impact, inconsistent_performance)
-    # --------------------- Neo4j Manager ---------------------
-    kg_manager = KnowledgeGraphManager(database_name=db_name)
+def generate_all_test_swot_with_AI(student_id, class_id):
+    """
+    Generate cumulative SWOT analysis across all tests using PostgreSQL.
+    
+    Args:
+        student_id (str): Student identifier
+        class_id (str): Class identifier
+    
+    Returns:
+        dict: SWOT metrics with insights for each subject
+    """
+    from exam.graph_utils.retrieve_swot_data_cumulative_pg import (
+        best_topics_pg, most_challenging_topics_pg, rapid_learning_pg
+    )
+    
     try:
         # Each metric function returns processed data for (typically) four subjects.
         all_metric_results = {
-            "TS_BPT": best_topics(kg_manager),
-            # "TS_IOT": improvement_over_time(kg_manager),
-            # "TS_SQT": strongest_question_type(kg_manager),
-            "TW_MCT": most_challenging_topics(kg_manager),
-            # "TW_WOT": weakness_over_time(kg_manager),
-            # "TW_LRT": low_retention_topics(kg_manager),
-            # "TO_PR": practice_recommendation(kg_manager),
-            # "TO_MO": missed_opportunities(kg_manager),
-            "TO_RLT": rapid_learning(kg_manager),
-            # "TT_RMCG": recurring_mistake_conceptual_gap(kg_manager),
-            # "TT_WHIT": weakness_on_high_impact(kg_manager),
-            # "TT_IP": inconsistent_performance(kg_manager)
+            "TS_BPT": best_topics_pg(student_id, class_id),
+            # "TS_IOT": improvement_over_time_pg(student_id, class_id),
+            # "TS_SQT": strongest_question_type_pg(student_id, class_id),
+            "TW_MCT": most_challenging_topics_pg(student_id, class_id),
+            # "TW_WOT": weakness_over_time_pg(student_id, class_id),
+            # "TW_LRT": low_retention_topics_pg(student_id, class_id),
+            # "TO_PR": practice_recommendation_pg(student_id, class_id),
+            # "TO_MO": missed_opportunities_pg(student_id, class_id),
+            "TO_RLT": rapid_learning_pg(student_id, class_id),
+            # "TT_RMCG": recurring_mistake_conceptual_gap_pg(student_id, class_id),
+            # "TT_WHIT": weakness_on_high_impact_pg(student_id, class_id),
+            # "TT_IP": inconsistent_performance_pg(student_id, class_id)
         }
         
         insights_by_metric = {}
@@ -166,35 +176,42 @@ def generate_all_test_swot_with_AI(db_name):
                     insights_by_metric[metric_key] = f"Error: {e}"
         return insights_by_metric
         
-    finally:
-        kg_manager.close()
+    except Exception as e:
+        logger.exception(f"Error in generate_all_test_swot_with_AI: {e}")
+        return {}
 
 @traceable()
-def generate_swot_data_with_AI(db_name, test_num):
-    from exam.graph_utils.retrieve_swot_data import (best_topic_analysis, improvement_over_time_analysis,
-    inconsistent_performance_analysis, weakness_on_high_impact_analysis,low_retention_rate_analysis,
-    rapid_learning_analysis, missed_opportunities_analysis, most_challenging_topic_analysis,
-    recurring_mistake_conceptual_gap_analysis, practice_recommendation_analysis, strongest_question_type_analysis,
-    weakness_over_time_analysis)
-    # Connection parameters and test name
-    kg_manager = KnowledgeGraphManager(database_name=db_name)
-    test_name = test_name = f"Test{test_num}"
+def generate_swot_data_with_AI(student_id, class_id, test_num):
+    """
+    Generate test-specific SWOT analysis using PostgreSQL.
+    
+    Args:
+        student_id (str): Student identifier
+        class_id (str): Class identifier
+        test_num (int): Test number
+    
+    Returns:
+        dict: SWOT metrics with insights for each subject
+    """
+    from exam.graph_utils.retrieve_swot_data_pg import (
+        best_topic_analysis_pg, most_challenging_topic_analysis_pg, rapid_learning_analysis_pg
+    )
     
     try:
         # Run analysis functions to generate metric data
         results = {}
-        results["best_topic"] = best_topic_analysis(kg_manager, test_name)
-        # results["improvement_over_time"] = improvement_over_time_analysis(kg_manager, test_name)
-        # results["inconsistent_performance"] = inconsistent_performance_analysis(kg_manager, test_name)
-        # results["low_retention_rate"] = low_retention_rate_analysis(kg_manager, test_name)
-        # results["missed_opportunities"] = missed_opportunities_analysis(kg_manager, test_name)
-        results["most_challenging_topic"] = most_challenging_topic_analysis(kg_manager, test_name)
-        # results["practice_recommendation"] = practice_recommendation_analysis(kg_manager, test_name)
-        results["rapid_learning_topic"] = rapid_learning_analysis(kg_manager, test_name)
-        # results["recurring_mistake_conceptual_gap"] = recurring_mistake_conceptual_gap_analysis(kg_manager, test_name)
-        # results["strongest_question_type"] = strongest_question_type_analysis(kg_manager, test_name)
-        # results["weakness_on_high_impact"] = weakness_on_high_impact_analysis(kg_manager, test_name)
-        # results["weakness_over_time"] = weakness_over_time_analysis(kg_manager, test_name)
+        results["best_topic"] = best_topic_analysis_pg(student_id, class_id, test_num)
+        # results["improvement_over_time"] = improvement_over_time_analysis_pg(student_id, class_id, test_num)
+        # results["inconsistent_performance"] = inconsistent_performance_analysis_pg(student_id, class_id, test_num)
+        # results["low_retention_rate"] = low_retention_rate_analysis_pg(student_id, class_id, test_num)
+        # results["missed_opportunities"] = missed_opportunities_analysis_pg(student_id, class_id, test_num)
+        results["most_challenging_topic"] = most_challenging_topic_analysis_pg(student_id, class_id, test_num)
+        # results["practice_recommendation"] = practice_recommendation_analysis_pg(student_id, class_id, test_num)
+        results["rapid_learning_topic"] = rapid_learning_analysis_pg(student_id, class_id, test_num)
+        # results["recurring_mistake_conceptual_gap"] = recurring_mistake_conceptual_gap_analysis_pg(student_id, class_id, test_num)
+        # results["strongest_question_type"] = strongest_question_type_analysis_pg(student_id, class_id, test_num)
+        # results["weakness_on_high_impact"] = weakness_on_high_impact_analysis_pg(student_id, class_id, test_num)
+        # results["weakness_over_time"] = weakness_over_time_analysis_pg(student_id, class_id, test_num)
         
         # Map metric keys to analysis result keys and prompts
         metric_prompt_mapping = {
@@ -248,8 +265,16 @@ def generate_swot_data_with_AI(db_name, test_num):
         # For example, print the insight for subject 'Botany' from the SW_LRT metric
         return insights_by_metric
         
-    finally:
-        kg_manager.close()
+    except Exception as e:
+        logger.exception(f"Error in generate_swot_data_with_AI: {e}")
+        return {}
+
+
+# =============================================================================
+# LEGACY FUNCTIONS (Neo4j) - NOT CURRENTLY USED
+# Active functions are: generate_all_test_swot_with_AI() and generate_swot_data_with_AI()
+# which use PostgreSQL via retrieve_swot_data_cumulative_pg and retrieve_swot_data_pg
+# =============================================================================
 
 def generate_swot_data(db_name, test_num):
     from exam.graph_utils.topic_swot import (best_topic_analysis, improvement_over_time_analysis,

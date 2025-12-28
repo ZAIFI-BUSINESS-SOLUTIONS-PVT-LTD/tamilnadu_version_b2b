@@ -1,6 +1,6 @@
-from exam.graph_utils.calculate_metrics import calculate_metrics
+from exam.graph_utils.calculate_metrics import calculate_metrics_pg
 from exam.llm_call.gemini_api import call_gemini_api_with_rotation
-from exam.graph_utils.retrieve_overview_data import get_overview_data
+from exam.graph_utils.retrieve_overview_data_pg import get_overview_data_pg
 from exam.graph_utils.retrieve_action_plan_data import get_action_plan_data
 from exam.graph_utils.retrieve_study_tips_data import get_study_tips_data
 import json
@@ -52,8 +52,14 @@ output format:
 
 @traceable()
 def Generate_overview_data(db_name, student_id=None, class_id=None, test_num=None):
-    # Fetch base metrics
-    op, tt, ir, cv = calculate_metrics(db_name)
+    # Fetch base metrics using PostgreSQL
+    if student_id and class_id:
+        op, tt, ir, cv = calculate_metrics_pg(student_id, class_id)
+    else:
+        # Fallback to default values if student/class not provided
+        logger.warning("student_id or class_id not provided for metrics calculation")
+        op, tt, ir, cv = 0.0, 0, 0.0, 0.0
+    
     metrics = {
         "OP": op,
         "TT": tt,
@@ -61,8 +67,15 @@ def Generate_overview_data(db_name, student_id=None, class_id=None, test_num=Non
         "CS": cv
 }
 
-    # Fetch dashboard data
-    KS_data, AI_data, QR_data, CV_data, PT, SA = get_overview_data(db_name)
+    # Fetch dashboard data using PostgreSQL
+    if student_id and class_id:
+        KS_data, AI_data, QR_data, CV_data, PT, SA = get_overview_data_pg(student_id, class_id)
+    else:
+        # Fallback to empty data if student/class not provided
+        logger.warning("student_id or class_id not provided for overview data")
+        KS_data = AI_data = QR_data = CV_data = {}
+        PT = {"subjects": []}
+        SA = []
 
     # Define prompts
     

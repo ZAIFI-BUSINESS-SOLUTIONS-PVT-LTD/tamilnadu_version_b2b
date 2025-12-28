@@ -1,4 +1,4 @@
-from exam.graph_utils.retrieve_performance_data import get_overview_data
+from exam.graph_utils.retrieve_performance_data_pg import get_overview_data_pg
 from exam.llm_call.gemini_api import call_gemini_api_with_rotation
 import json
 import concurrent.futures   
@@ -28,9 +28,18 @@ def parse_questions(text):
 
 
 @traceable()
-def generate_perfomance_data(db_name):
-
-    performance_graph, performance_data = get_overview_data(db_name)
+def generate_perfomance_data(student_id, class_id):
+    """
+    Generate performance data using PostgreSQL.
+    
+    Args:
+        student_id (str): Student identifier
+        class_id (str): Class identifier
+    
+    Returns:
+        tuple: (performance_graph, performance_insights)
+    """
+    performance_graph, performance_data = get_overview_data_pg(student_id, class_id)
 
 
     # 🔁 Gemini processing per subject

@@ -147,10 +147,17 @@ def get_institution_educator_dashboard(request, educator_id):
             "quickRecommendations": json.loads(metric_dict.get('QR', '[]')),
             "yetToDecide": json.loads(metric_dict.get('CV', '[]')),
         }
+        # Include compact test metadata mapping for the educator's class
+        try:
+            metas = TestMetadata.objects.filter(class_id=class_id).order_by('test_num')
+            test_metadata_map = {str(m.test_num): {'pattern': m.pattern, 'subject_order': m.subject_order, 'test_name': m.test_name} for m in metas}
+        except Exception:
+            test_metadata_map = {}
         
         return Response({
             "summaryCardsData": summaryCardsData,
             "keyInsightsData": keyInsightsData,
+            "testMetadata": test_metadata_map,
         })
         
     except Exception as e:

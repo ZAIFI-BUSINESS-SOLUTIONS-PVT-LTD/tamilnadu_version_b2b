@@ -15,6 +15,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
   const [showConfig, setShowConfig] = useState(false);
   const [configStep, setConfigStep] = useState(1); // 1: pattern, 2: order/counts
   const [pattern, setPattern] = useState(null);
+  const [testName, setTestName] = useState('');
   const [subjects, setSubjects] = useState([]);
   const [questionMode, setQuestionMode] = useState('perSubject');
   const [subjectCounts, setSubjectCounts] = useState({});
@@ -97,6 +98,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
   const handleSaveConfig = () => {
     const cfg = {
       pattern,
+      test_name: testName,
       subject_order: subjects,
       total_questions: calculateTotal(),
       section_counts: subjectCounts
@@ -481,6 +483,17 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
                     );
                   })}
 
+                </div>
+                <div className="mt-4">
+                  <label className="label"><span className="label-text">Test name (optional)</span></label>
+                  <input
+                    type="text"
+                    value={testName}
+                    onChange={e => setTestName(e.target.value)}
+                    placeholder="Enter a name for this test (e.g., Midterm Physics - Oct)"
+                    className="input input-bordered w-full"
+                    aria-label="Test name"
+                  />
                 </div>
               </div>
             ) : (

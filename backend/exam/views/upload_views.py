@@ -62,6 +62,7 @@ def upload_test(request):
         subject_order = request.data.get('subject_order')
         total_questions = request.data.get('total_questions')
         section_counts = request.data.get('section_counts')
+        test_name = request.data.get('test_name')
 
         # Debug: log incoming metadata keys/values to help diagnose frontend issues
         try:
@@ -134,14 +135,15 @@ def upload_test(request):
                                 'error': f'Sum of section_counts ({sum_counts}) does not match total_questions ({total_questions})'
                             }, status=400)
 
-                    # Create TestMetadata
+                    # Create TestMetadata (include optional test_name)
                     TestMetadata.objects.create(
                         class_id=class_id,
                         test_num=test_num,
                         pattern=pattern,
                         subject_order=subject_order,
                         total_questions=total_questions,
-                        section_counts=section_counts
+                        section_counts=section_counts,
+                        test_name=test_name
                     )
                     logger.info(f"Created test metadata for {class_id} Test {test_num} with pattern {pattern}")
             except json.JSONDecodeError as jde:
@@ -227,6 +229,7 @@ def save_test_metadata(request):
         subject_order = request.data.get('subject_order')
         total_questions = request.data.get('total_questions')
         section_counts = request.data.get('section_counts')
+        test_name = request.data.get('test_name')
         
         # Auto-generate test_num if not provided
         if not test_num:
@@ -281,29 +284,34 @@ def save_test_metadata(request):
                     'error': f'Sum of section_counts ({sum_counts}) does not match total_questions ({total_questions})'
                 }, status=400)
         
-        # Create or update metadata
+        # Create or update metadata (include test_name if provided)
+        defaults = {
+            'pattern': pattern,
+            'subject_order': subject_order,
+            'total_questions': total_questions,
+            'section_counts': section_counts
+        }
+        if test_name is not None:
+            defaults['test_name'] = test_name
+
         metadata, created = TestMetadata.objects.update_or_create(
             class_id=class_id,
             test_num=test_num,
-            defaults={
-                'pattern': pattern,
-                'subject_order': subject_order,
-                'total_questions': total_questions,
-                'section_counts': section_counts
-            }
+            defaults=defaults
         )
         
         logger.info(f"{'Created' if created else 'Updated'} test metadata for {class_id} Test {test_num}")
         
         return JsonResponse({
             'message': f'Test metadata {"created" if created else "updated"} successfully',
-            'metadata': {
+                'metadata': {
                 'class_id': metadata.class_id,
                 'test_num': metadata.test_num,
                 'pattern': metadata.pattern,
                 'subject_order': metadata.subject_order,
                 'total_questions': metadata.total_questions,
-                'section_counts': metadata.section_counts
+                'section_counts': metadata.section_counts,
+                'test_name': metadata.test_name
             }
         }, status=201 if created else 200)
         
@@ -333,6 +341,7 @@ def get_test_metadata(request, class_id, test_num):
                 'subject_order': metadata.subject_order,
                 'total_questions': metadata.total_questions,
                 'section_counts': metadata.section_counts,
+                'test_name': metadata.test_name,
                 'subject_ranges': metadata.get_subject_ranges()
             }
         }, status=200)
@@ -370,6 +379,8 @@ def list_test_metadata_by_class(request, class_id):
             mapping[str(m.test_num)] = {
                 'pattern': m.pattern,
                 'subject_order': m.subject_order
+                ,
+                'test_name': m.test_name
             }
 
         return JsonResponse({'class_id': class_id, 'metadata': mapping}, status=200)

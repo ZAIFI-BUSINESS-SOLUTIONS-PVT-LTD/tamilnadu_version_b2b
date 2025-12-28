@@ -158,7 +158,7 @@ def _internal_student_dashboard_update(student_id, class_id, test_num, db_name):
         'swot_test': None
     }
     
-    # Generate overview data with Neo4j retry
+    # Generate overview data (PostgreSQL)
     @neo4j_retry(max_attempts=3)
     def fetch_overview():
         return Generate_overview_data(db_name, student_id, class_id, test_num)
@@ -203,10 +203,10 @@ def _internal_student_dashboard_update(student_id, class_id, test_num, db_name):
     
     result['overview'] = {'metrics': metrics, 'insights': insights, 'PT': PT, 'SA': SA, 'AP': action_plan, 'CL': checklist, 'ST': study_tips}
 
-    # Generate and populate performance data with Neo4j retry
+    # Generate and populate performance data (PostgreSQL)
     @neo4j_retry(max_attempts=3)
     def fetch_performance():
-        return generate_perfomance_data(db_name)
+        return generate_perfomance_data(student_id, class_id)
     
     performance_graph, performance_insights = fetch_performance()
     
@@ -217,10 +217,10 @@ def _internal_student_dashboard_update(student_id, class_id, test_num, db_name):
     Populate_performance(student_id, class_id, performance_insights, performance_graph)
     result['performance'] = {'graph': performance_graph, 'insights': performance_insights}
 
-    # Generate and save cumulative SWOT with Neo4j retry
+    # Generate and save cumulative SWOT (PostgreSQL)
     @neo4j_retry(max_attempts=3)
     def fetch_cumulative_swot():
-        return generate_all_test_swot_with_AI(db_name)
+        return generate_all_test_swot_with_AI(student_id, class_id)
     
     overall_swot = fetch_cumulative_swot()
     overall_swot = ensure_dict(overall_swot, default={})
@@ -233,11 +233,11 @@ def _internal_student_dashboard_update(student_id, class_id, test_num, db_name):
         status_obj.save()
     logger.info(f"✅ Cumulative SWOT saved for {student_id} test {test_num}")
 
-    # Generate and save test-wise SWOT if test_num provided
+    # Generate and save test-wise SWOT if test_num provided (PostgreSQL)
     if test_num:
         @neo4j_retry(max_attempts=3)
         def fetch_test_swot():
-            return generate_swot_data_with_AI(db_name, test_num)
+            return generate_swot_data_with_AI(student_id, class_id, test_num)
         
         test_wise_swot = fetch_test_swot()
         test_wise_swot = ensure_dict(test_wise_swot, default={})
