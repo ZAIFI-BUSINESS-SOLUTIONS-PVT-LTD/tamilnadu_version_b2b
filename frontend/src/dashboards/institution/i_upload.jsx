@@ -15,7 +15,7 @@ import Modal from '../components/ui/modal.jsx';
 import { updateTestName } from '../../utils/api.js';
 
 // Reuse the educator upload modal
-const UploadModal = lazy(() => import('../components/e_docsupload.jsx'));
+const UploadModal = lazy(() => import('../components/docsupload.jsx'));
 
 const IUpload = () => {
   const { selectedEducatorId, setSelectedEducatorId, educators } = useInstitution();

@@ -9,7 +9,7 @@ import LoadingPage from '../components/LoadingPage.jsx';
 import { toast } from 'react-hot-toast';
 
 // Lazy load the modal component to improve initial load time
-const UploadModal = lazy(() => import('../components/e_docsupload.jsx'));
+const UploadModal = lazy(() => import('../components/docsupload.jsx'));
 
 // Dashboard component for educators to upload and manage tests
 const EUpload = () => {

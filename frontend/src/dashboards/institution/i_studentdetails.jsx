@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { fetchInstitutionEducatorAllStudentResults, fetchInstitutionEducatorStudents, createInstitutionStudent, updateInstitutionStudent, deleteInstitutionStudent, deleteInstitutionStudentTest, reuploadInstitutionStudentResponses, createTeacher, getTeachersByClass, updateTeacher, deleteTeacher } from '../../utils/api';
+import { fetchInstitutionEducatorAllStudentResults, fetchInstitutionEducatorStudents, createInstitutionStudent, deleteInstitutionStudent, createTeacher, getTeachersByClass, updateTeacher, deleteTeacher } from '../../utils/api';
 import toast from 'react-hot-toast';
 import {
   Search,
@@ -26,6 +26,8 @@ import { Card, CardHeader, CardContent } from '../../components/ui/card.jsx';
 import Modal from '../components/ui/modal.jsx';
 import LoadingPage from '../components/LoadingPage.jsx';
 import { useInstitution } from './index.jsx';
+import StudentMoreDetails from '../components/StudentMoreDetails.jsx';
+import StudentDeleteModal from '../components/StudentDeleteModal.jsx';
 
 const SUBJECTS = [
   { key: 'phy_score', label: 'Physics' },
@@ -46,21 +48,17 @@ function IStudentDetails() {
   const [groupedResults, setGroupedResults] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [modalStudent, setModalStudent] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ name: '', dob: '', password: '' });
+  const [initialEditMode, setInitialEditMode] = useState(false);
+  const [initialDeleteMode, setInitialDeleteMode] = useState(false);
   const [studentNameMap, setStudentNameMap] = useState({});
   const [sortModalOpen, setSortModalOpen] = useState(false);
   const [deleteSummary, setDeleteSummary] = useState(null);
+  const [deleteStudentModalOpen, setDeleteStudentModalOpen] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [newStudent, setNewStudent] = useState({ student_id: '', name: '', dob: '' });
   const [sortField, setSortField] = useState('rank');
   const [sortDirection, setSortDirection] = useState('desc');
-  const [deleteTestModalOpen, setDeleteTestModalOpen] = useState(false);
-  const [testToDelete, setTestToDelete] = useState(null);
-  const [reuploadModalOpen, setReuploadModalOpen] = useState(false);
-  const [reuploadData, setReuploadData] = useState({ studentId: null, testNum: null });
-  const [reuploadFile, setReuploadFile] = useState(null);
-  const [reuploadLoading, setReuploadLoading] = useState(false);
   const selectedClassName = React.useMemo(() => {
     if (!Array.isArray(educators)) return 'Student Results';
     const found = educators.find(e => String(e.id) === String(selectedEducatorId));
@@ -343,6 +341,21 @@ function IStudentDetails() {
     return map;
   })();
 
+  // Get the highest test_num conducted across all students
+  const lastTestNum = React.useMemo(() => {
+    let maxTestNum = 0;
+    groupedResults.forEach(student => {
+      if (Array.isArray(student.test_results)) {
+        student.test_results.forEach(test => {
+          if (test.test_num > maxTestNum) {
+            maxTestNum = test.test_num;
+          }
+        });
+      }
+    });
+    return maxTestNum;
+  }, [groupedResults]);
+
   if (!selectedEducatorId) {
     return (
       <div className="text-center py-8 mt-20">
@@ -415,36 +428,14 @@ function IStudentDetails() {
     { field: 'rank', label: 'Rank', sortable: true },
     { field: 'student_id', label: 'Student ID', sortable: true },
     { field: 'student_name', label: 'Student Name', sortable: true },
-    { field: 'last_test_score', label: 'Last test score', sortable: false },
+    { field: 'last_test_score', label: `Last test score (Test ${lastTestNum})`, sortable: false },
     { field: 'average_score', label: 'Average score', sortable: true },
     { field: 'actions', label: 'Actions', sortable: false, headerClass: 'justify-end' },
   ];
 
-  const handleEditStudentRow = (student) => {
-    setModalStudent(student);
-    setIsEditing(true);
-    setEditForm({ name: student.student_name || '', dob: student.dob || '', password: '' });
-  };
-
-  const handleDeleteStudentRow = async (student) => {
-    if (!window.confirm(`Delete student ${student.student_id} and all related data?`)) return;
-    try {
-      setLoading(true);
-      const res = await deleteInstitutionStudent(selectedEducatorId, student.student_id);
-      if (res.error) {
-        setError(res.error);
-        toast.error(res.error);
-      } else {
-        setDeleteSummary({ message: res.message || 'Deleted', counts: res.deleted_counts || {} });
-        await fetchResults();
-      }
-    } catch (err) {
-      console.error(err);
-      setError('Failed to delete student');
-      toast.error('Failed to delete student');
-    } finally {
-      setLoading(false);
-    }
+  const handleDeleteStudent = async (student) => {
+    setStudentToDelete(student);
+    setDeleteStudentModalOpen(true);
   };
 
   const handleDeleteEducator = async (entry) => {
@@ -526,10 +517,16 @@ function IStudentDetails() {
       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{studentNameMap[student.student_id] || student.student_name}</td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
         {(() => {
-          const tr = Array.isArray(student.test_results) && student.test_results.length > 0
-            ? student.test_results.reduce((prev, curr) => (curr.test_num > prev.test_num ? curr : prev), student.test_results[0])
+          if (lastTestNum === 0) {
+            return 'Not attended';
+          }
+          // Find the student's result for the last test conducted
+          const testResult = Array.isArray(student.test_results)
+            ? student.test_results.find(test => test.test_num === lastTestNum)
             : null;
-          return tr && (tr.total_score !== undefined && tr.total_score !== null) ? tr.total_score : 'N/A';
+          return testResult && testResult.total_score !== undefined && testResult.total_score !== null
+            ? testResult.total_score
+            : 'Not attended';
         })()}
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{student.average_score}</td>
@@ -542,9 +539,9 @@ function IStudentDetails() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent sideOffset={6} align="end">
-              <DropdownMenuItem onClick={() => setModalStudent(student)}>View more</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleEditStudentRow(student)}>Edit</DropdownMenuItem>
-              <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteStudentRow(student)}>Delete</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setInitialEditMode(false); setModalStudent(student); }}>View more</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setInitialEditMode(true); setModalStudent(student); }}>Edit</DropdownMenuItem>
+              <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteStudent(student)}>Delete</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -925,228 +922,33 @@ function IStudentDetails() {
                 </div>
               </Modal>
 
-              <Modal
-                open={!!modalStudent}
-                onClose={() => setModalStudent(null)}
-                title={modalStudent ? (
-                  <>
-                    {studentNameMap[modalStudent.student_id] || modalStudent.student_name}
-                    <span className="text-xs text-gray-400 ml-2">(ID: {modalStudent.student_id})</span>
-                  </>
-                ) : ''}
-                maxWidth="max-w-3xl"
-              >
-                <div className="max-h-[80vh] overflow-y-auto pr-2">
-                  {modalStudent && (
-                    <>
-                      {isEditing ? (
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700">Name</label>
-                            <Input
-                              className="input input-bordered w-full"
-                              value={editForm.name}
-                              onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700">DOB</label>
-                            <Input
-                              type="date"
-                              className="input input-bordered w-full"
-                              value={editForm.dob}
-                              onChange={e => setEditForm(prev => ({ ...prev, dob: e.target.value }))}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700">Password</label>
-                            <Input
-                              type="password"
-                              className="input input-bordered w-full"
-                              value={editForm.password}
-                              placeholder="Leave blank to keep current password"
-                              onChange={e => setEditForm(prev => ({ ...prev, password: e.target.value }))}
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        <div>
-                          <div className="flex flex-wrap gap-x-6 gap-y-2 mb-4">
-                            <div className="flex items-center gap-2">
-                              <FileText className="text-gray-400" />
-                              <div>
-                                <p className="text-sm text-gray-500">Tests</p>
-                                <p className="font-medium">{modalStudent.tests_taken}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <BarChart2 className="text-gray-400" />
-                              <div>
-                                <p className="text-sm text-gray-500">Average</p>
-                                <p className="font-medium">{modalStudent.average_score}</p>
-                              </div>
-                            </div>
-                          </div>
+              <StudentMoreDetails
+                modalStudent={modalStudent}
+                setModalStudent={setModalStudent}
+                initialEditMode={initialEditMode}
+                setInitialEditMode={setInitialEditMode}
+                studentNameMap={studentNameMap}
+                selectedEducatorId={selectedEducatorId}
+                fetchResults={fetchResults}
+                setDeleteSummary={setDeleteSummary}
+                setError={setError}
+                setStudentNameMap={setStudentNameMap}
+              />
 
-                          {(() => {
-                            const activeSubjects = SUBJECTS.filter(sub =>
-                              modalStudent.test_results.some(test => {
-                                const val = test[sub.key];
-                                return val != null && val !== undefined && val !== '' && val !== 0;
-                              })
-                            );
-                            return (
-                              <>
-                                <h4 className="text-md font-semibold text-gray-800 mb-2">Test Performance</h4>
-                                <div className="overflow-x-auto">
-                                  <table className="table table-zebra table-sm">
-                                    <thead>
-                                      <tr>
-                                        <th>Test #</th>
-                                        <th>Total Score</th>
-                                        {activeSubjects.map(sub => <th key={sub.key}>{sub.label}</th>)}
-                                        <th className="text-right">Actions</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {modalStudent.test_results.map((test, index) => (
-                                        <tr key={index}>
-                                          <td>{test.test_num}</td>
-                                          <td className="font-medium">{test.total_score}</td>
-                                          {activeSubjects.map(sub => <td key={sub.key}>{test[sub.key] != null && test[sub.key] !== undefined && test[sub.key] !== '' && test[sub.key] !== 0 ? test[sub.key] : "-"}</td>)}
-                                          <td className="whitespace-nowrap">
-                                            <div className="flex items-center gap-2 justify-end">
-                                              <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="text-red-600 hover:bg-red-50"
-                                                onClick={() => {
-                                                  setTestToDelete({ studentId: modalStudent.student_id, testNum: test.test_num });
-                                                  setDeleteTestModalOpen(true);
-                                                }}
-                                              >
-                                                <Trash2 className="w-3 h-3 mr-1" />
-                                                Delete
-                                              </Button>
-                                              <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="text-blue-600 hover:bg-blue-50"
-                                                onClick={() => {
-                                                  setReuploadData({ studentId: modalStudent.student_id, testNum: test.test_num });
-                                                  setReuploadModalOpen(true);
-                                                }}
-                                              >
-                                                <FileText className="w-3 h-3 mr-1" />
-                                                Re-upload
-                                              </Button>
-                                            </div>
-                                          </td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </>
-                            );
-                          })()}
-                        </div>
-                      )}
-
-                      <div className="modal-action mt-6 flex justify-between">
-                        {isEditing ? (
-                          <>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="default"
-                                onClick={async () => {
-                                  try {
-                                    // Build payload with only non-empty fields (all fields are optional)
-                                    const payload = {};
-                                    if (editForm.name && editForm.name.trim() !== '') payload.name = editForm.name.trim();
-                                    if (editForm.dob && editForm.dob.trim() !== '') payload.dob = editForm.dob.trim();
-                                    if (editForm.password && editForm.password.trim() !== '') payload.password = editForm.password.trim();
-
-                                    // Ensure at least one field is being updated
-                                    if (Object.keys(payload).length === 0) {
-                                      setError('Please enter at least one field to update');
-                                      return;
-                                    }
-
-                                    const res = await updateInstitutionStudent(selectedEducatorId, modalStudent.student_id, payload);
-                                    if (res.error) {
-                                      setError(res.error);
-                                    } else {
-                                      // If name was updated, ensure it shows immediately in the list
-                                      if (payload.name) {
-                                        setStudentNameMap(prev => ({ ...prev, [modalStudent.student_id]: payload.name }));
-                                      }
-                                      // Refresh and close edit mode
-                                      await fetchResults();
-                                      setIsEditing(false);
-                                      setModalStudent(null);
-                                    }
-                                  } catch (err) {
-                                    console.error(err);
-                                    setError('Failed to update student');
-                                  }
-                                }}
-                              >
-                                Save
-                              </Button>
-                              <Button variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
-                            </div>
-                            <Button variant="ghost" onClick={() => setModalStudent(null)}>Close</Button>
-                          </>
-                        ) : (
-                          <>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-red-600 rounded-full hover:bg-red-100 hover:text-red-700"
-                                onClick={async () => {
-                                  if (!window.confirm('Delete this student and all related data?')) return;
-                                  try {
-                                    const res = await deleteInstitutionStudent(selectedEducatorId, modalStudent.student_id);
-                                    if (res.error) {
-                                      setError(res.error);
-                                    } else {
-                                      // Save deletion summary to show to the user
-                                      setDeleteSummary({ message: res.message || 'Deleted', counts: res.deleted_counts || {} });
-                                      await fetchResults();
-                                      setModalStudent(null);
-                                    }
-                                  } catch (err) {
-                                    console.error(err);
-                                    setError('Failed to delete student');
-                                  }
-                                }}
-                                aria-label="Delete student"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="rounded-full"
-                                onClick={() => {
-                                  setIsEditing(true);
-                                  setEditForm({ name: modalStudent.student_name || '', dob: modalStudent.dob || '', password: '' });
-                                }}
-                                aria-label="Edit student"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                            </div>
-                            <Button variant="ghost" onClick={() => setModalStudent(null)}>Close</Button>
-                          </>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </Modal>
+              <StudentDeleteModal
+                open={deleteStudentModalOpen}
+                onClose={() => {
+                  setDeleteStudentModalOpen(false);
+                  setStudentToDelete(null);
+                }}
+                modalStudent={studentToDelete}
+                studentNameMap={studentNameMap}
+                selectedEducatorId={selectedEducatorId}
+                fetchResults={fetchResults}
+                setDeleteSummary={setDeleteSummary}
+                setError={setError}
+                setModalStudent={() => {}}
+              />
 
               {sortModalOpen && (
                 <Modal
@@ -1234,267 +1036,6 @@ function IStudentDetails() {
                     >
                       Cancel
                     </Button>
-                  </div>
-                </Modal>
-              )}
-
-              {/* Delete Test Confirmation Modal */}
-              {deleteTestModalOpen && testToDelete && (
-                <Modal
-                  open={deleteTestModalOpen}
-                  onClose={() => {
-                    setDeleteTestModalOpen(false);
-                    setTestToDelete(null);
-                  }}
-                  title="Delete Test"
-                  maxWidth="max-w-md"
-                >
-                  <div className="space-y-4">
-                    <div className="flex items-start gap-3">
-                      <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-1" />
-                      <div>
-                        <p className="text-sm text-gray-700">
-                          Are you sure you want to delete <strong>Test {testToDelete.testNum}</strong> for student <strong>{testToDelete.studentId}</strong>?
-                        </p>
-                        <p className="text-sm text-gray-600 mt-2">
-                          This will permanently delete:
-                        </p>
-                        <ul className="list-disc ml-5 text-sm text-gray-600 mt-1">
-                          <li>All Neo4j test nodes and relationships</li>
-                          <li>All Postgres test data (results, responses, SWOT)</li>
-                          <li>Student dashboard will be regenerated</li>
-                        </ul>
-                        <p className="text-sm text-red-600 mt-3 font-medium">
-                          This action cannot be undone.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="modal-action mt-4 flex flex-col sm:flex-row gap-2">
-                      <Button
-                        variant="default"
-                        className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white"
-                        onClick={async () => {
-                          try {
-                            setLoading(true);
-                            const res = await deleteInstitutionStudentTest(
-                              selectedEducatorId,
-                              testToDelete.studentId,
-                              testToDelete.testNum
-                            );
-
-                            if (res.error) {
-                              setError(res.error);
-                              toast.error(res.error);
-                            } else {
-                              // Show success message with details
-                              const statusMsg = [];
-                              if (res.neo4j?.status === 'ok') {
-                                statusMsg.push('✅ Neo4j test deleted');
-                              } else {
-                                statusMsg.push(`⚠️ Neo4j: ${res.neo4j?.message || 'failed'}`);
-                              }
-
-                              if (res.dashboard?.status === 'ok') {
-                                statusMsg.push('✅ Dashboard regenerated');
-                              } else if (res.dashboard?.status === 'partial') {
-                                statusMsg.push(`⚠️ Dashboard: ${res.dashboard?.message || 'partial'}`);
-                              }
-
-                              setDeleteSummary({
-                                message: res.message || `Test ${testToDelete.testNum} deleted`,
-                                counts: res.deleted_counts || {}
-                              });
-
-                              toast.success(`${res.message}\\n${statusMsg.join(' | ')}`);
-
-                              // Refresh results
-                              await fetchResults();
-
-                              // Close modals
-                              setDeleteTestModalOpen(false);
-                              setTestToDelete(null);
-                              setModalStudent(null);
-                            }
-                          } catch (err) {
-                            console.error(err);
-                            setError('Failed to delete test');
-                            toast.error('Failed to delete test');
-                          } finally {
-                            setLoading(false);
-                          }
-                        }}
-                      >
-                        Delete Test
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="w-full sm:w-auto"
-                        onClick={() => {
-                          setDeleteTestModalOpen(false);
-                          setTestToDelete(null);
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                </Modal>
-              )}
-
-              {/* Re-upload Student Responses Modal */}
-              {reuploadModalOpen && reuploadData.studentId && (
-                <Modal
-                  open={reuploadModalOpen}
-                  onClose={() => {
-                    if (!reuploadLoading) {
-                      setReuploadModalOpen(false);
-                      setReuploadData({ studentId: null, testNum: null });
-                      setReuploadFile(null);
-                    }
-                  }}
-                  title="Re-upload Student Responses"
-                  maxWidth="max-w-lg"
-                >
-                  <div className="space-y-4">
-                    <div className="flex items-start gap-3">
-                      <FileText className="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" />
-                      <div>
-                        <p className="text-sm text-gray-700">
-                          Re-upload responses for <strong>{reuploadData.studentId}</strong> - Test <strong>{reuploadData.testNum}</strong>
-                        </p>
-                        <p className="text-sm text-gray-600 mt-2">
-                          This will:
-                        </p>
-                        <ul className="list-disc ml-5 text-sm text-gray-600 mt-1">
-                          <li>Replace student responses in database</li>
-                          <li>Re-run student analysis with existing answer key</li>
-                          <li>Regenerate Neo4j knowledge graph</li>
-                          <li>Update student dashboard (Overview, Performance, SWOT)</li>
-                        </ul>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Upload Response CSV
-                      </label>
-                      <Input
-                        type="file"
-                        accept=".csv"
-                        className="w-full"
-                        onChange={(e) => {
-                          if (e.target.files && e.target.files[0]) {
-                            setReuploadFile(e.target.files[0]);
-                          }
-                        }}
-                        disabled={reuploadLoading}
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        CSV must contain this student's ID in the header row
-                      </p>
-                    </div>
-
-                    {error && (
-                      <div className="p-3 rounded-md bg-red-50 border border-red-200">
-                        <p className="text-sm text-red-700">{error}</p>
-                      </div>
-                    )}
-
-                    <div className="modal-action mt-4 flex flex-col sm:flex-row gap-2">
-                      <Button
-                        variant="default"
-                        className="w-full sm:w-auto"
-                        onClick={async () => {
-                          if (!reuploadFile) {
-                            setError('Please select a CSV file');
-                            return;
-                          }
-
-                          setError(null);
-                          setReuploadLoading(true);
-
-                          try {
-                            const res = await reuploadInstitutionStudentResponses(
-                              selectedEducatorId,
-                              reuploadData.studentId,
-                              reuploadData.testNum,
-                              reuploadFile
-                            );
-
-                            if (res.error) {
-                              setError(res.error);
-                              toast.error(res.error);
-                            } else {
-                              // Show success message with details
-                              const statusMsg = [];
-
-                              if (res.responses?.status === 'ok') {
-                                statusMsg.push(`✅ ${res.responses.count} responses uploaded`);
-                              } else {
-                                statusMsg.push(`⚠️ Responses: ${res.responses?.message || 'failed'}`);
-                              }
-
-                              if (res.analysis?.status === 'ok') {
-                                statusMsg.push('✅ Analysis completed');
-                              } else {
-                                statusMsg.push(`⚠️ Analysis: ${res.analysis?.message || 'failed'}`);
-                              }
-
-                              if (res.dashboard?.status === 'ok') {
-                                statusMsg.push('✅ Dashboard updated');
-                              } else if (res.dashboard?.status === 'partial') {
-                                statusMsg.push(`⚠️ Dashboard: ${res.dashboard?.message || 'partial'}`);
-                              }
-
-                              setDeleteSummary({
-                                message: res.message || 'Responses re-uploaded successfully',
-                                counts: { responses: res.responses?.count || 0 }
-                              });
-
-                              toast.success(`${res.message}\\n${statusMsg.join(' | ')}`);
-
-                              // Refresh results
-                              await fetchResults();
-
-                              // Close modal
-                              setReuploadModalOpen(false);
-                              setReuploadData({ studentId: null, testNum: null });
-                              setReuploadFile(null);
-                              setModalStudent(null);
-                            }
-                          } catch (err) {
-                            console.error(err);
-                            setError('Failed to re-upload responses');
-                            toast.error('Failed to re-upload responses');
-                          } finally {
-                            setReuploadLoading(false);
-                          }
-                        }}
-                        disabled={!reuploadFile || reuploadLoading}
-                      >
-                        {reuploadLoading ? (
-                          <>
-                            <Loader className="w-4 h-4 mr-2 animate-spin" />
-                            Processing...
-                          </>
-                        ) : (
-                          'Re-upload & Process'
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="w-full sm:w-auto"
-                        onClick={() => {
-                          setReuploadModalOpen(false);
-                          setReuploadData({ studentId: null, testNum: null });
-                          setReuploadFile(null);
-                        }}
-                        disabled={reuploadLoading}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
                   </div>
                 </Modal>
               )}
