@@ -43,9 +43,10 @@ function InstitutionBootstrap() {
 
   useEffect(() => {
     const host = (typeof window !== 'undefined' && window.location && window.location.host) ? window.location.host : '';
+    const isLocal = host.includes('localhost') || host.startsWith('127.0.0.1') || host === '::1' || host.endsWith('.local') || host === '';
 
     // Local development safe fallback
-    if (host.includes('localhost')) {
+    if (isLocal) {
       setState({
         status: 'ready',
         institution: { institutionId: 'dev', displayName: 'InzightEd' }
