@@ -6,6 +6,9 @@ from exam.views import password_reset_views
 urlpatterns = [
     path('admin/', admin.site.urls),
 
+    # Public institution lookup for domain-based white-labeling
+    path('institution-by-domain', institution_views.institution_by_domain, name='institution_by_domain'),
+
     # Auth Endpoints
     #path('api/login/', auth_views.login_user, name='login'),
     path('api/admin/login/', auth_views.admin_login, name='admin_login'),

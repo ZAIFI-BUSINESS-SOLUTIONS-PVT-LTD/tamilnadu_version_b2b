@@ -5,10 +5,10 @@ Endpoints for institution (manager) to view and manage educators and their stude
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.http import JsonResponse
 from django.db import transaction
-from exam.models import Educator, Student, Overview, Result, SWOT, Manager
+from exam.models import Educator, Student, Overview, Result, SWOT, Manager, Institution
 import json
 import logging
 import re
@@ -51,6 +51,35 @@ def parse_test_num(test_input):
     
     # If nothing works, return None
     return None
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def institution_by_domain(request):
+        """Public, read-only endpoint to resolve an institution by domain.
+
+        Query params:
+            - domain: the domain to resolve (required)
+
+        Responses:
+            - 200: {"institutionId": "<id>", "displayName": "<display_name>"}
+            - 400: missing domain
+            - 404: not found
+        """
+        domain = request.GET.get('domain')
+        if not domain:
+                return Response({"error": "Missing 'domain' query parameter"}, status=400)
+
+        domain_norm = domain.strip().lower()
+
+        # lightweight lookup and projection for cache-friendly response
+        inst = Institution.objects.filter(domain=domain_norm).values('id', 'display_name').first()
+        if not inst:
+                return Response({"error": "Institution not found"}, status=404)
+
+        payload = {"institutionId": str(inst['id']), "displayName": inst['display_name']}
+        headers = {"Cache-Control": "public, max-age=300, s-maxage=600, stale-while-revalidate=60"}
+        return Response(payload, status=200, headers=headers)
 
 
 @api_view(['GET'])

@@ -23,3 +23,4 @@ from .feedback import Feedback
 from .notification_log import NotificationLog
 
 from .gemini_api import Gemini_ApiCallLog, Gemini_ApiKeyModelMinuteStats, Gemini_ApiKeyModelDayStats
+from .institution import Institution
