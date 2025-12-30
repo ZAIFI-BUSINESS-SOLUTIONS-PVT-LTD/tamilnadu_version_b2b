@@ -4,10 +4,47 @@ import axios from 'axios';
 export const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 /**
+ * Detects if the current environment is the production gateway domain.
+ * 
+ * Uses TWO signals (both must be true):
+ * 1. Runtime hostname matches 'web.inzighted.com'
+ * 2. VITE_API_URL points to production API (not dev)
+ * 
+ * Why both checks:
+ * - Hostname alone could be spoofed or misconfigured
+ * - API URL is injected by GitHub Actions workflow at build time
+ * - Dev builds use tamilnaduapi.inzighted.com
+ * - Prod builds use api.inzighted.com
+ * 
+ * Note: Cannot use import.meta.env.MODE (always "production" for both builds)
+ * 
+ * @returns {boolean} - True if on production gateway, false otherwise
+ */
+export const isProductionGateway = () => {
+  try {
+    const currentHostname = window.location.hostname;
+    const apiUrl = API_BASE_URL || '';
+    
+    // Check 1: Must be on web.inzighted.com frontend domain
+    const isWebDomain = currentHostname === 'web.inzighted.com';
+    
+    // Check 2: Must be using production API (not dev API)
+    // Dev API: https://tamilnaduapi.inzighted.com/api
+    // Prod API: https://api.inzighted.com/api
+    const isProdApi = apiUrl.includes('api.inzighted.com') && !apiUrl.includes('tamilnaduapi');
+    
+    return isWebDomain && isProdApi;
+  } catch (error) {
+    console.error('[Multi-tenant] Error detecting environment:', error);
+    return false; // Fail safe: no redirect on error
+  }
+};
+
+/**
  * Handles production-only institute subdomain redirection after successful login.
  * 
  * Redirect conditions (ALL must be true):
- * 1. Current hostname is exactly 'web.inzighted.com'
+ * 1. Environment is production gateway (checked via isProductionGateway)
  * 2. Backend response includes 'institute_subdomain' field
  * 3. Current hostname is NOT already the institute subdomain
  * 
@@ -15,39 +52,42 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL;
  * @returns {boolean} - Returns true if redirect was triggered, false otherwise
  * 
  * Safety features:
- * - Only triggers on web.inzighted.com (not dev/other domains)
+ * - Uses dual-signal environment detection (hostname + API URL)
+ * - Dev (tamilnadu.inzighted.com) never triggers redirect
  * - Prevents infinite loops by checking current hostname
- * - Tokens are already stored in localStorage before this runs
- * - If institute_subdomain is missing, does nothing (allows future backend support)
+ * - Preserves full URL context (pathname, query, hash)
+ * - Tokens stored in localStorage before this runs
+ * - Missing institute_subdomain = no-op (safe fallback)
  */
 export const handleInstituteRedirect = (loginResponse) => {
   try {
+    // Safety check: Only proceed if we're on production gateway
+    if (!isProductionGateway()) {
+      return false; // Dev or other environment - no redirect
+    }
+    
     // Extract institute subdomain from backend response
     const instituteSubdomain = loginResponse?.institute_subdomain;
+    
+    // Validate subdomain exists and is a valid string
+    if (!instituteSubdomain || typeof instituteSubdomain !== 'string' || !instituteSubdomain.trim()) {
+      return false; // Backend doesn't support multi-tenant yet, or no subdomain assigned
+    }
     
     // Get current hostname
     const currentHostname = window.location.hostname;
     
-    // Only proceed if we're on the main production domain
-    if (currentHostname !== 'web.inzighted.com') {
-      return false; // Dev, subdomain, or other environment - no redirect
-    }
-    
-    // Check if backend provided an institute subdomain
-    if (!instituteSubdomain || typeof instituteSubdomain !== 'string') {
-      return false; // Backend doesn't support multi-tenant yet, or no subdomain assigned
-    }
-    
     // Construct target subdomain
-    const targetHostname = `${instituteSubdomain}.inzighted.com`;
+    const targetHostname = `${instituteSubdomain.trim()}.inzighted.com`;
     
-    // Prevent redirect if we're already on the target subdomain (should never happen, but safety check)
+    // Prevent redirect if we're already on the target subdomain
     if (currentHostname === targetHostname) {
-      return false; // Already on correct subdomain
+      return false; // Already on correct subdomain (should never happen from web.inzighted.com)
     }
     
-    // Perform the redirect (preserves protocol and path)
-    const targetUrl = `${window.location.protocol}//${targetHostname}${window.location.pathname}`;
+    // Build full redirect URL, preserving pathname, query params, and hash
+    const targetUrl = `${window.location.protocol}//${targetHostname}${window.location.pathname}${window.location.search}${window.location.hash}`;
+    
     console.log(`[Multi-tenant] Redirecting to institute subdomain: ${targetUrl}`);
     window.location.href = targetUrl;
     
