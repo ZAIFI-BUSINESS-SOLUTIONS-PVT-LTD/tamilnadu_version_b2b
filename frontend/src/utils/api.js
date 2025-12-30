@@ -3,6 +3,61 @@ import axios from 'axios';
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL;
 
+/**
+ * Handles production-only institute subdomain redirection after successful login.
+ * 
+ * Redirect conditions (ALL must be true):
+ * 1. Current hostname is exactly 'web.inzighted.com'
+ * 2. Backend response includes 'institute_subdomain' field
+ * 3. Current hostname is NOT already the institute subdomain
+ * 
+ * @param {Object} loginResponse - The backend login response object
+ * @returns {boolean} - Returns true if redirect was triggered, false otherwise
+ * 
+ * Safety features:
+ * - Only triggers on web.inzighted.com (not dev/other domains)
+ * - Prevents infinite loops by checking current hostname
+ * - Tokens are already stored in localStorage before this runs
+ * - If institute_subdomain is missing, does nothing (allows future backend support)
+ */
+export const handleInstituteRedirect = (loginResponse) => {
+  try {
+    // Extract institute subdomain from backend response
+    const instituteSubdomain = loginResponse?.institute_subdomain;
+    
+    // Get current hostname
+    const currentHostname = window.location.hostname;
+    
+    // Only proceed if we're on the main production domain
+    if (currentHostname !== 'web.inzighted.com') {
+      return false; // Dev, subdomain, or other environment - no redirect
+    }
+    
+    // Check if backend provided an institute subdomain
+    if (!instituteSubdomain || typeof instituteSubdomain !== 'string') {
+      return false; // Backend doesn't support multi-tenant yet, or no subdomain assigned
+    }
+    
+    // Construct target subdomain
+    const targetHostname = `${instituteSubdomain}.inzighted.com`;
+    
+    // Prevent redirect if we're already on the target subdomain (should never happen, but safety check)
+    if (currentHostname === targetHostname) {
+      return false; // Already on correct subdomain
+    }
+    
+    // Perform the redirect (preserves protocol and path)
+    const targetUrl = `${window.location.protocol}//${targetHostname}${window.location.pathname}`;
+    console.log(`[Multi-tenant] Redirecting to institute subdomain: ${targetUrl}`);
+    window.location.href = targetUrl;
+    
+    return true; // Redirect triggered
+  } catch (error) {
+    console.error('[Multi-tenant] Error during subdomain redirect:', error);
+    return false; // On error, don't redirect (fail safe)
+  }
+};
+
 // Helper to get PDF service URL with fallback.
 // Priority order:
 // 1. `VITE_PDF_SERVICE_URL` if explicitly provided (useful for staging/testing)
@@ -40,6 +95,12 @@ export const adminLogin = async (email, password) => {
     });
 
     const data = await response.json();
+    
+    // Check for production institute subdomain redirect
+    // Note: Redirect will happen inside handleInstituteRedirect if conditions are met
+    // The redirect is non-blocking for the return statement since it's a full page navigation
+    handleInstituteRedirect(data);
+    
     return data;
   } catch (error) {
     return { error: 'Network error, please try again' };
@@ -64,6 +125,12 @@ export const studentLogin = async (studentId, password) => {
     });
 
     const data = await response.json();
+    
+    // Check for production institute subdomain redirect
+    // Note: Redirect will happen inside handleInstituteRedirect if conditions are met
+    // The redirect is non-blocking for the return statement since it's a full page navigation
+    handleInstituteRedirect(data);
+    
     return data;
   } catch (error) {
     return { error: 'Network error, please try again' };
@@ -431,6 +498,12 @@ export const educatorLogin = async (email, password) => {
     });
 
     const data = await response.json();
+    
+    // Check for production institute subdomain redirect
+    // Note: Redirect will happen inside handleInstituteRedirect if conditions are met
+    // The redirect is non-blocking for the return statement since it's a full page navigation
+    handleInstituteRedirect(data);
+    
     return data;
   } catch (error) {
     return { error: 'Network error, please try again' };
@@ -451,6 +524,12 @@ export const institutionLogin = async (email, password) => {
     });
 
     const data = await response.json();
+    
+    // Check for production institute subdomain redirect
+    // Note: Redirect will happen inside handleInstituteRedirect if conditions are met
+    // The redirect is non-blocking for the return statement since it's a full page navigation
+    handleInstituteRedirect(data);
+    
     return data;
   } catch (error) {
     return { error: 'Network error, please try again' };
