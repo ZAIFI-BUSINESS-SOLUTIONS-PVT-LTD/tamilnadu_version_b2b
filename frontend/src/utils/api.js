@@ -3,6 +3,101 @@ import axios from 'axios';
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL;
 
+/**
+ * Detects if the current environment is the production gateway domain.
+ * 
+ * Uses TWO signals (both must be true):
+ * 1. Runtime hostname matches 'web.inzighted.com'
+ * 2. VITE_API_URL points to production API (not dev)
+ * 
+ * Why both checks:
+ * - Hostname alone could be spoofed or misconfigured
+ * - API URL is injected by GitHub Actions workflow at build time
+ * - Dev builds use tamilnaduapi.inzighted.com
+ * - Prod builds use api.inzighted.com
+ * 
+ * Note: Cannot use import.meta.env.MODE (always "production" for both builds)
+ * 
+ * @returns {boolean} - True if on production gateway, false otherwise
+ */
+export const isProductionGateway = () => {
+  try {
+    const currentHostname = window.location.hostname;
+    const apiUrl = API_BASE_URL || '';
+    
+    // Check 1: Must be on web.inzighted.com frontend domain
+    const isWebDomain = currentHostname === 'web.inzighted.com';
+    
+    // Check 2: Must be using production API (not dev API)
+    // Dev API: https://tamilnaduapi.inzighted.com/api
+    // Prod API: https://api.inzighted.com/api
+    const isProdApi = apiUrl.includes('api.inzighted.com') && !apiUrl.includes('tamilnaduapi');
+    
+    return isWebDomain && isProdApi;
+  } catch (error) {
+    console.error('[Multi-tenant] Error detecting environment:', error);
+    return false; // Fail safe: no redirect on error
+  }
+};
+
+/**
+ * Handles production-only institute subdomain redirection after successful login.
+ * 
+ * Redirect conditions (ALL must be true):
+ * 1. Environment is production gateway (checked via isProductionGateway)
+ * 2. Backend response includes 'institute_subdomain' field
+ * 3. Current hostname is NOT already the institute subdomain
+ * 
+ * @param {Object} loginResponse - The backend login response object
+ * @returns {boolean} - Returns true if redirect was triggered, false otherwise
+ * 
+ * Safety features:
+ * - Uses dual-signal environment detection (hostname + API URL)
+ * - Dev (tamilnadu.inzighted.com) never triggers redirect
+ * - Prevents infinite loops by checking current hostname
+ * - Preserves full URL context (pathname, query, hash)
+ * - Tokens stored in localStorage before this runs
+ * - Missing institute_subdomain = no-op (safe fallback)
+ */
+export const handleInstituteRedirect = (loginResponse) => {
+  try {
+    // Safety check: Only proceed if we're on production gateway
+    if (!isProductionGateway()) {
+      return false; // Dev or other environment - no redirect
+    }
+    
+    // Extract institute subdomain from backend response
+    const instituteSubdomain = loginResponse?.institute_subdomain;
+    
+    // Validate subdomain exists and is a valid string
+    if (!instituteSubdomain || typeof instituteSubdomain !== 'string' || !instituteSubdomain.trim()) {
+      return false; // Backend doesn't support multi-tenant yet, or no subdomain assigned
+    }
+    
+    // Get current hostname
+    const currentHostname = window.location.hostname;
+    
+    // Construct target subdomain
+    const targetHostname = `${instituteSubdomain.trim()}.inzighted.com`;
+    
+    // Prevent redirect if we're already on the target subdomain
+    if (currentHostname === targetHostname) {
+      return false; // Already on correct subdomain (should never happen from web.inzighted.com)
+    }
+    
+    // Build full redirect URL, preserving pathname, query params, and hash
+    const targetUrl = `${window.location.protocol}//${targetHostname}${window.location.pathname}${window.location.search}${window.location.hash}`;
+    
+    console.log(`[Multi-tenant] Redirecting to institute subdomain: ${targetUrl}`);
+    window.location.href = targetUrl;
+    
+    return true; // Redirect triggered
+  } catch (error) {
+    console.error('[Multi-tenant] Error during subdomain redirect:', error);
+    return false; // On error, don't redirect (fail safe)
+  }
+};
+
 // Helper to get PDF service URL with fallback.
 // Priority order:
 // 1. `VITE_PDF_SERVICE_URL` if explicitly provided (useful for staging/testing)
@@ -40,6 +135,12 @@ export const adminLogin = async (email, password) => {
     });
 
     const data = await response.json();
+    
+    // Check for production institute subdomain redirect
+    // Note: Redirect will happen inside handleInstituteRedirect if conditions are met
+    // The redirect is non-blocking for the return statement since it's a full page navigation
+    handleInstituteRedirect(data);
+    
     return data;
   } catch (error) {
     return { error: 'Network error, please try again' };
@@ -64,6 +165,12 @@ export const studentLogin = async (studentId, password) => {
     });
 
     const data = await response.json();
+    
+    // Check for production institute subdomain redirect
+    // Note: Redirect will happen inside handleInstituteRedirect if conditions are met
+    // The redirect is non-blocking for the return statement since it's a full page navigation
+    handleInstituteRedirect(data);
+    
     return data;
   } catch (error) {
     return { error: 'Network error, please try again' };
@@ -431,6 +538,12 @@ export const educatorLogin = async (email, password) => {
     });
 
     const data = await response.json();
+    
+    // Check for production institute subdomain redirect
+    // Note: Redirect will happen inside handleInstituteRedirect if conditions are met
+    // The redirect is non-blocking for the return statement since it's a full page navigation
+    handleInstituteRedirect(data);
+    
     return data;
   } catch (error) {
     return { error: 'Network error, please try again' };
@@ -451,6 +564,12 @@ export const institutionLogin = async (email, password) => {
     });
 
     const data = await response.json();
+    
+    // Check for production institute subdomain redirect
+    // Note: Redirect will happen inside handleInstituteRedirect if conditions are met
+    // The redirect is non-blocking for the return statement since it's a full page navigation
+    handleInstituteRedirect(data);
+    
     return data;
   } catch (error) {
     return { error: 'Network error, please try again' };
@@ -505,6 +624,9 @@ export const uploadTest = async (questionPaper, answerKey, answerSheet, metadata
       if (metadata.pattern && metadata.pattern !== undefined) {
         formData.append('pattern', metadata.pattern);
       }
+      if (metadata.test_name && metadata.test_name !== undefined) {
+        formData.append('test_name', metadata.test_name);
+      }
       if (metadata.subject_order && metadata.subject_order !== undefined) {
         formData.append('subject_order', JSON.stringify(metadata.subject_order));
       }
@@ -546,6 +668,28 @@ export const fetchTests = async (educatorId = null) => {
     return { tests: response.data.tests }; // 👈 return wrapped object
   } catch (error) {
     return { error: error.response?.data?.error || 'Failed to fetch tests' };
+  }
+};
+
+/**
+ * Update Test Name
+ * @param {number} testNum - Test number to update
+ * @param {string} testName - New test name
+ * @param {string|number} educatorId - Optional educator ID for institution view
+ */
+export const updateTestName = async (testNum, testName, educatorId = null) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.patch(
+      `${API_BASE_URL}/educator/tests/${testNum}/`,
+      { test_name: testName, educator_id: educatorId },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    return { error: error.response?.data?.error || 'Failed to update test name' };
   }
 };
 

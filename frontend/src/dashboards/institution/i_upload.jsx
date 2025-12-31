@@ -1,5 +1,5 @@
 import React, { useState, lazy, Suspense, useEffect } from 'react';
-import { Upload, Plus, Search, X, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { Upload, Plus, Search, X, Loader2, CheckCircle2, XCircle, Clock, MoreHorizontal, Edit2, Save } from 'lucide-react';
 import { useTests } from '../components/hooks/e_upload/e_use_tests';
 import { useFileUpload } from '../components/hooks/e_upload/e_use_file_upload';
 import Table from '../components/ui/table.jsx';
@@ -10,9 +10,12 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '.
 import { toast } from 'react-hot-toast';
 import { useInstitution } from './index.jsx';
 import FeedbackModal from '../components/feedback/FeedbackModal.jsx';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../../components/ui/dropdown-menu.jsx';
+import Modal from '../components/ui/modal.jsx';
+import { updateTestName } from '../../utils/api.js';
 
 // Reuse the educator upload modal
-const UploadModal = lazy(() => import('../components/e_docsupload.jsx'));
+const UploadModal = lazy(() => import('../components/docsupload.jsx'));
 
 const IUpload = () => {
   const { selectedEducatorId, setSelectedEducatorId, educators } = useInstitution();
@@ -27,6 +30,11 @@ const IUpload = () => {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   // State to manage the current step in the upload modal
   const [step, setStep] = useState(0);
+  // State for selected test to view details
+  const [selectedTest, setSelectedTest] = useState(null);
+  // State for editing test name
+  const [isEditingTestName, setIsEditingTestName] = useState(false);
+  const [editedTestName, setEditedTestName] = useState('');
 
   // Custom hook to fetch and manage uploaded tests data - passing selectedEducatorId
   const { tests, loadTests } = useTests(selectedEducatorId, { enabled: !!selectedEducatorId });
@@ -75,12 +83,13 @@ const IUpload = () => {
   // Filter and sort the tests array
   const filteredTests = tests.filter(test => {
     const testNumMatch = test.test_num?.toString().toLowerCase().includes(searchTerm.toLowerCase());
+    const testNameMatch = test.test_name?.toLowerCase().includes(searchTerm.toLowerCase());
     const statusMatch = test.progress?.toLowerCase().includes(searchTerm.toLowerCase());
     const dateMatch = test.createdAt && new Date(test.createdAt).toLocaleString("en-GB", {
       dateStyle: "medium",
       timeStyle: "short"
     }).toLowerCase().includes(searchTerm.toLowerCase());
-    return testNumMatch || statusMatch || dateMatch;
+    return testNumMatch || testNameMatch || statusMatch || dateMatch;
   });
 
   const sortedTests = [...filteredTests].sort((a, b) => {
@@ -100,6 +109,13 @@ const IUpload = () => {
         ? statusOrder[a.progress] - statusOrder[b.progress]
         : statusOrder[b.progress] - statusOrder[a.progress];
     }
+    if (sortField === 'test_name') {
+      const nameA = (a.test_name || '').toLowerCase();
+      const nameB = (b.test_name || '').toLowerCase();
+      return sortDirection === 'asc'
+        ? nameA.localeCompare(nameB)
+        : nameB.localeCompare(nameA);
+    }
     return sortDirection === 'asc'
       ? a.test_num - b.test_num
       : b.test_num - a.test_num;
@@ -113,6 +129,44 @@ const IUpload = () => {
       return;
     }
     setIsModalOpen(true);
+  };
+
+  const handleSaveTestName = async () => {
+    if (!editedTestName.trim()) {
+      toast.error("Test name cannot be empty");
+      return;
+    }
+
+    // Check for duplicates (excluding the current test)
+    const isDuplicate = tests.some(
+      test => 
+        test.test_num !== selectedTest.test_num && 
+        test.test_name && 
+        test.test_name.toLowerCase() === editedTestName.trim().toLowerCase()
+    );
+
+    if (isDuplicate) {
+      toast.error("This test name already exists. Please choose a different name.");
+      return;
+    }
+
+    try {
+      const response = await updateTestName(selectedTest.test_num, editedTestName.trim(), selectedEducatorId);
+      
+      if (response.error) {
+        toast.error(response.error);
+        return;
+      }
+
+      toast.success("Test name updated successfully");
+      setIsEditingTestName(false);
+      setSelectedTest({ ...selectedTest, test_name: editedTestName.trim() });
+      // Reload tests to reflect the change
+      loadTests();
+    } catch (error) {
+      toast.error("Failed to update test name");
+      console.error("Error updating test name:", error);
+    }
   };
 
   const handleUploadAndClose = async (metadata = null) => {
@@ -166,8 +220,10 @@ const IUpload = () => {
 
   const columns = [
     { field: 'test_num', label: 'Test #', sortable: true },
+    { field: 'test_name', label: 'Test Name', sortable: true },
     { field: 'progress', label: 'Status', sortable: true },
     { field: 'createdAt', label: 'Uploaded', sortable: true },
+    { field: 'actions', label: 'Actions', sortable: false, headerClass: 'justify-end' },
   ];
 
   const renderRow = (row, idx) => {
@@ -175,6 +231,7 @@ const IUpload = () => {
     return (
       <tr key={row.test_id || idx}>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Test {row.test_num}</td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.test_name || 'Untitled'}</td>
         <td className="px-6 py-4 whitespace-nowrap text-sm">
           <div className={`flex items-center gap-2 ${status.colorClass}`}>
             <span className={`p-1 rounded-full ${status.bgClass}`}>{status.icon}</span>
@@ -186,6 +243,26 @@ const IUpload = () => {
             dateStyle: "medium",
             timeStyle: "short"
           })}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+          <div className="flex items-center gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full" aria-label="More">
+                  <MoreHorizontal className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent sideOffset={6} align="end">
+                <DropdownMenuItem onClick={() => {
+                  setSelectedTest(row);
+                  setEditedTestName(row.test_name || '');
+                  setIsEditingTestName(false);
+                }}>
+                  View more
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </td>
       </tr>
     );
@@ -252,7 +329,10 @@ const IUpload = () => {
       <div className="hidden sm:block card rounded-2xl border border-gray-250 bg-white w-full p-8">
         <div>
           <div className="flex flex-col sm:flex-row justify-between items-center sm:pb-8 sm:border-b sm:border-gray-200 gap-4">
-            <h2 className="hidden sm:block text-2xl font-bold text-gray-800 w-full sm:w-auto text-left">History</h2>
+            <h2 className="hidden sm:flex items-center gap-2 text-2xl font-bold text-gray-800 w-full sm:w-auto text-left">
+              <Clock size={24} className="text-gray-600" />
+              History
+            </h2>
             <div className="hidden sm:flex flex-row w-full sm:w-auto gap-4 items-center justify-end">
               <div className="relative flex-1 sm:w-96">
                 <Input
@@ -380,8 +460,9 @@ const IUpload = () => {
                 return (
                   <div key={row.test_id || idx} className="flex items-start justify-between gap-4 p-4 border rounded-lg bg-white">
                     <div className="flex-1">
-                      <div className="text-sm text-gray-500">Test {row.test_num}</div>
-                      <div className="mt-3 flex items-start gap-3">
+                      <div className="text-sm font-medium text-gray-900 mb-1">{row.test_name || 'Untitled'}</div>
+                      <div className="text-xs text-gray-500 mb-3">Test {row.test_num}</div>
+                      <div className="flex items-start gap-3">
                         <span className={`p-2 rounded-full ${status.bgClass}`}>{status.icon}</span>
                         <div>
                           <div className={`text-sm font-semibold ${status.colorClass}`}>{status.text}</div>
@@ -390,6 +471,24 @@ const IUpload = () => {
                           </div>
                         </div>
                       </div>
+                    </div>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="rounded-full" aria-label="More">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent sideOffset={6} align="end">
+                          <DropdownMenuItem onClick={() => {
+                            setSelectedTest(row);
+                            setEditedTestName(row.test_name || '');
+                            setIsEditingTestName(false);
+                          }}>
+                            View more
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 );
@@ -430,11 +529,124 @@ const IUpload = () => {
             onSubmit={handleUploadAndClose}
             onClose={() => { setIsModalOpen(false); setStep(0); }}
             isUploading={isUploading}
+            existingTests={tests}
           />
         </Suspense>
       )}
       {showFeedbackModal && (
         <FeedbackModal onClose={() => setShowFeedbackModal(false)} userType="institution" />
+      )}
+
+      {selectedTest && (
+        <Modal
+          open={!!selectedTest}
+          onClose={() => {
+            setSelectedTest(null);
+            setIsEditingTestName(false);
+            setEditedTestName('');
+          }}
+          title="Test Details"
+          maxWidth="max-w-2xl"
+        >
+          <div className="space-y-6 p-6">
+            {/* Test Name */}
+            <div className="flex items-center justify-between pb-4 border-b">
+              <div className="flex-1">
+                <label className="text-sm font-medium text-gray-600 mb-2 block">Test Name</label>
+                {isEditingTestName ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="text"
+                      value={editedTestName}
+                      onChange={(e) => setEditedTestName(e.target.value)}
+                      className="flex-1"
+                      placeholder="Enter test name"
+                      autoFocus
+                    />
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={handleSaveTestName}
+                      className="flex items-center gap-1"
+                    >
+                      <Save size={16} />
+                      Save
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setIsEditingTestName(false);
+                        setEditedTestName(selectedTest.test_name || '');
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <p className="text-lg font-semibold text-gray-900">{selectedTest.test_name || 'Untitled'}</p>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setIsEditingTestName(true)}
+                      className="h-8 w-8"
+                      title="Edit test name"
+                    >
+                      <Edit2 size={16} />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Test Details Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="text-sm font-medium text-gray-600 mb-2 block">Test Number</label>
+                <p className="text-base text-gray-900">Test {selectedTest.test_num}</p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-600 mb-2 block">Status</label>
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const status = getStatusInfo(selectedTest.progress);
+                    return (
+                      <>
+                        <span className={`p-1.5 rounded-full ${status.bgClass}`}>{status.icon}</span>
+                        <span className={`text-sm font-semibold ${status.colorClass}`}>{status.text}</span>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-600 mb-2 block">Upload Date</label>
+                <p className="text-base text-gray-900">
+                  {selectedTest.createdAt && new Date(selectedTest.createdAt).toLocaleString("en-GB", {
+                    dateStyle: "long",
+                    timeStyle: "short"
+                  })}
+                </p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-600 mb-2 block">Test ID</label>
+                <p className="text-base text-gray-900 font-mono">{selectedTest.test_id || 'N/A'}</p>
+              </div>
+            </div>
+
+            {/* Additional information can be added here */}
+            {selectedTest.pattern && (
+              <div className="pt-4 border-t">
+                <label className="text-sm font-medium text-gray-600 mb-2 block">Syllabus Pattern</label>
+                <p className="text-base text-gray-900">{selectedTest.pattern}</p>
+              </div>
+            )}
+          </div>
+        </Modal>
       )}
     </div>
   );

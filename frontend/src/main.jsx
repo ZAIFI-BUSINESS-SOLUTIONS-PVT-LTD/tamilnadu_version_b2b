@@ -31,16 +31,91 @@ if (typeof window !== 'undefined' && window.MutationObserver && window.MutationO
   }
 }
 
-import { StrictMode } from 'react';
+import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 import App from './App.jsx';
+import { InstitutionProvider } from './lib/institutionContext.jsx';
+
+function InstitutionBootstrap() {
+  const [state, setState] = useState({ status: 'loading', institution: null });
+
+  useEffect(() => {
+    const host = (typeof window !== 'undefined' && window.location && window.location.host) ? window.location.host : '';
+    const isLocal = host.includes('localhost') || host.startsWith('127.0.0.1') || host === '::1' || host.endsWith('.local') || host === '';
+    const isDevHost = host === 'tamilnadu.inzighted.com' || host.endsWith('.tamilnadu.inzighted.com');
+
+    // Local / dev-domain safe fallback (no remote lookup)
+    if (isLocal || isDevHost) {
+      setState({
+        status: 'ready',
+        institution: { institutionId: 'dev', displayName: 'InzightEd' }
+      });
+      return;
+    }
+
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch(`/institution-by-domain?domain=${encodeURIComponent(host)}` , {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+          signal: controller.signal,
+        });
+
+        if (res.status === 404) {
+          setState({ status: 'invalid', institution: null });
+          return;
+        }
+
+        if (!res.ok) {
+          setState({ status: 'invalid', institution: null });
+          return;
+        }
+
+        const data = await res.json();
+        if (data && typeof data.institutionId === 'string' && typeof data.displayName === 'string') {
+          setState({ status: 'ready', institution: { institutionId: data.institutionId, displayName: data.displayName } });
+        } else {
+          setState({ status: 'invalid', institution: null });
+        }
+      } catch (e) {
+        setState({ status: 'invalid', institution: null });
+      }
+    })();
+
+    return () => controller.abort();
+  }, []);
+
+  if (state.status === 'invalid') {
+    // Full-screen minimal fallback on invalid domain
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        height: '100vh', width: '100vw', fontSize: '1rem'
+      }}>
+        Invalid institution domain
+      </div>
+    );
+  }
+
+  if (state.status !== 'ready') {
+    // Keep minimal during resolution to avoid rendering main app
+    return null;
+  }
+
+  return (
+    <InstitutionProvider value={state.institution}>
+      <App />
+    </InstitutionProvider>
+  );
+}
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <App />
+      <InstitutionBootstrap />
     </BrowserRouter>
   </StrictMode>
 );
