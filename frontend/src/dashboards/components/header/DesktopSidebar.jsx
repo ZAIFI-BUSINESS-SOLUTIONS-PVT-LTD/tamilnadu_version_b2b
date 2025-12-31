@@ -42,12 +42,12 @@ import SidebarItem from './SideBarItem'; // Assuming SidebarItem handles individ
 const DesktopSidebar = ({ items, additionalItems, isCollapsed, onLogout, userInfo }) => {
   return (
     <aside
-      className={`fixed top-0 left-0 h-full bg-white z-40 transition-all duration-300 flex flex-col shadow-md overflow-x-hidden
+      className={`fixed top-0 left-0 h-full bg-card z-40 transition-all duration-300 flex flex-col shadow-md overflow-x-hidden
         ${isCollapsed ? "w-20" : "w-64"}`}
       aria-label="Main sidebar navigation"
     >
       {/* Header section with logo and app name */}
-      <div className={`flex items-center h-20 mb-2 border-b border-gray-100 ${!isCollapsed ? 'justify-start px-6' : 'justify-center'}`}>
+      <div className={`flex items-center h-20 mb-2 border-b border-border ${!isCollapsed ? 'justify-start px-6' : 'justify-center'}`}>
         {!isCollapsed ? (
           // Expanded state: Full logo and app name
           <AnimatePresence mode="wait"> {/* Use mode="wait" to ensure current animation completes before new one starts */}
@@ -100,13 +100,13 @@ const DesktopSidebar = ({ items, additionalItems, isCollapsed, onLogout, userInf
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="text-sm font-medium text-gray-500 uppercase tracking-wider"
+                  className="text-sm font-medium text-muted-foreground uppercase tracking-wider"
                 >
                   Main Menu
                 </motion.span>
               </AnimatePresence>
             ) : (
-              <span className="text-md font-extrabold text-gray-400 uppercase tracking-wider flex justify-center">
+              <span className="text-md font-extrabold text-muted-foreground uppercase tracking-wider flex justify-center">
                 ...
               </span>
             )}
@@ -136,13 +136,13 @@ const DesktopSidebar = ({ items, additionalItems, isCollapsed, onLogout, userInf
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="text-sm font-medium text-gray-500 uppercase tracking-wider"
+                      className="text-sm font-medium text-muted-foreground uppercase tracking-wider"
                     >
                       Reports & Tools
                     </motion.span>
                   </AnimatePresence>
                 ) : (
-                  <span className="text-md font-extrabold text-gray-400 uppercase tracking-wider flex justify-center">
+                  <span className="text-md font-extrabold text-muted-foreground uppercase tracking-wider flex justify-center">
                     ...
                   </span>
                 )}
@@ -162,15 +162,15 @@ const DesktopSidebar = ({ items, additionalItems, isCollapsed, onLogout, userInf
                   <li key={`additional-${index}`} className={`relative group ${isCollapsed ? "w-10 h-10 flex justify-center" : "w-full"}`} role="none">
                     <button
                       onClick={item.onClick}
-                      className={`w-full flex items-center rounded-lg transition-all duration-200
+                      className={`w-full flex items-center rounded-lg transition-all duration-200 focus:outline-none focus:ring-0
                                   ${!isCollapsed ? 'px-4 py-3 text-left' : 'p-3 justify-center'}
-                                  hover:bg-blue-50 text-gray-700 group
+                                  hover:bg-muted text-foreground group
                                   ${isCollapsed ? 'justify-center items-center' : 'px-4 py-3 text-left w-full'}`}
                       aria-label={item.text} // Add aria-label for accessibility when text is hidden
                       role="menuitem"
                     >
                       <div className="relative flex items-center">
-                        <div className={`flex items-center justify-center text-gray-600 group-hover:text-blue-600
+                        <div className={`flex items-center justify-center text-muted-foreground group-hover:text-primary
                                         ${!isCollapsed ? 'mr-3' : ''}`}>
                           {item.icon}
                         </div>
@@ -199,8 +199,8 @@ const DesktopSidebar = ({ items, additionalItems, isCollapsed, onLogout, userInf
                               className="absolute right-0 -mr-6"
                             >
                               {item.isCollapsed ? // Assuming `item.isCollapsed` is managed externally for this item
-                                <CaretRight size={16} className="text-gray-500" /> :
-                                <CaretDown size={16} className="text-gray-500" />
+                                <CaretRight size={16} className="text-muted-foreground" /> :
+                                <CaretDown size={16} className="text-muted-foreground" />
                               }
                             </motion.div>
                           )}
@@ -215,7 +215,7 @@ const DesktopSidebar = ({ items, additionalItems, isCollapsed, onLogout, userInf
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
-                          className="mt-1 ml-6 space-y-1 border-l-2 border-blue-100 pl-4"
+                          className="mt-1 ml-6 space-y-1 border-l-2 border-border pl-4"
                           role="group" // ARIA role for a group of related menu items
                         >
                           {item.children?.map((child, childIndex) => (
@@ -229,7 +229,7 @@ const DesktopSidebar = ({ items, additionalItems, isCollapsed, onLogout, userInf
                               <button
                                 onClick={child.onClick}
                                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
-                                  text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors text-base"
+                                  text-muted-foreground hover:bg-muted hover:text-primary transition-colors text-base focus:outline-none focus:ring-0"
                                 aria-label={child.text}
                                 role="menuitem"
                               >
@@ -253,13 +253,13 @@ const DesktopSidebar = ({ items, additionalItems, isCollapsed, onLogout, userInf
         {/* User profile section (only visible when sidebar is expanded) */}
         {!isCollapsed && userInfo && (
           <div className="mt-auto mb-4 px-3">
-            <div className="flex items-center p-3 bg-blue-50 rounded-xl">
-              <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium text-sm">
+            <div className="flex items-center p-3 bg-muted rounded-xl">
+              <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-white font-medium text-sm">
                 {userInfo.name ? userInfo.name.charAt(0).toUpperCase() : 'U'} {/* Ensure uppercase initial */}
               </div>
               <div className="ml-3">
-                <div className="text-sm font-medium text-gray-700">{userInfo.name || 'User'}</div>
-                <div className="text-sm text-gray-500">{userInfo.inst || 'Role/Institution'}</div>
+                <div className="text-sm font-medium text-foreground">{userInfo.name || 'User'}</div>
+                <div className="text-sm text-muted-foreground">{userInfo.inst || 'Role/Institution'}</div>
               </div>
             </div>
           </div>
@@ -271,13 +271,13 @@ const DesktopSidebar = ({ items, additionalItems, isCollapsed, onLogout, userInf
             <li className={`relative group ${isCollapsed ? "w-10 h-10 flex justify-center" : "w-full"}`} role="none">
               <button
                 onClick={onLogout}
-                className={`w-full flex items-center rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500
+                className={`w-full flex items-center rounded-lg transition-all duration-200 focus:outline-none focus:ring-0
                 ${!isCollapsed ? 'px-4 py-3 text-left' : 'p-3 justify-center'}
-                hover:bg-red-50 text-gray-700 group relative`}
+                hover:bg-red-50 dark:hover:bg-red-950/20 text-foreground group relative`}
                 aria-label="Logout"
                 role="menuitem"
               >
-                <div className={`flex items-center justify-center text-gray-600 group-hover:text-red-600${!isCollapsed ? ' mr-3' : ''}`}>
+                <div className={`flex items-center justify-center text-muted-foreground group-hover:text-red-600${!isCollapsed ? ' mr-3' : ''}`}>
                   <SignOut size={20} />
                 </div>
                 <AnimatePresence>

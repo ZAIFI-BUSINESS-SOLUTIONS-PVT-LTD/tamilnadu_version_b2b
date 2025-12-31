@@ -6,7 +6,7 @@ import { Line, Doughnut } from 'react-chartjs-2';
 import PageLoader from '../components/LoadingPage';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import FilterDrawer from '../../components/ui/filter-drawer.jsx';
-import Stat from '../components/ui/stat-mobile.jsx';
+import Stat from '../../components/stat-mobile.jsx';
 import { Card } from '../../components/ui/card.jsx';
 import ActionPlanCard from './components/ActionPlanCard.jsx';
 import ChecklistCard from './components/ChecklistCard.jsx';

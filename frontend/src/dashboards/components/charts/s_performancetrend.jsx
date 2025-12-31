@@ -11,7 +11,7 @@ import {
   Legend,
 } from 'chart.js';
 import { ChartBar } from '@phosphor-icons/react';
-import SelectDropdown from '../ui/dropdown.jsx';
+import SelectDropdown from '../../../components/dropdown.jsx';
 
 // Register ChartJS components
 ChartJS.register(

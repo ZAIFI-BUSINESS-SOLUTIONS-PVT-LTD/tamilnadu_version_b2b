@@ -5,7 +5,7 @@ import { Chart, LineElement, PointElement, ArcElement, Tooltip, Legend, Category
 import { getInstitutionEducatorDashboardData, fetchInstitutionEducatorAllStudentResults } from '../../utils/api';
 import { Users, Calendar, HelpCircle, Sparkles, ChevronDown } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../../components/ui/dropdown-menu.jsx';
-import Stat from '../components/ui/stat-mobile';
+import Stat from '../../components/stat-mobile';
 import { Card } from '../../components/ui/card.jsx';
 import { Tooltip as UITooltip, TooltipTrigger as UITooltipTrigger, TooltipContent as UITooltipContent, TooltipProvider as UITooltipProvider } from '../../components/ui/tooltip.jsx';
 import LoadingPage from '../components/LoadingPage.jsx';
@@ -17,9 +17,9 @@ Chart.register(LineElement, PointElement, ArcElement, Tooltip, Legend, CategoryS
 Chart.defaults.font.family = 'Tenorite, sans-serif';
 
 const ICON_MAPPING = {
-  Users: <Users aria-hidden="true" className="text-gray-800" />,
-  Calendar: <Calendar aria-hidden="true" className="text-gray-800" />,
-  Default: <HelpCircle aria-hidden="true" className="text-gray-800" />
+  Users: <Users aria-hidden="true" className="text-foreground" />,
+  Calendar: <Calendar aria-hidden="true" className="text-foreground" />,
+  Default: <HelpCircle aria-hidden="true" className="text-foreground" />
 };
 const formatStatValue = (value) => {
   if (value === null || value === undefined || String(value).trim() === '') {

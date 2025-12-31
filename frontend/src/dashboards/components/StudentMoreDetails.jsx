@@ -7,10 +7,12 @@ import {
     FileText,
     Trash2,
     Edit,
+    AlertCircle,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button.jsx';
 import { Input } from '../../components/ui/input.jsx';
-import Modal from './ui/modal.jsx';
+import Modal from '../../components/modal.jsx';
+import Table from '../../components/table.jsx';
 import StudentDeleteModal from './StudentDeleteModal.jsx';
 
 const SUBJECTS = [
@@ -235,20 +237,20 @@ function StudentMoreDetails({
                 title={modalStudent ? (
                     <>
                         {studentNameMap[modalStudent.student_id] || modalStudent.student_name}
-                        <span className="text-xs text-gray-400 ml-2">(ID: {modalStudent.student_id})</span>
+                        <span className="text-xs text-muted-foreground ml-2">(ID: {modalStudent.student_id})</span>
                     </>
                 ) : ''}
-                maxWidth="max-w-3xl"
+                maxWidth="max-w-5xl"
             >
                 <div className="flex flex-col h-[80vh]">
                     {modalStudent && (
                         <>
                             {/* Header Section - Sticky */}
-                            <div className="sticky top-0 bg-white border-b pb-4 mb-4">
+                            <div className="sticky top-0 bg-card border-b border-border pb-4 mb-4">
                                 {isEditing ? (
                                     <div className="space-y-4">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700">Student ID</label>
+                                            <label className="block text-sm font-medium text-foreground">Student ID</label>
                                             <Input
                                                 className="input input-bordered w-full"
                                                 value={editForm.student_id}
@@ -256,7 +258,7 @@ function StudentMoreDetails({
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700">Name</label>
+                                            <label className="block text-sm font-medium text-foreground">Name</label>
                                             <Input
                                                 className="input input-bordered w-full"
                                                 value={editForm.name}
@@ -264,7 +266,7 @@ function StudentMoreDetails({
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700">DOB</label>
+                                            <label className="block text-sm font-medium text-foreground">DOB</label>
                                             <Input
                                                 type="date"
                                                 className="input input-bordered w-full"
@@ -273,7 +275,7 @@ function StudentMoreDetails({
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700">Password</label>
+                                            <label className="block text-sm font-medium text-foreground">Password</label>
                                             <Input
                                                 type="password"
                                                 className="input input-bordered w-full"
@@ -286,16 +288,16 @@ function StudentMoreDetails({
                                 ) : (
                                     <div className="flex flex-wrap gap-x-6 gap-y-2">
                                         <div className="flex items-center gap-2">
-                                            <FileText className="text-gray-400" />
+                                            <FileText className="text-muted-foreground" />
                                             <div>
-                                                <p className="text-sm text-gray-500">Tests</p>
+                                                <p className="text-sm text-muted-foreground">Tests</p>
                                                 <p className="font-medium">{modalStudent.tests_taken}</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <BarChart2 className="text-gray-400" />
+                                            <BarChart2 className="text-muted-foreground" />
                                             <div>
-                                                <p className="text-sm text-gray-500">Average</p>
+                                                <p className="text-sm text-muted-foreground">Average</p>
                                                 <p className="font-medium">{modalStudent.average_score}</p>
                                             </div>
                                         </div>
@@ -317,58 +319,59 @@ function StudentMoreDetails({
 
                                             const sortedTests = [...modalStudent.test_results].sort((a, b) => b.test_num - a.test_num);
 
+                                            const columns = [
+                                                { field: 'test_num', label: 'Test #', sortable: false },
+                                                { field: 'total_score', label: 'Total Score', sortable: false },
+                                                ...activeSubjects.map(sub => ({ field: sub.key, label: sub.label, sortable: false })),
+                                                { field: 'actions', label: 'Actions', sortable: false, headerClass: 'text-right' }
+                                            ];
+
                                             return (
                                                 <>
-                                                    <h4 className="text-md font-semibold text-gray-800 mb-2">Test Performance</h4>
-                                                    <div className="overflow-x-auto">
-                                                        <table className="table table-zebra table-sm">
-                                                            <thead>
-                                                                <tr>
-                                                                    <th>Test #</th>
-                                                                    <th>Total Score</th>
-                                                                    {activeSubjects.map(sub => <th key={sub.key}>{sub.label}</th>)}
-                                                                    <th className="text-right">Actions</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                {sortedTests.map((test, index) => (
-                                                                    <tr key={index}>
-                                                                        <td>{test.test_num}</td>
-                                                                        <td className="font-medium">{test.total_score}</td>
-                                                                        {activeSubjects.map(sub => <td key={sub.key}>{test[sub.key] != null && test[sub.key] !== undefined && test[sub.key] !== '' && test[sub.key] !== 0 ? test[sub.key] : "-"}</td>)}
-                                                                        <td className="whitespace-nowrap">
-                                                                            <div className="flex items-center gap-2 justify-end">
-                                                                                <Button
-                                                                                    variant="outline"
-                                                                                    size="sm"
-                                                                                    className="text-red-600 hover:bg-red-50"
-                                                                                    onClick={() => {
-                                                                                        setTestToDelete({ studentId: modalStudent.student_id, testNum: test.test_num });
-                                                                                        setDeleteTestModalOpen(true);
-                                                                                    }}
-                                                                                >
-                                                                                    <Trash2 className="w-3 h-3 mr-1" />
-                                                                                    Delete
-                                                                                </Button>
-                                                                                <Button
-                                                                                    variant="outline"
-                                                                                    size="sm"
-                                                                                    className="text-blue-600 hover:bg-blue-50"
-                                                                                    onClick={() => {
-                                                                                        setReuploadData({ studentId: modalStudent.student_id, testNum: test.test_num });
-                                                                                        setReuploadModalOpen(true);
-                                                                                    }}
-                                                                                >
-                                                                                    <FileText className="w-3 h-3 mr-1" />
-                                                                                    Re-upload
-                                                                                </Button>
-                                                                            </div>
-                                                                        </td>
-                                                                    </tr>
+                                                    <h4 className="text-md font-semibold text-foreground mb-4">Test Performance</h4>
+                                                    <Table
+                                                        columns={columns}
+                                                        data={sortedTests}
+                                                        renderRow={(test, index) => (
+                                                            <tr key={index}>
+                                                                <td className="px-6 py-3 text-sm text-foreground">{test.test_num}</td>
+                                                                <td className="px-6 py-3 text-sm font-medium text-foreground">{test.total_score}</td>
+                                                                {activeSubjects.map(sub => (
+                                                                    <td key={sub.key} className="px-6 py-3 text-sm text-foreground">
+                                                                        {test[sub.key] != null && test[sub.key] !== undefined && test[sub.key] !== '' && test[sub.key] !== 0 ? test[sub.key] : "-"}
+                                                                    </td>
                                                                 ))}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
+                                                                <td className="px-6 py-3 text-sm">
+                                                                    <div className="flex items-center gap-2 flex-nowrap">
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            className="text-red-600 border-red-200 hover:bg-red-50/80 dark:border-red-900/30 dark:hover:bg-red-950/40 whitespace-nowrap"
+                                                                            onClick={() => {
+                                                                                setTestToDelete({ studentId: modalStudent.student_id, testNum: test.test_num });
+                                                                                setDeleteTestModalOpen(true);
+                                                                            }}
+                                                                        >
+                                                                            <Trash2 className="w-3 h-3 mr-1" />
+                                                                            Delete
+                                                                        </Button>
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            className="text-blue-600 border-blue-200 hover:bg-blue-50/80 dark:border-blue-900/30 dark:hover:bg-blue-950/40 whitespace-nowrap"
+                                                                            onClick={() => {
+                                                                                setReuploadData({ studentId: modalStudent.student_id, testNum: test.test_num });
+                                                                                setReuploadModalOpen(true);
+                                                                            }}
+                                                                        >
+                                                                            <FileText className="w-3 h-3 mr-1" />
+                                                                            Re-upload
+                                                                        </Button>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                    />
                                                 </>
                                             );
                                         })()}
@@ -377,7 +380,7 @@ function StudentMoreDetails({
                             </div>
 
                             {/* Footer Section - Sticky */}
-                            <div className="sticky bottom-0 bg-white border-t pt-4 mt-4 flex justify-between">
+                            <div className="sticky bottom-0 bg-card border-t border-border pt-4 mt-4 flex justify-between">
                                 {isEditing ? (
                                     <>
                                         <div className="flex gap-2">
@@ -434,13 +437,13 @@ function StudentMoreDetails({
                         <div className="flex items-start gap-3">
                             <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-1" />
                             <div>
-                                <p className="text-sm text-gray-700">
+                                <p className="text-sm text-foreground">
                                     Are you sure you want to delete <strong>Test {testToDelete.testNum}</strong> for student <strong>{testToDelete.studentId}</strong>?
                                 </p>
-                                <p className="text-sm text-gray-600 mt-2">
+                                <p className="text-sm text-muted-foreground mt-2">
                                     This will permanently delete:
                                 </p>
-                                <ul className="list-disc ml-5 text-sm text-gray-600 mt-1">
+                                <ul className="list-disc ml-5 text-sm text-muted-foreground mt-1">
                                     <li>All Neo4j test nodes and relationships</li>
                                     <li>All Postgres test data (results, responses, SWOT)</li>
                                     <li>Student dashboard will be regenerated</li>
@@ -492,13 +495,13 @@ function StudentMoreDetails({
                         <div className="flex items-start gap-3">
                             <FileText className="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" />
                             <div>
-                                <p className="text-sm text-gray-700">
+                                <p className="text-sm text-foreground">
                                     Re-upload responses for <strong>{reuploadData.studentId}</strong> - Test <strong>{reuploadData.testNum}</strong>
                                 </p>
-                                <p className="text-sm text-gray-600 mt-2">
+                                <p className="text-sm text-muted-foreground mt-2">
                                     This will:
                                 </p>
-                                <ul className="list-disc ml-5 text-sm text-gray-600 mt-1">
+                                <ul className="list-disc ml-5 text-sm text-muted-foreground mt-1">
                                     <li>Replace student responses in database</li>
                                     <li>Re-run student analysis with existing answer key</li>
                                     <li>Regenerate Neo4j knowledge graph</li>
@@ -508,7 +511,7 @@ function StudentMoreDetails({
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-foreground mb-2">
                                 Upload Response CSV
                             </label>
                             <Input
@@ -522,7 +525,7 @@ function StudentMoreDetails({
                                 }}
                                 disabled={reuploadLoading}
                             />
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-muted-foreground mt-1">
                                 CSV must contain this student's ID in the header row
                             </p>
                         </div>

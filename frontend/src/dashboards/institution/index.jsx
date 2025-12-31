@@ -42,7 +42,7 @@ export const ILayout = () => {
     <InstitutionContext.Provider value={{ educators, selectedEducatorId, setSelectedEducatorId, isLoading }}>
       {/* Desktop Layout */}
       <div className="hidden md:block">
-        <div className="flex h-screen bg-gray-50 text-text">
+        <div className="flex h-screen bg-background text-foreground">
           <IHeader
             isSidebarCollapsed={isSidebarCollapsed}
             toggleSidebarCollapse={toggleSidebarCollapse}

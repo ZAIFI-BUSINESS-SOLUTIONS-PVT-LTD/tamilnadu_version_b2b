@@ -1,13 +1,13 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { FileText, Loader, ArrowLeft, ArrowRight, CheckCircle, Download, Atom, Key, File, FlaskConical, Sprout, PawPrint } from 'lucide-react';
-import Modal from './ui/modal.jsx';
+import Modal from '../../components/modal.jsx';
 import { validateAnswerKeyCSV, validateResponseSheetCSV, formatValidationErrors } from '../../utils/csvValidation.js';
 import { toast } from 'react-hot-toast';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '../../components/ui/tooltip.jsx';
 import { Button } from '../../components/ui/button.jsx';
 
 // DropZone component (merged from e_dropzone.jsx)
-import DropZone from './ui/dropzone.jsx';
+import DropZone from '../../components/dropzone.jsx';
 const EducatorDropZone = (props) => <DropZone {...props} />;
 
 // Modal component for handling multi-step file uploads

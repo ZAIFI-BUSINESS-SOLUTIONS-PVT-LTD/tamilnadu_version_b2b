@@ -125,7 +125,7 @@ const MobileSidebar = ({ isOpen = false, onClose, items = [], additionalItems = 
                         <div
                           role="menu"
                           ref={popupRef}
-                          className="fixed bg-white rounded-lg shadow-lg border border-gray-200 p-2 w-44 z-[60]"
+                          className="fixed bg-card rounded-lg shadow-lg border border-border p-2 w-44 z-[60]"
                           style={{
                             left: popupLeft != null ? popupLeft : '50%',
                             bottom: 96,
@@ -143,7 +143,7 @@ const MobileSidebar = ({ isOpen = false, onClose, items = [], additionalItems = 
                                     setOpenMenu(false);
                                     if (onClose) onClose();
                                   }}
-                                  className="w-full text-left px-2 py-2 rounded hover:bg-gray-50 flex items-center gap-2"
+                                  className="w-full text-left px-2 py-2 rounded hover:bg-muted flex items-center gap-2"
                                 >
                                   <div className="w-5 h-5">{child.icon}</div>
                                   <span className="text-sm">{child.text}</span>

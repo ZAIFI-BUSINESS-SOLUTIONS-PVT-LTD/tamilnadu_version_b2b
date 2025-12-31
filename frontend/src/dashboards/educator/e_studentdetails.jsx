@@ -13,8 +13,8 @@ import {
   ChevronUp,
   ChevronDown
 } from 'lucide-react';
-import Table from '../components/ui/table.jsx';
-import Modal from '../components/ui/modal.jsx';
+import Table from '../../components/table.jsx';
+import Modal from '../../components/modal.jsx';
 import LoadingPage from '../components/LoadingPage.jsx';
 import { Button } from '../../components/ui/button.jsx';
 import Alert from '../../components/ui/alert.jsx';

@@ -2,7 +2,7 @@ import React, { useState, lazy, Suspense, useEffect } from 'react';
 import { Upload, Plus, Search, X, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { useTests } from '../components/hooks/e_upload/e_use_tests';
 import { useFileUpload } from '../components/hooks/e_upload/e_use_file_upload';
-import Table from '../components/ui/table.jsx';
+import Table from '../../components/table.jsx';
 import { Button } from '../../components/ui/button.jsx';
 import { Input } from '../../components/ui/input.jsx';
 import LoadingPage from '../components/LoadingPage.jsx';

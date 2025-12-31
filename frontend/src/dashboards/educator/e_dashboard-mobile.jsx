@@ -4,7 +4,7 @@ import { Line } from 'react-chartjs-2';
 import { Chart, LineElement, PointElement, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Filler } from 'chart.js';
 import { getEducatorDashboardData, fetchEducatorAllStudentResults } from '../../utils/api';
 import { Users, Calendar, HelpCircle, Sparkles, ChevronDown } from 'lucide-react';
-import Stat from '../components/ui/stat-mobile';
+import Stat from '../../components/stat-mobile';
 import { Card } from '../../components/ui/card.jsx';
 import { Tooltip as UITooltip, TooltipTrigger as UITooltipTrigger, TooltipContent as UITooltipContent, TooltipProvider as UITooltipProvider } from '../../components/ui/tooltip.jsx';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../../components/ui/dropdown-menu.jsx';

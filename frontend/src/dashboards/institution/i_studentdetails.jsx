@@ -18,12 +18,12 @@ import {
   MoreHorizontal
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../../components/ui/dropdown-menu.jsx';
-import Table from '../components/ui/table.jsx';
+import Table from '../../components/table.jsx';
 import { Button } from '../../components/ui/button.jsx';
 import { Input } from '../../components/ui/input.jsx';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select.jsx';
 import { Card, CardHeader, CardContent } from '../../components/ui/card.jsx';
-import Modal from '../components/ui/modal.jsx';
+import Modal from '../../components/modal.jsx';
 import LoadingPage from '../components/LoadingPage.jsx';
 import { useInstitution } from './index.jsx';
 import StudentMoreDetails from '../components/StudentMoreDetails.jsx';
@@ -467,9 +467,9 @@ function IStudentDetails() {
 
   const renderEducatorRow = (row) => (
     <tr key={row.subject}>
-      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800">{row.subject}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{row.name}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{row.phone}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">{row.subject}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{row.name}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{row.phone}</td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
         <div className="flex items-center justify-end gap-2">
           {row.entry ? (
@@ -516,10 +516,10 @@ function IStudentDetails() {
     <tr
       key={student.student_id}
       className="">
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{rankMap[student.student_id]}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{student.student_id}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{studentNameMap[student.student_id] || student.student_name}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{rankMap[student.student_id]}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{student.student_id}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">{studentNameMap[student.student_id] || student.student_name}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
         {(() => {
           if (lastTestNum === 0) {
             return 'Not attended';
@@ -533,7 +533,7 @@ function IStudentDetails() {
             : 'Not attended';
         })()}
       </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{student.average_score}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{student.average_score}</td>
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
         <div className="flex items-center gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
           <DropdownMenu>
@@ -557,12 +557,12 @@ function IStudentDetails() {
     <div className="sm:pt-16 w-full mx-auto px-4 sm:px-6 lg:px-0">
       <div className="hidden lg:flex lg:flex-row lg:items-center lg:justify-between mb-4 pb-4">
         <div className="flex items-center gap-4">
-          <h2 className="text-3xl font-semibold text-gray-800">Classroom Details</h2>
+          <h2 className="text-3xl font-semibold text-foreground">Classroom Details</h2>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-400 min-w-max pl-1">Classroom</span>
+          <span className="text-sm text-muted-foreground min-w-max pl-1">Classroom</span>
           <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
-            <SelectTrigger className="m-1 w-[220px] lg:w-auto justify-start truncate text-start bg-white border-gray-200">
+            <SelectTrigger className="m-1 w-[220px] lg:w-auto justify-start truncate text-start bg-card border-border">
               <SelectValue placeholder="Select Classroom" />
             </SelectTrigger>
             <SelectContent side="bottom" align="start">
@@ -577,9 +577,9 @@ function IStudentDetails() {
       </div>
 
       <div className="lg:hidden">
-        <div className="flex w-full bg-white px-3 border-b justify-between items-center rounded-xl">
+        <div className="flex w-full bg-card px-3 border-b justify-between items-center rounded-xl">
           <div className="text-left py-3">
-            <h1 className="text-3xl font-bold text-gray-800">{selectedClassName}</h1>
+            <h1 className="text-3xl font-bold text-foreground">{selectedClassName}</h1>
             <div className="mt-2">
               <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
                 <SelectTrigger className="w-36">
@@ -599,10 +599,10 @@ function IStudentDetails() {
       </div>
 
       <div className="flex flex-col gap-4">
-        <Card className="rounded-2xl border border-gray-250 bg-white w-full">
+        <Card className="rounded-2xl border border-border bg-card w-full">
           <CardHeader className="flex flex-col sm:flex-row justify-start items-start sm:items-center gap-4 pb-4">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-              <h1 className="text-2xl font-bold text-gray-800">Class Educators</h1>
+              <h1 className="text-2xl font-bold text-foreground">Class Educators</h1>
             </div>
           </CardHeader>
 
@@ -616,11 +616,11 @@ function IStudentDetails() {
         </Card>
 
         <div className="flex-1">
-          <Card className="rounded-2xl border border-gray-250 bg-white w-full">
+          <Card className="rounded-2xl border border-border bg-card w-full">
             <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4">
               <div className="flex items-center gap-3">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                  <h1 className="text-2xl font-bold text-gray-800">Class Students</h1>
+                  <h1 className="text-2xl font-bold text-foreground">Class Students</h1>
                 </div>
                 <span className="badge badge-lg border-transparent bg-blue-50 text-sm text-blue-700">
                   {groupedResults.length} {groupedResults.length === 1 ? 'Student' : 'Students'}
@@ -653,7 +653,7 @@ function IStudentDetails() {
                     <Sliders className="w-5 h-5" />
                     <span>Sort</span>
                   </Button>
-                  <Button className="flex items-center gap-2 w-full sm:w-auto" onClick={() => { setCreateModalOpen(true); setNewStudent({ student_id: '', name: '', dob: '' }); }}>
+                  <Button variant="primary" className="flex items-center gap-2 w-full sm:w-auto" onClick={() => { setCreateModalOpen(true); setNewStudent({ student_id: '', name: '', dob: '' }); }}>
                     <span>Add Student</span>
                   </Button>
                 </div>

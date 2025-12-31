@@ -69,9 +69,13 @@ const ITestPerformance = () => {
       try {
         const tests = await fetchAvailableSwotTests_InstitutionEducator(selectedEducatorId);
         let tlist = Array.isArray(tests) ? tests.map(t => String(t)) : [];
-        // sort descending numerically: most recent / highest test first (test12, test11, ...)
+        // keep only positive test numbers and sort descending (latest first)
         tlist = tlist
-          .filter(x => x !== null && x !== undefined && x !== '')
+          .filter(x => {
+            if (x === null || x === undefined || x === '') return false;
+            const n = parseInt(x, 10);
+            return Number.isFinite(n) && n > 0;
+          })
           .sort((a, b) => (parseInt(b, 10) || 0) - (parseInt(a, 10) || 0));
         if (!cancelled) {
           setAvailableTests(tlist);
@@ -107,7 +111,7 @@ const ITestPerformance = () => {
 
   const getAnswerIcon = (isCorrect, selectedAnswer) => {
     if (selectedAnswer === null || selectedAnswer === undefined || selectedAnswer === '') {
-      return <MinusCircle className="w-5 h-5 text-gray-400" />;
+      return <MinusCircle className="w-5 h-5 text-muted-foreground" />;
     }
 
     return isCorrect ? (
@@ -119,7 +123,7 @@ const ITestPerformance = () => {
 
   const getAnswerClass = (isCorrect, selectedAnswer) => {
     if (selectedAnswer === null || selectedAnswer === undefined || selectedAnswer === '') {
-      return 'text-gray-500 bg-gray-50';
+      return 'text-muted-foreground bg-muted';
     }
 
     return isCorrect ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50';
@@ -138,14 +142,14 @@ const ITestPerformance = () => {
     <div className="space-y-6">
       <div className="hidden lg:flex lg:flex-row lg:items-center lg:justify-between gap-3 mt-12">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-800">Test Performance Analysis</h1>
-          <p className="text-sm text-gray-500">View detailed student-wise and question-wise performance for a specific test</p>
+          <h1 className="text-2xl font-semibold text-foreground">Test Performance Analysis</h1>
+          <p className="text-sm text-muted-foreground">View detailed student-wise and question-wise performance for a specific test</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-400 min-w-max pl-1">Classroom</span>
+            <span className="text-sm text-muted-foreground min-w-max pl-1">Classroom</span>
             <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
-              <SelectTrigger className="m-1 w-[220px] lg:w-auto justify-start truncate text-start bg-white border-gray-200">
+              <SelectTrigger className="m-1 w-[220px] lg:w-auto justify-start truncate text-start bg-card border-border">
                 <SelectValue placeholder="Select Classroom" />
               </SelectTrigger>
               <SelectContent side="bottom" align="start" className="max-h-60">
@@ -159,9 +163,9 @@ const ITestPerformance = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-400 min-w-max pl-1">Test</span>
+            <span className="text-sm text-muted-foreground min-w-max pl-1">Test</span>
             <Select value={testNum ? String(testNum) : ''} onValueChange={(v) => setTestNum ? setTestNum(v) : null}>
-              <SelectTrigger className="m-1 w-28 justify-start truncate text-start bg-white border-gray-200">
+              <SelectTrigger className="m-1 w-28 justify-start truncate text-start bg-card border-border">
                 <SelectValue placeholder={testsLoading ? 'Loading...' : (availableTests.length ? 'Select Test' : 'No tests')} />
               </SelectTrigger>
               <SelectContent side="bottom" align="start" className="max-h-60">
@@ -174,9 +178,9 @@ const ITestPerformance = () => {
         </div>
       </div>
       <div className="lg:hidden mb-2">
-        <div className="flex w-full bg-white px-3 border-b justify-between items-center rounded-xl">
+        <div className="flex w-full bg-card px-3 border-b justify-between items-center rounded-xl">
           <div className="text-left py-3 w-full flex items-center justify-between">
-            <h1 className="text-lg font-semibold text-gray-800">Test Performance Analysis</h1>
+            <h1 className="text-lg font-semibold text-foreground">Test Performance Analysis</h1>
             <div className="flex items-center gap-2">
               <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
                 <SelectTrigger className="w-36">
@@ -212,7 +216,7 @@ const ITestPerformance = () => {
 
       {isLoading && (
         <div className="relative min-h-screen">
-          <LoadingPage fixed={false} className="bg-white/80 dark:bg-gray-900/80 z-10" />
+          <LoadingPage fixed={false} className="bg-background/80 z-10" />
         </div>
       )}
 
@@ -225,21 +229,21 @@ const ITestPerformance = () => {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="p-4 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-gray-600">Class ID</p>
-                  <p className="text-xl font-semibold text-gray-900">{performanceData.class_id}</p>
+                <div className="p-4 bg-card border border-border rounded-lg">
+                  <p className="text-sm text-muted-foreground">Class ID</p>
+                  <p className="text-xl font-semibold text-foreground">{performanceData.class_id}</p>
                 </div>
-                <div className="p-4 bg-green-50 rounded-lg">
-                  <p className="text-sm text-gray-600">Test Number</p>
-                  <p className="text-xl font-semibold text-gray-900">{performanceData.test_num}</p>
+                <div className="p-4 bg-card border border-border rounded-lg">
+                  <p className="text-sm text-muted-foreground">Test Number</p>
+                  <p className="text-xl font-semibold text-foreground">{performanceData.test_num}</p>
                 </div>
-                <div className="p-4 bg-purple-50 rounded-lg">
-                  <p className="text-sm text-gray-600">Total Questions</p>
-                  <p className="text-xl font-semibold text-gray-900">{performanceData.questions.length}</p>
+                <div className="p-4 bg-card border border-border rounded-lg">
+                  <p className="text-sm text-muted-foreground">Total Questions</p>
+                  <p className="text-xl font-semibold text-foreground">{performanceData.questions.length}</p>
                 </div>
-                <div className="p-4 bg-orange-50 rounded-lg">
-                  <p className="text-sm text-gray-600">Students Attended</p>
-                  <p className="text-xl font-semibold text-gray-900">{performanceData.students.length}</p>
+                <div className="p-4 bg-card border border-border rounded-lg">
+                  <p className="text-sm text-muted-foreground">Students Attended</p>
+                  <p className="text-xl font-semibold text-foreground">{performanceData.students.length}</p>
                 </div>
               </div>
             </CardContent>
@@ -262,29 +266,29 @@ const ITestPerformance = () => {
                     console.log(`Student: ${student.student_name}, Responses:`, student.responses?.length);
 
                     return (
-                      <details key={student.student_id} className="border rounded-lg overflow-hidden">
-                        <summary className="cursor-pointer p-4 bg-gray-50 hover:bg-gray-100 transition-colors flex justify-between items-center">
+                      <details key={student.student_id} className="border border-border rounded-lg overflow-hidden">
+                        <summary className="cursor-pointer p-4 bg-muted hover:bg-muted/80 transition-colors flex justify-between items-center">
                           <div className="flex items-center gap-4">
                             <div>
-                              <p className="font-semibold text-gray-900">{student.student_name}</p>
-                              <p className="text-sm text-gray-600">ID: {student.student_id}</p>
+                              <p className="font-semibold text-foreground">{student.student_name}</p>
+                              <p className="text-sm text-muted-foreground">ID: {student.student_id}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-6">
                             <div className="text-right">
-                              <p className="text-2xl font-bold text-blue-600">{score.percentage}%</p>
-                              <p className="text-sm text-gray-600">{score.correct} / {score.total}</p>
+                              <p className="text-2xl font-bold text-primary">{score.percentage}%</p>
+                              <p className="text-sm text-muted-foreground">{score.correct} / {score.total}</p>
                             </div>
                           </div>
                         </summary>
 
                         <div className="p-4">
                           {!student.responses || student.responses.length === 0 ? (
-                            <div className="text-center py-8 text-gray-500">
+                            <div className="text-center py-8 text-muted-foreground">
                               <p>No responses found for this student</p>
                             </div>
                           ) : !performanceData.questions || performanceData.questions.length === 0 ? (
-                            <div className="text-center py-8 text-gray-500">
+                            <div className="text-center py-8 text-muted-foreground">
                               <p>No questions data available</p>
                             </div>
                           ) : (
@@ -335,8 +339,8 @@ const ITestPerformance = () => {
           ) : (
             <Card>
               <CardContent className="py-12">
-                <div className="text-center text-gray-500">
-                  <AlertCircle className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                <div className="text-center text-muted-foreground">
+                  <AlertCircle className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
                   <p>No students attended this test</p>
                 </div>
               </CardContent>

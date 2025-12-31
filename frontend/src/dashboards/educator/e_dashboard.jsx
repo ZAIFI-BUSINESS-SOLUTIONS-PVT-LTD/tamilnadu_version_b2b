@@ -4,8 +4,8 @@ import { Line } from 'react-chartjs-2';
 import { Chart, LineElement, PointElement, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Filler } from 'chart.js';
 import { getEducatorDashboardData, fetchEducatorAllStudentResults } from '../../utils/api';
 import { Users, Calendar, HelpCircle, Sparkles, ChevronDown } from 'lucide-react';
-import Carousel from '../components/ui/carousel';
-import Stat from '../components/ui/stat';
+import Carousel from '../../components/carousel';
+import Stat from '../../components/stat';
 import { Card } from '../../components/ui/card.jsx';
 import { Tooltip as UITooltip, TooltipTrigger as UITooltipTrigger, TooltipContent as UITooltipContent, TooltipProvider as UITooltipProvider } from '../../components/ui/tooltip.jsx';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../../components/ui/dropdown-menu.jsx';
@@ -136,35 +136,23 @@ function EDashboard() {
           const subjectKeys = { Overall: 'total_score' };
           if (hasField('phy_score') || hasField('phy_total')) subjectKeys['Physics'] = 'phy_score';
           if (hasField('chem_score') || hasField('chem_total')) subjectKeys['Chemistry'] = 'chem_score';
-          // Biology may be combined (bio_score) or separated as bot_score / zoo_score
-          // We use a unified strategy: sum all three fields. In datasets where they are mutually exclusive
-          // (e.g. Test 1 has Bot/Zoo, Test 2 has Bio), this correctly captures the score for that test.
           const hasBioData = results.results.some(r => (Number(r.bio_score) || 0) > 0 || (Number(r.bio_total) || 0) > 0);
-          const hasBotZooData = results.results.some(r => (Number(r.bot_score) || 0) > 0 || (Number(r.bot_total) || 0) > 0 || (Number(r.zoo_score) || 0) > 0 || (Number(r.zoo_total) || 0) > 0);
-
-          if (hasBioData || hasBotZooData) {
-            subjectKeys['Biology'] = 'unified_bio';
+          if (hasBioData) {
+            subjectKeys['Biology'] = 'bio_score';
           }
 
-          if (hasField('bot_score') || hasField('bot_total')) subjectKeys['Botany'] = 'bot_score';
-          if (hasField('zoo_score') || hasField('zoo_total')) subjectKeys['Zoology'] = 'zoo_score';
+          const hasBotData = results.results.some(r => (Number(r.bot_score) || 0) > 0 || (Number(r.bot_total) || 0) > 0);
+          if (hasBotData) subjectKeys['Botany'] = 'bot_score';
+
+          const hasZooData = results.results.some(r => (Number(r.zoo_score) || 0) > 0 || (Number(r.zoo_total) || 0) > 0);
+          if (hasZooData) subjectKeys['Zoology'] = 'zoo_score';
           const avgData = {};
           Object.keys(subjectKeys).forEach(subject => {
             const key = subjectKeys[subject];
             const testMap = {};
             results.results.forEach(r => {
               const testNum = r.test_num;
-              let score;
-              if (key === 'unified_bio') {
-                // Sum all potential biology-related fields. 
-                // Typically only one set (Bio vs Bot+Zoo) will be non-zero for a given record.
-                score = (Number(r.bio_score) || 0) + (Number(r.bot_score) || 0) + (Number(r.zoo_score) || 0);
-              } else if (key === 'computed_bio') {
-                // Legacy/Fallback (kept just in case, though unified_bio covers this)
-                score = (Number(r.bot_score) || 0) + (Number(r.zoo_score) || 0);
-              } else {
-                score = Number(r[key]) || 0;
-              }
+              const score = Number(r[key]) || 0;
               if (!testMap[testNum]) {
                 testMap[testNum] = { total: 0, count: 0, max: score, min: score };
               }
@@ -231,7 +219,7 @@ function EDashboard() {
   // Build subject options for the Select control based on the computed testWiseAvgMarks
   const subjectOptions = useMemo(() => {
     const keys = Object.keys(testWiseAvgMarks || {});
-    if (!keys || keys.length === 0) return ['Overall', 'Physics', 'Chemistry', 'Biology', 'Botany', 'Zoology'];
+    if (!keys || keys.length === 0) return ['Overall', 'Physics', 'Chemistry', 'Botany', 'Zoology'];
     // Ensure 'Overall' is first and preserve other detected subjects in a stable order
     const others = keys.filter(k => k !== 'Overall');
     // Keep a preferred ordering for readability

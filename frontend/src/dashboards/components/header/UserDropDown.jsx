@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, MessageSquare } from "lucide-react";
+import { LogOut, MessageSquare, Moon, Sun } from "lucide-react";
 import { Button } from '../../../components/ui/button.jsx';
 
 /**
@@ -38,7 +38,26 @@ const UserDropdown = ({
     : `Student ID: #${userInfo?.student_id ?? 'N/A'}`;
 
   const [open, setOpen] = useState(false);
+  const [isDark, setIsDark] = useState(false);
   const ref = useRef(null);
+
+  useEffect(() => {
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    setIsDark(isDarkMode);
+  }, []);
+
+  const toggleTheme = () => {
+    const html = document.documentElement;
+    if (html.classList.contains('dark')) {
+      html.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+      setIsDark(false);
+    } else {
+      html.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+      setIsDark(true);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -70,19 +89,19 @@ const UserDropdown = ({
 
       {open && (
         <div
-          className="absolute right-0 mt-2 w-64 rounded-xl border border-gray-200 bg-white shadow-xl z-20"
+          className="absolute right-0 mt-2 w-64 rounded-xl border border-border bg-card shadow-xl z-20"
           role="menu"
           aria-orientation="vertical"
         >
-          <div className="flex items-center p-4 border-b border-gray-100 w-full min-w-0">
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold text-xl flex-shrink-0">
+          <div className="flex items-center p-4 border-b border-border w-full min-w-0">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/80 text-white font-semibold text-xl flex-shrink-0">
               {initials}
             </div>
             <div className="ml-3 overflow-hidden min-w-0 flex-1">
-              <p className="font-semibold text-gray-900 truncate" title={userInfo.name}>
+              <p className="font-semibold text-foreground truncate" title={userInfo.name}>
                 {userInfo.name}
               </p>
-              <p className="text-sm text-gray-500 truncate" title={secondaryInfo}>
+              <p className="text-sm text-muted-foreground truncate" title={secondaryInfo}>
                 {secondaryInfo}
               </p>
             </div>
@@ -92,7 +111,7 @@ const UserDropdown = ({
             {onFeedback && (
               <button
                 onClick={onFeedback}
-                className="flex items-center gap-3 w-full py-2 px-3 hover:bg-gray-50 rounded-lg text-gray-700 transition-colors focus:outline-none"
+                className="flex items-center gap-3 w-full py-2 px-3 hover:bg-muted rounded-lg text-foreground transition-colors focus:outline-none"
                 role="menuitem"
               >
                 <MessageSquare size={18} aria-hidden="true" />
@@ -101,8 +120,17 @@ const UserDropdown = ({
             )}
 
             <button
+              onClick={toggleTheme}
+              className="flex items-center gap-3 w-full py-2 px-3 hover:bg-muted rounded-lg text-foreground transition-colors focus:outline-none"
+              role="menuitem"
+            >
+              {isDark ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
+              <span>{isDark ? 'Light Mode' : 'Dark Mode'}</span>
+            </button>
+
+            <button
               onClick={onLogout}
-              className="flex items-center gap-3 w-full py-2 px-3 hover:bg-gray-50 rounded-lg text-red-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              className="flex items-center gap-3 w-full py-2 px-3 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg text-red-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
               role="menuitem"
             >
               <LogOut size={18} aria-hidden="true" />
