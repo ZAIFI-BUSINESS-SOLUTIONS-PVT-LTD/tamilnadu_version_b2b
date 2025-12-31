@@ -8,6 +8,7 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '.
 import Stat from '../components/ui/stat.jsx';
 import Carousel from '../components/ui/carousel.jsx';
 import { Card } from '../../components/ui/card.jsx';
+import Alert from '../../components/ui/alert.jsx';
 import SDashboardMobile from './s_dashboard_mobile.jsx';
 import PageLoader from '../components/LoadingPage';
 import ActionPlanCard from './components/ActionPlanCard.jsx';
@@ -188,13 +189,16 @@ function SDashboard() {
   // Display an error message if data fetching failed.
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-96 p-4 bg-base-100 rounded-lg shadow-md">
-        <div className="alert alert-error max-w-md shadow-lg">
-          <AlertTriangle className="stroke-current shrink-0 h-6 w-6" />
-          <div>
-            <h3 className="font-bold">Error loading dashboard!</h3>
-            <div className="text-xs">{error}</div>
-          </div>
+      <div className="flex flex-col items-center justify-center h-96 p-4 bg-white rounded-lg shadow-md">
+        <div className="max-w-md w-full">
+          <Alert
+            variant="destructive"
+            icon={<AlertTriangle className="h-5 w-5 text-rose-600" aria-hidden />}
+            className="shadow-sm"
+          >
+            <div className="font-semibold text-sm">Error loading dashboard!</div>
+            <div className="text-xs text-rose-800/80 break-words">{error}</div>
+          </Alert>
         </div>
       </div>
     );
@@ -343,12 +347,11 @@ function SDashboard() {
                   })
                 ) : (
                   <div>
-                    <div role="alert" className="alert alert-info shadow-lg my-4">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                      </svg>
-                      <span>No Summary Data Available.</span>
-                    </div>
+                    <Alert variant="info" className="shadow-sm my-4">
+                      <div className="flex items-start gap-2 text-sm text-sky-900">
+                        <span className="font-medium">No Summary Data Available.</span>
+                      </div>
+                    </Alert>
                   </div>
                 )}
               </div>
@@ -954,7 +957,7 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
                 <div className="flex justify-end">
                   <div className="w-fit text-start">
                     <Select onValueChange={(val) => effectiveSetSelectedSubject(val)} value={effectiveSelectedSubject}>
-                      <SelectTrigger className="btn btn-sm justify-between w-full max-w-full truncate text-start">
+                      <SelectTrigger className="w-full max-w-full justify-between truncate text-start bg-white border-gray-200">
                         <SelectValue placeholder="Select Subject" />
                       </SelectTrigger>
                       <SelectContent side="bottom" align="start">
@@ -971,7 +974,7 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
               <div className="block sm:hidden w-full my-2">
                 <div className="w-full">
                   <Select onValueChange={(val) => effectiveSetSelectedSubject(val)} value={effectiveSelectedSubject}>
-                    <SelectTrigger className="btn btn-sm justify-between w-full text-start">
+                    <SelectTrigger className="w-full justify-between text-start bg-white border-gray-200">
                       <SelectValue placeholder="Select Subject" />
                     </SelectTrigger>
                     <SelectContent side="bottom" align="end">
@@ -1088,7 +1091,7 @@ const SubjectWiseAnalysisChart = ({ selectedTest, setSelectedTest, testData = {}
                 <div className="flex justify-end">
                   <div className="w-fit">
                     <Select onValueChange={(val) => effectiveSetSelectedTest(val)} value={effectiveSelectedTest}>
-                      <SelectTrigger className="btn btn-sm justify-between w-full max-w-full truncate text-start">
+                      <SelectTrigger className="w-full max-w-full justify-between truncate text-start bg-white border-gray-200">
                         <SelectValue placeholder="Select Test" />
                       </SelectTrigger>
                       <SelectContent side="bottom" align="start">
@@ -1105,7 +1108,7 @@ const SubjectWiseAnalysisChart = ({ selectedTest, setSelectedTest, testData = {}
               <div className="block sm:hidden w-full mb-2">
                 <div className="w-full">
                   <Select onValueChange={(val) => effectiveSetSelectedTest(val)} value={effectiveSelectedTest}>
-                    <SelectTrigger className="btn btn-sm justify-between w-full text-start">
+                    <SelectTrigger className="w-full justify-between text-start bg-white border-gray-200">
                       <SelectValue placeholder="Select Test" />
                     </SelectTrigger>
                     <SelectContent side="bottom" align="end">
@@ -1178,7 +1181,7 @@ const MobileInsightsSelect = ({ keyInsightsData = {} }) => {
   return (
     <div>
       <Select onValueChange={(val) => setSelected(val)} value={selected}>
-        <SelectTrigger className="btn btn-sm justify-between w-full text-start">
+        <SelectTrigger className="w-full justify-between text-start bg-white border-gray-200">
           <SelectValue placeholder="Select insights" />
         </SelectTrigger>
         <SelectContent side="bottom" align="end">

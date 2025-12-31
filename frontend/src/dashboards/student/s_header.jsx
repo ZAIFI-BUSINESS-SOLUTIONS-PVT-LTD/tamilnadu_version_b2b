@@ -137,7 +137,7 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
             {/* Toggle Sidebar Collapse Button */}
             <button
               onClick={toggleSidebarCollapse}
-              className="btn btn-sm h-10 w-10 btn-square bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 flex items-center justify-center transition-colors"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 transition-colors"
               aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               <AlignLeft size={20} />

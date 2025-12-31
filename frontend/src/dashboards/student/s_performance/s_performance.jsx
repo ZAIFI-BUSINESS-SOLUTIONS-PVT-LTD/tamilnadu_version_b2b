@@ -507,7 +507,7 @@ const SPerformance = () => {
               <div className="flex flex-col space-y-1 sm:flex-row sm:items-center sm:space-x-2">
                 <span className="text-sm text-gray-400 min-w-max">Subject</span>
                 <Select value={selectedSubject} onValueChange={handleSubjectChange}>
-                  <SelectTrigger className="btn btn-sm justify-start truncate overflow-hidden text-ellipsis w-70 sm:w-fit text-start">
+                  <SelectTrigger className="w-full sm:w-64 justify-start truncate overflow-hidden text-ellipsis text-start bg-white border-gray-200">
                     <SelectValue placeholder="Select Subject" />
                   </SelectTrigger>
                   <SelectContent>
@@ -522,7 +522,7 @@ const SPerformance = () => {
               <div className="flex flex-col space-y-1 sm:flex-row sm:items-center sm:space-x-2">
                 <span className="text-sm text-gray-400 min-w-max">Chapter</span>
                 <Select value={selectedChapter} onValueChange={handleChapterChange}>
-                  <SelectTrigger className="btn btn-sm justify-start truncate overflow-hidden text-ellipsis w-70 sm:w-fit text-start">
+                  <SelectTrigger className="w-full sm:w-64 justify-start truncate overflow-hidden text-ellipsis text-start bg-white border-gray-200">
                     <SelectValue placeholder="Select Chapter" />
                   </SelectTrigger>
                   <SelectContent>
@@ -542,7 +542,7 @@ const SPerformance = () => {
               <div className="flex flex-col space-y-1 sm:flex-row sm:items-center sm:space-x-2">
                 <span className="text-sm text-gray-400 min-w-max">Topic</span>
                 <Select value={selectedTopic} onValueChange={handleTopicChange}>
-                  <SelectTrigger className="btn btn-sm justify-start truncate overflow-hidden text-ellipsis w-70 sm:w-fit text-start">
+                  <SelectTrigger className="w-full sm:w-64 justify-start truncate overflow-hidden text-ellipsis text-start bg-white border-gray-200">
                     <SelectValue placeholder="Select Topic" />
                   </SelectTrigger>
                   <SelectContent>

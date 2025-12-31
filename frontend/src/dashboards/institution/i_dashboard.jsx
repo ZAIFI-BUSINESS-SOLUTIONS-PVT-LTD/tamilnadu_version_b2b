@@ -454,7 +454,7 @@ function IDashboard() {
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-400 min-w-max pl-1">Classroom</span>
               <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
-                <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-[220px] lg:w-auto text-start">
+                <SelectTrigger className="m-1 w-[220px] lg:w-auto justify-start truncate text-start bg-white border-gray-200">
                   <SelectValue placeholder="Select Classroom" />
                 </SelectTrigger>
                 <SelectContent side="bottom" align="start">

@@ -169,7 +169,7 @@ const InstitutionHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
           {/* Desktop toggle (visible on md+) - matches educator header styling */}
           <button
             onClick={toggleSidebarCollapse}
-            className="hidden md:inline-flex btn btn-sm h-10 w-10 btn-square bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 items-center justify-center transition-colors"
+            className="hidden md:inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 transition-colors"
             aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             <AlignLeft size={20} />

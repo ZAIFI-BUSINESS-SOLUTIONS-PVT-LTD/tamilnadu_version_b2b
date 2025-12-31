@@ -97,13 +97,12 @@ const PerformanceTrendChart = ({
   const subjects = Object.keys(performanceData);
 
   return (
-    <div className="card bg-base-100 shadow-xl">
-      <div className="card-body space-y-6">
+    <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-6 space-y-6">
         {/* Header section with title and subject dropdown */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-2">
             <ChartBar className="w-5 h-5 text-gray-600" />
-            <h3 className="card-title text-primary text-lg font-semibold">
+            <h3 className="text-primary text-lg font-semibold">
               {title}
             </h3>
           </div>
@@ -119,7 +118,7 @@ const PerformanceTrendChart = ({
                 selectedValue={selectedSubject}
                 onSelect={setSelectedSubject}
                 placeholder="Select Subject"
-                buttonClassName="btn btn-sm justify-between w-full sm:w-48 truncate"
+                buttonClassName="w-full sm:w-48 justify-between truncate bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm shadow-sm"
               />
             </div>
           )}
@@ -133,7 +132,6 @@ const PerformanceTrendChart = ({
             <p className="text-gray-500">No trend data available.</p>
           )}
         </div>
-      </div>
     </div>
   );
 };

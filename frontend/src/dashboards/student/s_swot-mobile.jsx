@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle, XCircle, ArrowUpCircle, AlertCircle, Filter, ChevronDown, Target, Zap, Atom, FlaskConical, Leaf, PawPrint, Microscope } from 'lucide-react';
+import { CheckCircle, XCircle, AlertCircle, Filter, ChevronDown, Target, Zap, Atom, FlaskConical, Leaf, PawPrint, Microscope } from 'lucide-react';
 import { fetchStudentSWOT, fetchAvailableSwotTests, getStudentDashboardData } from '../../utils/api';
 import FilterDrawer from '../../components/ui/filter-drawer.jsx';
 import PropTypes from 'prop-types';

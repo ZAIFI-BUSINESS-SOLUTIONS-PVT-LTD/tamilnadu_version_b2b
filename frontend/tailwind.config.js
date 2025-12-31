@@ -1,5 +1,3 @@
-import daisyui from "daisyui";
-
 export default {
     darkMode: ["class"],
     content: [
@@ -151,19 +149,5 @@ export default {
   		}
   	}
   },
-  plugins: [daisyui, require("tailwindcss-animate")],
-  daisyui: {
-    themes: [
-      {
-        mytheme: {
-          primary: "#111827",
-          secondary: "#2563eb",
-          accent: "#00B0F0",
-          neutral: "#190d25",
-          "base-100": "#ffffff",
-        },
-      },
-    ],
-    defaultTheme: "mytheme",
-  },
+	plugins: [require("tailwindcss-animate")],
 };

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchEducatorAllStudentResults, fetcheducatorstudent, fetchInstitutionEducatorAllStudentResults, fetchInstitutionEducatorStudents } from '../../utils/api';
 import Table from './ui/table.jsx';
+import Alert from '../../components/ui/alert.jsx';
 
 // Accept optional props so parent components (like Institution dashboard)
 // can supply `rawResults` and `studentNameMap` directly and avoid the
@@ -114,23 +115,20 @@ const EStudentListMock = ({ rawResults: propRawResults = null, studentNameMap: p
 
     if (error) {
         return (
-            <div className="alert alert-error shadow-lg">
-                <div>
-                    <h3 className="font-bold">Error!</h3>
-                    <div className="text-sm">{error}</div>
-                </div>
-            </div>
+            <Alert variant="destructive" className="shadow-sm">
+                <div className="font-semibold text-sm">Error!</div>
+                <div className="text-sm text-rose-800/80 break-words">{error}</div>
+            </Alert>
         );
     }
 
     if (!rawResults || rawResults.length === 0) {
         return (
-            <div role="alert" className="alert alert-info shadow-lg my-4">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <span>No Students Available.</span>
-            </div>
+            <Alert variant="info" className="shadow-sm my-4">
+                <div className="flex items-start gap-2 text-sm text-sky-900">
+                    <span className="font-medium">No Students Available.</span>
+                </div>
+            </Alert>
         );
     }
 
@@ -211,12 +209,11 @@ const EStudentListMock = ({ rawResults: propRawResults = null, studentNameMap: p
             data={tableData}
             renderRow={renderRow}
             emptyState={
-                <div role="alert" className="alert alert-info shadow-lg my-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <span>No Students Available.</span>
-                </div>
+                <Alert variant="info" className="shadow-sm my-4">
+                    <div className="flex items-start gap-2 text-sm text-sky-900">
+                        <span className="font-medium">No Students Available.</span>
+                    </div>
+                </Alert>
             }
         />
     );

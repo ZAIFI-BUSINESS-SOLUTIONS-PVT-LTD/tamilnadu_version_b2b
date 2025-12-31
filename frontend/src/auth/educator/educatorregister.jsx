@@ -8,6 +8,7 @@ import { UserCheck, ArrowLeft } from 'lucide-react';
 import bgImage from '../../assets/landingpage-images/bg_001.webp';
 import educatorSignupImg from '../../assets/auth images/educatorlogin.svg';
 import { API_BASE_URL } from '../../utils/api';
+import { Button } from '../../components/ui/button.jsx';
 
 const EducatorSignup = () => {
   const navigate = useNavigate();
@@ -135,20 +136,20 @@ const EducatorSignup = () => {
       {/* Login Card */}
       <div className="flex flex-1 items-center justify-center relative z-10 py-12 px-4">
         <motion.div
-          className="card relative bg-base-100 shadow-xl w-full max-w-md backdrop-blur-sm bg-opacity-95 p-8"
+          className="relative w-full max-w-md rounded-2xl bg-white shadow-xl border border-gray-100 backdrop-blur-sm bg-opacity-95 p-8"
           variants={cardVariants}
           initial="hidden"
           animate="visible"
         >
           <motion.button
             onClick={() => navigate('/auth/Educator/login')}
-            className="absolute top-4 left-4 btn btn-sm btn-base-100 btn-circle text-white"
+            className="absolute top-4 left-4 h-9 w-9 rounded-full bg-white/90 text-gray-700 shadow hover:bg-white"
             aria-label="Go back"
           >
             <ArrowLeft size={18} />
           </motion.button>
 
-          <div className="card-body pt-6">
+          <div className="pt-6 space-y-4">
             <div className="flex items-center justify-center mb-4">
               <UserCheck size={32} className="text-primary mr-2" />
               <h2 className="text-2xl font-bold text-center text-gray-800">Educator Signup</h2>
@@ -174,7 +175,7 @@ const EducatorSignup = () => {
                 placeholder="Full Name"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="input input-bordered w-full"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               />
               <input
@@ -182,7 +183,7 @@ const EducatorSignup = () => {
                 placeholder="Email Address"
                 value={educatorEmail}
                 onChange={(e) => setEducatorEmail(e.target.value)}
-                className="input input-bordered w-full"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                 readOnly
               />
               <input
@@ -190,7 +191,7 @@ const EducatorSignup = () => {
                 placeholder="Date of Birth"
                 value={dob}
                 onChange={(e) => setDob(e.target.value)}
-                className="input input-bordered w-full"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               />
               <input
@@ -198,7 +199,7 @@ const EducatorSignup = () => {
                 placeholder="Institution Name"
                 value={institutionName}
                 onChange={(e) => setInstitutionName(e.target.value)}
-                className="input input-bordered w-full"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               />
               <input
@@ -206,7 +207,7 @@ const EducatorSignup = () => {
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="input input-bordered w-full"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               />
               <input
@@ -214,7 +215,7 @@ const EducatorSignup = () => {
                 placeholder="Confirm Password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="input input-bordered w-full"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               />
               <div className="flex flex-col">
@@ -225,7 +226,7 @@ const EducatorSignup = () => {
                   type="file"
                   accept=".csv"
                   onChange={(e) => setStudentCSV(e.target.files[0])}
-                  className="file-input file-input-bordered w-full"
+                  className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-primary file:px-4 file:py-2 file:text-white"
                 />
                 {studentCSV && (
                   <p className="mt-1 text-sm text-gray-600">📄 {studentCSV.name}</p>
@@ -236,13 +237,13 @@ const EducatorSignup = () => {
                 whileHover="hover"
                 whileTap="tap"
               >
-                <button
+                <Button
                   type="submit"
-                  className="btn btn-outline btn-primary btn-wide w-full"
+                  className="w-full"
                   disabled={loading}
                 >
                   {loading ? 'Signing Up...' : 'Sign Up'}
-                </button>
+                </Button>
               </motion.div>
             </form>
           </div>

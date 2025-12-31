@@ -35,7 +35,6 @@ export const isProductionGateway = () => {
     
     return isWebDomain && isProdApi;
   } catch (error) {
-    console.error('[Multi-tenant] Error detecting environment:', error);
     return false; // Fail safe: no redirect on error
   }
 };
@@ -88,12 +87,10 @@ export const handleInstituteRedirect = (loginResponse) => {
     // Build full redirect URL, preserving pathname, query params, and hash
     const targetUrl = `${window.location.protocol}//${targetHostname}${window.location.pathname}${window.location.search}${window.location.hash}`;
     
-    console.log(`[Multi-tenant] Redirecting to institute subdomain: ${targetUrl}`);
     window.location.href = targetUrl;
     
     return true; // Redirect triggered
   } catch (error) {
-    console.error('[Multi-tenant] Error during subdomain redirect:', error);
     return false; // On error, don't redirect (fail safe)
   }
 };
@@ -189,10 +186,8 @@ export const getStudentPerformanceData = async () => {
     });
 
     const data = await response.data;
-    console.log('All data from getStudentPerformanceData:', data);
     return data;
   } catch (error) {
-    console.error('Error fetching performance data:', error);
     return { error: 'Failed to fetch performance data' };
   }
 };
@@ -208,10 +203,8 @@ export const getStudentDashboardData = async () => {
     });
 
     const data = await response.data;
-    console.log('All data from getStudentDashboardData:', data);
     return data;
   } catch (error) {
-    console.error('Error fetching dashboard data:', error);
     return { error: 'Failed to fetch dashboard data' };
   }
 };
@@ -236,7 +229,6 @@ export const fetchStudentSWOT = async (testNum) => {
     const data = await response.data;
     return data;
   } catch (error) {
-    console.error('Error fetching SWOT data:', error);
     return { error: 'Failed to fetch SWOT data' };
   }
 };
@@ -256,7 +248,6 @@ export const fetchAvailableSwotTests = async () => {
 
     return response.data?.available_tests || [];
   } catch (error) {
-    console.error('Error fetching available SWOT tests:', error);
     return [];
   }
 };
@@ -276,7 +267,6 @@ export const fetchstudentdetail = async () => {
 
     return response.data
   } catch (error) {
-    console.error('Error fetching student name:', error);
     return [];
   }
 };
@@ -320,7 +310,6 @@ export const generateStudentSelfPdfReport = async (testId) => {
 export const fetchEducatorStudentTests = async (studentId) => {
   try {
     const token = localStorage.getItem('token');
-    console.log('Fetching tests for student with ID:', studentId);
 
     const res = await axios.post(
       `${API_BASE_URL}/educator/students/tests/`,
@@ -333,11 +322,8 @@ export const fetchEducatorStudentTests = async (studentId) => {
       }
     );
 
-    console.log('Received tests response:', res.data);
     return res.data.available_tests ?? [];
   } catch (error) {
-    console.error('Error fetching student tests:', error);
-    console.error('Error response:', error.response?.data);
     return [];
   }
 };
@@ -347,7 +333,6 @@ export const fetchEducatorStudentTests = async (studentId) => {
  */
 export const fetchEducatorStudentInsights = async (student_id, test_num) => {
   const token = localStorage.getItem('token');
-  console.log('[API] fetchEducatorStudentInsights →', { student_id, test_num, token });
 
   const response = await axios.post(
     `${API_BASE_URL}/educator/students/insights/`,
@@ -384,11 +369,9 @@ export const fetchEducatorAllStudentResults = async () => {
     });
 
     // The backend should return the data directly in response.data
-    console.log('Fetched all student results:', response.data);
     return response.data;
 
   } catch (error) {
-    console.error('Error fetching all student results for educator:', error);
     // Return a more specific error if available from the backend response
     return { error: error.response?.data?.error || 'Failed to fetch all student results' };
   }
@@ -410,7 +393,6 @@ export const generatePdfReport = async (studentId, testId, classId = null, educa
     if (educatorId) {
       url += `&educatorId=${encodeURIComponent(educatorId)}`;
     }
-    console.log('generatePdfReport called with:', { studentId, testId, classId, educatorId, finalUrl: url });
     const response = await fetch(
       url,
       {
@@ -427,7 +409,6 @@ export const generatePdfReport = async (studentId, testId, classId = null, educa
     const blob = await response.blob();
     return blob;
   } catch (error) {
-    console.error('generatePdfReport error:', error);
     throw error;
   }
 };
@@ -448,7 +429,6 @@ export const generateBulkPdfReportsZip = async (studentIds, testId, classId = nu
     if (educatorId) {
       body.educatorId = educatorId;
     }
-    console.log('generateBulkPdfReportsZip called with:', { studentIds, testId, classId, educatorId, body });
     
     const response = await fetch(
       `${PDF_SERVICE_URL}/generate-bulk-pdf`,
@@ -462,18 +442,6 @@ export const generateBulkPdfReportsZip = async (studentIds, testId, classId = nu
       }
     );
     
-    console.log('generateBulkPdfReportsZip response:', {
-      ok: response.ok,
-      status: response.status,
-      statusText: response.statusText,
-      type: response.type,
-      headers: {
-        contentType: response.headers.get('content-type'),
-        contentLength: response.headers.get('content-length'),
-        contentDisposition: response.headers.get('content-disposition')
-      }
-    });
-    
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
@@ -484,7 +452,6 @@ export const generateBulkPdfReportsZip = async (studentIds, testId, classId = nu
     if (contentType && contentType.includes('application/json')) {
       // S3 presigned URL response
       const data = await response.json();
-      console.log('Received S3 presigned URL response:', data);
       
       if (data.downloadUrl) {
         // Trigger download from S3 URL
@@ -502,7 +469,6 @@ export const generateBulkPdfReportsZip = async (studentIds, testId, classId = nu
     
     // Fallback: blob response (streaming)
     const blob = await response.blob();
-    console.log('generateBulkPdfReportsZip blob received:', { size: blob.size, type: blob.type });
     
     if (blob.size === 0) {
       throw new Error('Received empty ZIP file from server');
@@ -510,12 +476,6 @@ export const generateBulkPdfReportsZip = async (studentIds, testId, classId = nu
     
     return blob;
   } catch (error) {
-    console.error('generateBulkPdfReportsZip error:', error);
-    console.error('Error details:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack
-    });
     throw error;
   }
 };
@@ -586,7 +546,7 @@ export const registerEducator = async (formData) => {
     });
     return response.data;
   } catch (error) {
-    console.error('Error registering educator:', error);
+
     return { error: error.response?.data?.error || 'Failed to register educator' };
   }
 };
@@ -605,7 +565,7 @@ export const uploadTest = async (questionPaper, answerKey, answerSheet, metadata
     if (!token) return { error: 'Unauthorized: No Token Found' };
     // DEBUG: log metadata being sent (no files)
     try {
-      console.debug('uploadTest metadata:', metadata, 'educatorId:', educatorId);
+
     } catch (e) {
       // ignore logging errors
     }
@@ -706,7 +666,7 @@ export const getEducatorDashboardData = async () => {
     const data = await response.data;
     return data;
   } catch (error) {
-    console.error('Error fetching dashboard data:', error);
+
     return { error: 'Failed to fetch dashboard data' };
   }
 };
@@ -731,7 +691,7 @@ export const fetchEducatorSWOT = async (testNum) => {
     const data = await response.data;
     return data;
   } catch (error) {
-    console.error('Error fetching SWOT data:', error);
+
     return { error: 'Failed to fetch SWOT data' };
   }
 };
@@ -751,7 +711,7 @@ export const fetchAvailableSwotTests_Educator = async () => {
 
     return response.data?.available_tests || [];
   } catch (error) {
-    console.error('Error fetching available SWOT tests:', error);
+
     return [];
   }
 };
@@ -771,7 +731,7 @@ export const fetcheducatordetail = async () => {
 
     return response.data
   } catch (error) {
-    console.error('Error fetching student name:', error);
+
     return [];
   }
 };
@@ -791,7 +751,7 @@ export const fetcheducatorstudent = async () => {
 
     return response.data
   } catch (error) {
-    console.error('Error fetching student name:', error);
+
     return [];
   }
 };
@@ -847,7 +807,7 @@ export const fetchInstitutionEducators = async () => {
     });
     return response.data;
   } catch (error) {
-    console.error('Error fetching institution educators:', error);
+
     return { error: 'Failed to fetch educators' };
   }
 };
@@ -863,7 +823,7 @@ export const getInstitutionEducatorDashboardData = async (educatorId) => {
     });
     return response.data;
   } catch (error) {
-    console.error('Error fetching educator dashboard data:', error);
+
     return { error: 'Failed to fetch dashboard data' };
   }
 };
@@ -879,7 +839,7 @@ export const fetchInstitutionEducatorAllStudentResults = async (educatorId) => {
     });
     return response.data;
   } catch (error) {
-    console.error('Error fetching educator student results:', error);
+
     return { error: 'Failed to fetch student results' };
   }
 };
@@ -904,7 +864,7 @@ export const fetchInstitutionEducatorSWOT = async (educatorId, testNum) => {
     const data = await response.data;
     return data;
   } catch (error) {
-    console.error('Error fetching SWOT data:', error);
+
     return { error: 'Failed to fetch SWOT data' };
   }
 };
@@ -924,7 +884,7 @@ export const fetchAvailableSwotTests_InstitutionEducator = async (educatorId) =>
 
     return response.data?.available_tests || [];
   } catch (error) {
-    console.error('Error fetching available SWOT tests:', error);
+
     return [];
   }
 };
@@ -944,7 +904,7 @@ export const fetchInstitutionEducatorStudents = async (educatorId) => {
 
     return response.data
   } catch (error) {
-    console.error('Error fetching student name:', error);
+
     return [];
   }
 };
@@ -955,7 +915,7 @@ export const fetchInstitutionEducatorStudents = async (educatorId) => {
 export const fetchInstitutionEducatorStudentInsights = async (educatorId, studentId, testNum) => {
   try {
     const token = localStorage.getItem('token');
-    console.log('[API] fetchInstitutionEducatorStudentInsights →', { educatorId, studentId, testNum });
+
     
     const response = await axios.post(
       `${API_BASE_URL}/institution/educator/${educatorId}/students/insights/`,
@@ -973,7 +933,7 @@ export const fetchInstitutionEducatorStudentInsights = async (educatorId, studen
 
     return response.data;
   } catch (error) {
-    console.error('Error fetching institution educator student insights:', error);
+
     return { error: 'Failed to fetch student insights' };
   }
 };
@@ -984,7 +944,7 @@ export const fetchInstitutionEducatorStudentInsights = async (educatorId, studen
 export const fetchInstitutionStudentInsights = async (studentId, testNum, educatorId = null) => {
   try {
     const token = localStorage.getItem('token');
-    console.log('[API] fetchInstitutionStudentInsights →', { studentId, testNum, educatorId });
+
     
     const body = {
       student_id: studentId,
@@ -1008,7 +968,7 @@ export const fetchInstitutionStudentInsights = async (studentId, testNum, educat
 
     return response.data;
   } catch (error) {
-    console.error('Error fetching institution student insights:', error);
+
     return { error: 'Failed to fetch student insights' };
   }
 };
@@ -1028,18 +988,23 @@ export const fetchInstitutionStudents = async () => {
 
     return response.data;
   } catch (error) {
-    console.error('Error fetching institution students:', error);
+
     return { error: 'Failed to fetch students' };
   }
 };
 
 /**
  * Fetch All Student Results in Institution
+ * Optional filters: educatorId or classId to scope to a single classroom
  */
-export const fetchInstitutionAllStudentResults = async () => {
+export const fetchInstitutionAllStudentResults = async (educatorId = null, classId = null) => {
   try {
     const token = localStorage.getItem('token');
     const response = await axios.get(`${API_BASE_URL}/institution/students/results/`, {
+      params: {
+        ...(educatorId ? { educator_id: educatorId } : {}),
+        ...(classId ? { classId, class_id: classId } : {})
+      },
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -1048,7 +1013,7 @@ export const fetchInstitutionAllStudentResults = async () => {
 
     return response.data;
   } catch (error) {
-    console.error('Error fetching institution student results:', error);
+
     return { error: 'Failed to fetch results' };
   }
 };
@@ -1056,17 +1021,18 @@ export const fetchInstitutionAllStudentResults = async () => {
 /**
  * Fetch Institution Teacher Dashboard (for PDF reports)
  */
-export const fetchInstitutionTeacherDashboard = async (educatorId, testId) => {
+export const fetchInstitutionTeacherDashboard = async (educatorId, testId, classId = null) => {
   try {
     const token = localStorage.getItem('token');
-    console.log('[API] fetchInstitutionTeacherDashboard →', { educatorId, testId });
+
     
     const response = await axios.get(
       `${API_BASE_URL}/institution/teacher/dashboard/`,
       {
         params: {
           educator_id: educatorId,
-          testId: testId
+          testId: testId,
+          ...(classId ? { classId, class_id: classId } : {})
         },
         headers: {
           Authorization: `Bearer ${token}`,
@@ -1077,7 +1043,7 @@ export const fetchInstitutionTeacherDashboard = async (educatorId, testId) => {
 
     return response.data;
   } catch (error) {
-    console.error('Error fetching institution teacher dashboard:', error);
+
     return { error: 'Failed to fetch teacher dashboard' };
   }
 };
@@ -1085,17 +1051,18 @@ export const fetchInstitutionTeacherDashboard = async (educatorId, testId) => {
 /**
  * Fetch Institution Teacher SWOT (for PDF reports)
  */
-export const fetchInstitutionTeacherSWOT = async (educatorId, testId) => {
+export const fetchInstitutionTeacherSWOT = async (educatorId, testId, classId = null) => {
   try {
     const token = localStorage.getItem('token');
-    console.log('[API] fetchInstitutionTeacherSWOT →', { educatorId, testId });
+
     
     const response = await axios.get(
       `${API_BASE_URL}/institution/teacher/swot/`,
       {
         params: {
           educator_id: educatorId,
-          testId: testId
+          testId: testId,
+          ...(classId ? { classId, class_id: classId } : {})
         },
         headers: {
           Authorization: `Bearer ${token}`,
@@ -1106,7 +1073,7 @@ export const fetchInstitutionTeacherSWOT = async (educatorId, testId) => {
 
     return response.data;
   } catch (error) {
-    console.error('Error fetching institution teacher SWOT:', error);
+
     return { error: 'Failed to fetch teacher SWOT' };
   }
 };
@@ -1115,14 +1082,17 @@ export const fetchInstitutionTeacherSWOT = async (educatorId, testId) => {
  * Fetch Test Student Performance (Institution View)
  * Returns detailed question-level data for all students who attended a specific test
  */
-export const fetchInstitutionTestStudentPerformance = async (educatorId, testNum) => {
+export const fetchInstitutionTestStudentPerformance = async (educatorId, testNum, classId = null) => {
   try {
     const token = localStorage.getItem('token');
-    console.log('[API] fetchInstitutionTestStudentPerformance →', { educatorId, testNum });
+
     
     const response = await axios.get(
       `${API_BASE_URL}/institution/educator/${educatorId}/test/${testNum}/student-performance/`,
       {
+        params: {
+          ...(classId ? { classId } : {})
+        },
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -1162,15 +1132,15 @@ export const fetchInstitutionTestStudentPerformance = async (educatorId, testNum
 
     // Print ONLY the schema object to the console (no raw data)
     try {
-      console.log(JSON.stringify(schema, null, 2));
+
     } catch (e) {
       // fallback to simple log if stringify fails for some reason
-      console.log(schema);
+
     }
 
     return data;
   } catch (error) {
-    console.error('Error fetching test student performance:', error);
+
     return { error: error.response?.data?.error || 'Failed to fetch test performance data' };
   }
 };
@@ -1189,7 +1159,7 @@ export const createInstitutionStudent = async (educatorId, payload) => {
     });
     return response.data;
   } catch (error) {
-    console.error('Error creating student:', error);
+
     return { error: error.response?.data?.error || 'Failed to create student' };
   }
 };
@@ -1222,7 +1192,7 @@ export const updateInstitutionStudent = async (educatorId, studentId, payload) =
     });
     return response.data;
   } catch (error) {
-    console.error('Error updating student:', error);
+
     return { error: error.response?.data?.error || 'Failed to update student' };
   }
 };
@@ -1241,7 +1211,7 @@ export const deleteInstitutionStudent = async (educatorId, studentId) => {
     });
     return response.data;
   } catch (error) {
-    console.error('Error deleting student:', error);
+
     return { error: error.response?.data?.error || 'Failed to delete student' };
   }
 };
@@ -1266,7 +1236,7 @@ export const deleteInstitutionStudentTest = async (educatorId, studentId, testNu
     );
     return response.data;
   } catch (error) {
-    console.error('Error deleting student test:', error);
+
     return { error: error.response?.data?.error || 'Failed to delete test' };
   }
 };
@@ -1303,7 +1273,7 @@ export const reuploadInstitutionStudentResponses = async (educatorId, studentId,
     );
     return response.data;
   } catch (error) {
-    console.error('Error re-uploading student responses:', error);
+
     return { error: error.response?.data?.error || 'Failed to re-upload responses' };
   }
 };
@@ -1326,7 +1296,7 @@ export const submitStudentFeedback = async (feedbackData) => {
     });
     return response.data;
   } catch (error) {
-    console.error('Error submitting student feedback:', error);
+
     return { error: error.response?.data?.error || 'Failed to submit feedback' };
   }
 };
@@ -1345,7 +1315,7 @@ export const submitEducatorFeedback = async (feedbackData) => {
     });
     return response.data;
   } catch (error) {
-    console.error('Error submitting educator feedback:', error);
+
     return { error: error.response?.data?.error || 'Failed to submit feedback' };
   }
 };
@@ -1364,7 +1334,7 @@ export const submitInstitutionFeedback = async (feedbackData) => {
     });
     return response.data;
   } catch (error) {
-    console.error('Error submitting institution feedback:', error);
+
     return { error: error.response?.data?.error || 'Failed to submit feedback' };
   }
 };
@@ -1382,7 +1352,7 @@ export const getMyFeedbackHistory = async () => {
     });
     return response.data;
   } catch (error) {
-    console.error('Error fetching feedback history:', error);
+
     return { error: error.response?.data?.error || 'Failed to fetch feedback history' };
   }
 };
@@ -1432,7 +1402,7 @@ export const getEducatorDetails = async () => {
 
     return response.data || {};
   } catch (error) {
-    console.error('Error fetching educator details:', error);
+
     return { error: 'Failed to fetch educator details' };
   }
 };
@@ -1459,7 +1429,7 @@ export const createTeacher = async (teacherData) => {
     );
     return response.data;
   } catch (error) {
-    console.error('Error creating teacher:', error);
+
     throw error;
   }
 };
@@ -1478,7 +1448,7 @@ export const getTeachersByClass = async (classId) => {
     );
     return response.data;
   } catch (error) {
-    console.error('Error fetching teachers:', error);
+
     throw error;
   }
 };
@@ -1501,7 +1471,7 @@ export const updateTeacher = async (teacherId, updates) => {
     );
     return response.data;
   } catch (error) {
-    console.error('Error updating teacher:', error);
+
     throw error;
   }
 };
@@ -1520,7 +1490,7 @@ export const deleteTeacher = async (teacherId) => {
     );
     return response.data;
   } catch (error) {
-    console.error('Error deleting teacher:', error);
+
     throw error;
   }
 };

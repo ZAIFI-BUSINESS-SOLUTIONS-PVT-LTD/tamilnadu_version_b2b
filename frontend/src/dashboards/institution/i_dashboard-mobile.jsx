@@ -460,8 +460,8 @@ function IDashboard() {
               <div className="w-full flex flex-col bg-white rounded-2xl">
                 <div className="flex items-center justify-between gap-4 mb-6">
                   <span className="text-xl font-bold text-primary">Class Performance</span>
-                  <button
-                    className="btn btn-sm bg-gray-200 inline-flex items-center gap-2 rounded-xl"
+                     <button
+                       className="inline-flex items-center gap-2 rounded-xl bg-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300"
                     onClick={() => setDrawerOpen(true)}
                     aria-label="Open filters"
                   >

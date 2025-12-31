@@ -28,6 +28,7 @@ import LoadingPage from '../components/LoadingPage.jsx';
 import { useInstitution } from './index.jsx';
 import StudentMoreDetails from '../components/StudentMoreDetails.jsx';
 import StudentDeleteModal from '../components/StudentDeleteModal.jsx';
+import Alert from '../../components/ui/alert.jsx';
 
 const SUBJECTS = [
   { key: 'phy_score', label: 'Physics' },
@@ -130,17 +131,17 @@ function IStudentDetails() {
             })
           );
           setAvailableSubjects(availableSubjects);
-        } else {
-          console.error("Unexpected results shape:", results);
-          setError("Unexpected response structure from API.");
         }
       } else {
-        console.error("Failed to fetch student results:", results?.error);
-        setError(results?.error || 'An unknown error occurred.');
+        setError('Failed to load student results');
+        setGroupedResults([]);
+        setAvailableSubjects([]);
       }
     } catch (err) {
-      console.error("Error fetching results:", err);
-      setError('Failed to fetch student results. Please try again.');
+      console.error('Error fetching student results:', err);
+      setError('Failed to load student results');
+      setGroupedResults([]);
+      setAvailableSubjects([]);
     } finally {
       setLoading(false);
     }
@@ -392,13 +393,15 @@ function IStudentDetails() {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-screen p-4">
-        <div className="alert alert-error max-w-md shadow-lg">
-          <AlertCircle className="stroke-current shrink-0 h-6 w-6" />
-          <div>
-            <h3 className="font-bold">Error!</h3>
-            <div className="text-xs">{error}</div>
-          </div>
-        </div>
+        <div className="max-w-md w-full space-y-4">
+          <Alert
+            variant="destructive"
+            icon={<AlertCircle className="h-5 w-5 text-rose-600" aria-hidden />}
+            className="shadow-sm"
+          >
+            <div className="font-semibold text-sm">Error!</div>
+            <div className="text-xs text-rose-800/80 break-words">{error}</div>
+          </Alert>
         <Button
           onClick={fetchResults}
           className="mt-4"
@@ -406,6 +409,7 @@ function IStudentDetails() {
         >
           Retry
         </Button>
+        </div>
       </div>
     );
   }
@@ -558,7 +562,7 @@ function IStudentDetails() {
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-400 min-w-max pl-1">Classroom</span>
           <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
-            <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-[220px] lg:w-auto text-start">
+            <SelectTrigger className="m-1 w-[220px] lg:w-auto justify-start truncate text-start bg-white border-gray-200">
               <SelectValue placeholder="Select Classroom" />
             </SelectTrigger>
             <SelectContent side="bottom" align="start">

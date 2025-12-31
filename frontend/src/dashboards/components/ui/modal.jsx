@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from '@phosphor-icons/react';
+import { Button } from '../../../components/ui/button.jsx';
 
 /**
  * Generic Modal component
@@ -42,14 +43,16 @@ const Modal = ({
           {/* Header */}
           <div className="flex justify-between items-center mb-6 border-b pb-3">
             <h3 className="text-xl font-semibold text-gray-800">{title}</h3>
-            <button
+            <Button
               onClick={onClose}
-              className="btn btn-circle btn-ghost hover:bg-base-200"
+              variant="ghost"
+              size="icon"
+              className="rounded-full hover:bg-muted"
               disabled={loading}
               aria-label="Close"
             >
               <X weight="bold" size={20} />
-            </button>
+            </Button>
           </div>
           {/* Body */}
           <div>{children}</div>

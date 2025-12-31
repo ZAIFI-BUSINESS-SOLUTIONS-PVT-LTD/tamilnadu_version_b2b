@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { fetchInstitutionEducatorSWOT, fetchAvailableSwotTests_InstitutionEducator, getTeachersByClass } from '../../utils/api';
 import LoadingPage from '../components/LoadingPage.jsx';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, } from '../../components/ui/select.jsx';
+import Alert from '../../components/ui/alert.jsx';
 import { Button } from '../../components/ui/button.jsx';
 import PropTypes from 'prop-types';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card.jsx';
@@ -379,12 +380,15 @@ const IAnalysis = () => {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-screen p-4">
-        <div className="alert alert-error max-w-md shadow-lg">
-          <AlertCircle className="stroke-current shrink-0 h-6 w-6" />
-          <div>
-            <h3 className="font-bold">Error</h3>
-            <div className="text-xs">{String(error)}</div>
-          </div>
+        <div className="max-w-md w-full">
+          <Alert
+            variant="destructive"
+            icon={<AlertCircle className="h-5 w-5 text-rose-600" aria-hidden />}
+            className="shadow-sm"
+          >
+            <div className="font-semibold text-sm">Error</div>
+            <div className="text-xs text-rose-800/80 break-words">{String(error)}</div>
+          </Alert>
         </div>
       </div>
     );
@@ -401,7 +405,7 @@ const IAnalysis = () => {
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-400 min-w-max pl-1">Classroom</span>
             <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
-              <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-[220px] lg:w-auto text-start">
+              <SelectTrigger className="m-1 w-[220px] lg:w-auto justify-start truncate text-start bg-white border-gray-200">
                 <SelectValue placeholder="Select Classroom" />
               </SelectTrigger>
               <SelectContent side="bottom" align="start" className="max-h-60">
@@ -415,7 +419,7 @@ const IAnalysis = () => {
 
             <span className="text-sm text-gray-400 min-w-max pl-1">Test</span>
             <Select value={selectedTest} onValueChange={(v) => setSelectedTest && setSelectedTest(v)}>
-              <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full lg:w-auto text-start">
+              <SelectTrigger className="m-1 w-full lg:w-auto justify-start truncate text-start bg-white border-gray-200">
                 <SelectValue placeholder="Select Test" />
               </SelectTrigger>
               <SelectContent side="bottom" align="end" className="max-h-60">
@@ -429,7 +433,7 @@ const IAnalysis = () => {
 
             <span className="text-sm text-gray-400 min-w-max pl-1">Subject</span>
             <Select value={selectedSubject} onValueChange={(v) => setSelectedSubject && setSelectedSubject(v)}>
-              <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full lg:w-auto text-start">
+              <SelectTrigger className="m-1 w-full lg:w-auto justify-start truncate text-start bg-white border-gray-200">
                 <SelectValue placeholder="Select Subject" />
               </SelectTrigger>
               <SelectContent side="bottom" align="end" className="max-h-60">
@@ -465,7 +469,7 @@ const IAnalysis = () => {
             </div>
             <div className="py-4">
               <button
-                className="btn btn-sm justify-start rounded-lg text-sm w-auto inline-flex items-center gap-2"
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
                 onClick={() => setTestDrawerOpen(true)}
                 aria-label="Select Test"
               >

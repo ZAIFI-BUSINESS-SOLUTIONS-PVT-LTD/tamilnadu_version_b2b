@@ -8,9 +8,7 @@ import {
   ChevronDown,
   ChevronRight,
   GraduationCap,
-  Target,
-  MessageCircle,
-  List
+  Target
 } from "lucide-react";
 import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
 import { fetcheducatordetail, fetchAvailableSwotTests_Educator, fetcheducatorstudent } from '../../utils/api.js';
@@ -218,7 +216,7 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
             {/* Toggle Sidebar Collapse Button */}
             <button
               onClick={toggleSidebarCollapse}
-              className="btn btn-sm h-10 w-10 btn-square bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 flex items-center justify-center transition-colors"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 transition-colors"
               aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               <AlignLeft size={20} />

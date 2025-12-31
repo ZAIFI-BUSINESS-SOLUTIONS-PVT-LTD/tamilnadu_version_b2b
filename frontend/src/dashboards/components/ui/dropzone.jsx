@@ -14,6 +14,7 @@ import {
 } from '@phosphor-icons/react';
 import { toast } from 'react-hot-toast';
 import { validateFile } from '../../../utils/validation';
+import { Button } from '../../../components/ui/button.jsx';
 
 /**
  * Generic reusable DropZone component for file uploads
@@ -49,18 +50,18 @@ const DropZone = ({ label, file, setFile, icon: Icon, accept, disabled = false, 
           setFile(selectedFile);
           onFileValidation?.(selectedFile);
           toast.success('File validated successfully!', {
-            icon: <CheckCircle weight="fill" size={20} className="text-success" />,
+            icon: <CheckCircle weight="fill" size={20} className="text-emerald-600" />,
             duration: 3000,
           });
         } else {
           toast.error(validation.error, {
-            icon: <XCircle weight="fill" size={20} className="text-error" />,
+            icon: <XCircle weight="fill" size={20} className="text-rose-600" />,
             duration: 4000,
           });
         }
       } catch (error) {
         toast.error('Error validating file', {
-          icon: <WarningCircle weight="fill" size={20} className="text-error" />,
+          icon: <WarningCircle weight="fill" size={20} className="text-rose-600" />,
         });
       } finally {
         setIsValidating(false);
@@ -111,7 +112,7 @@ const DropZone = ({ label, file, setFile, icon: Icon, accept, disabled = false, 
     e.stopPropagation();
     setFile(null);
     toast.success('File removed', {
-      icon: <CheckCircle weight="fill" size={20} className="text-success" />,
+      icon: <CheckCircle weight="fill" size={20} className="text-emerald-600" />,
     });
   };
 
@@ -134,14 +135,14 @@ const DropZone = ({ label, file, setFile, icon: Icon, accept, disabled = false, 
         onClick={handleClick}
         className={`w-full mx-auto border-2 rounded-xl cursor-pointer
           transition-all duration-300 flex flex-col items-center justify-center
-          bg-base-100 p-6 min-h-[220px]
+          bg-background p-6 min-h-[220px]
           ${isDragging
             ? 'border-dashed border-primary bg-primary/5 shadow-lg transform scale-[1.01]'
             : file
-              ? 'border-solid border-base-300 hover:border-primary/50 hover:shadow'
-              : 'border-dashed border-base-300 hover:border-primary/50 hover:shadow'
+              ? 'border-solid border-gray-200 hover:border-primary/50 hover:shadow'
+              : 'border-dashed border-gray-200 hover:border-primary/50 hover:shadow'
           }
-          ${disabled ? 'opacity-70 cursor-not-allowed bg-base-200' : ''}`}
+          ${disabled ? 'opacity-70 cursor-not-allowed bg-muted' : ''}`}
         aria-label={file ? `Selected file: ${file.name}` : `Upload ${label || 'file'}`}
         role="button"
         tabIndex={0}
@@ -169,7 +170,7 @@ const DropZone = ({ label, file, setFile, icon: Icon, accept, disabled = false, 
               <p className="font-medium text-center break-all line-clamp-1 text-gray-800">{file.name}</p>
             </div>
             <div className="flex items-center text-xs text-base-content/60 mb-4 gap-1">
-              <span className="px-2 py-1 rounded-full bg-base-200">
+              <span className="px-2 py-1 rounded-full bg-muted text-foreground/70">
                 {(file.size / (1024 * 1024)).toFixed(2)} MB
               </span>
               <span className="px-2 py-1 rounded-full bg-primary/10 text-primary">
@@ -178,24 +179,27 @@ const DropZone = ({ label, file, setFile, icon: Icon, accept, disabled = false, 
             </div>
             {!disabled && (
               <div className="flex gap-2">
-                <button
-                  className="btn btn-sm"
+                <Button
+                  size="sm"
+                  variant="secondary"
                   onClick={(e) => {
                     e.stopPropagation();
                     fileInputRef.current?.click();
                   }}
                 >
                   <ArrowClockwise size={16} className="mr-1" /> Replace
-                </button>
-                <button
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
                   onClick={handleRemoveFile}
-                  className="btn btn-sm btn-outline btn-error"
                   title="Remove file"
                   disabled={isValidating}
                   aria-label="Remove file"
+                  className="border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
                 >
                   <Trash size={16} className="mr-1" /> Remove
-                </button>
+                </Button>
               </div>
             )}
           </div>
@@ -207,17 +211,17 @@ const DropZone = ({ label, file, setFile, icon: Icon, accept, disabled = false, 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
               >
-                <span className="loading loading-spinner loading-md text-primary mb-3"></span>
+                <span className="mb-3 inline-block h-8 w-8 rounded-full border-4 border-primary/30 border-t-primary animate-spin"></span>
                 <p className="text-sm font-medium">Validating file...</p>
-                <p className="text-xs text-base-content/70 mt-1">Please wait while we check your file</p>
+                <p className="text-xs text-muted-foreground mt-1">Please wait while we check your file</p>
               </motion.div>
             ) : (
               <>
                 <motion.div
-                  className={`p-4 rounded-full ${isDragging ? 'bg-primary/20' : 'bg-base-200'}`}
+                  className={`p-4 rounded-full ${isDragging ? 'bg-primary/20' : 'bg-muted'}`}
                   animate={{
                     scale: isDragging ? 1.1 : 1,
-                    backgroundColor: isDragging ? 'rgba(var(--p), 0.2)' : 'rgba(var(--b2), 1)',
+                    backgroundColor: isDragging ? 'rgba(37, 99, 235, 0.2)' : 'rgba(243, 244, 246, 1)',
                   }}
                   transition={{ duration: 0.2 }}
                 >
@@ -241,17 +245,17 @@ const DropZone = ({ label, file, setFile, icon: Icon, accept, disabled = false, 
                 </motion.p>
                 {!isDragging && (
                   <>
-                    <p className="text-sm text-base-content/70 mb-3">
-                      or <span className="link link-primary font-medium">browse files</span>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      or <span className="font-medium text-primary underline">browse files</span>
                     </p>
-                    <div className="flex items-center text-xs text-base-content/50 gap-1">
-                      <span className="px-2 py-1 rounded-full bg-base-200 flex items-center gap-1">
+                    <div className="flex items-center text-xs text-muted-foreground gap-1">
+                      <span className="px-2 py-1 rounded-full bg-muted flex items-center gap-1">
                         <Icon size={12} /> {getAcceptLabel()}
                       </span>
-                      <span className="px-2 py-1 rounded-full bg-base-200">Max 50MB</span>
+                      <span className="px-2 py-1 rounded-full bg-muted">Max 50MB</span>
                       <div className="relative group">
-                        <Question size={14} className="text-base-content/40 cursor-help" />
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-base-100 text-xs text-left rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none border border-base-300 z-10">
+                        <Question size={14} className="text-muted-foreground cursor-help" />
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-white text-xs text-left rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none border border-gray-200 z-10">
                           Only files matching the required format will be accepted. Make sure your file is properly
                           formatted.
                         </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { GraduationCap, UserCheck, ArrowLeft, Building } from 'lucide-react';
+import { GraduationCap, UserCheck, Building } from 'lucide-react';
 import { motion } from 'framer-motion';
 import logo from '../assets/images/logo.svg';
 import {
