@@ -11,8 +11,18 @@ from exam.models.educator import Educator
 from exam.models.test_metadata import TestMetadata
 import logging
 import sentry_sdk
+import re
 
 logger = logging.getLogger(__name__)
+
+
+def normalize_subdomain(raw_value):
+    """Normalize an institution value into a DNS-safe subdomain slug."""
+    if not raw_value:
+        return None
+    slug = re.sub(r'[^a-z0-9-]', '-', str(raw_value).strip().lower())
+    slug = re.sub(r'-+', '-', slug).strip('-')
+    return slug or None
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -23,11 +33,16 @@ def get_student_details(request):
         name=student.name
         class_id=student.class_id
         inst = Educator.objects.filter(class_id=class_id).first()
-        if inst:
-            inst_name = inst.name
-        else:
-            inst_name = None
-        return JsonResponse({'name': name, "student_id": student_id, "class_id":class_id, "inst": inst_name}, status=200)
+        inst_name = inst.name if inst else None
+        inst_domain = inst.institution if inst else None
+        inst_subdomain = normalize_subdomain(inst_domain)
+        return JsonResponse({
+            'name': name,
+            'student_id': student_id,
+            'class_id': class_id,
+            'inst': inst_name,
+            'institute_subdomain': inst_subdomain,
+        }, status=200)
 
     except Exception as e:
         logger.exception(f"Error in get_student_details: {str(e)}")

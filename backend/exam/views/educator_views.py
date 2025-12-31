@@ -17,6 +17,15 @@ import re
 
 logger = logging.getLogger(__name__)
 
+
+def normalize_subdomain(raw_value):
+    """Normalize an institution value into a DNS-safe subdomain slug."""
+    if not raw_value:
+        return None
+    slug = re.sub(r'[^a-z0-9-]', '-', str(raw_value).strip().lower())
+    slug = re.sub(r'-+', '-', slug).strip('-')
+    return slug or None
+
 UPLOAD_DIR = "uploads/"
 
 # Helper to parse test_num from various formats (e.g., "Test 2" -> 2, "2" -> 2)
@@ -60,7 +69,12 @@ def get_educator_details(request):
         name = educator.name
         class_id = educator.class_id
         inst = educator.institution
-        return JsonResponse({'name': name, "class_id": class_id, "inst": inst}, status=200)
+        return JsonResponse({
+            'name': name,
+            'class_id': class_id,
+            'inst': inst,
+            'institute_subdomain': normalize_subdomain(inst),
+        }, status=200)
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -78,13 +92,14 @@ def get_student_details(request):
         # Get class_id and institution from the educator
         class_id = educator.class_id
         institution = educator.institution
+        institute_subdomain = normalize_subdomain(institution)
 
         # Fetch students in the same class
         students = Student.objects.filter(class_id=class_id).values('student_id', 'name', 'dob')
         
         # Add institution to each student's data
         students_with_inst = [
-            {**student, 'inst': institution}
+            {**student, 'inst': institution, 'institute_subdomain': institute_subdomain}
             for student in students
         ]
 
