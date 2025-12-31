@@ -45,9 +45,10 @@ function InstitutionBootstrap() {
     const host = (typeof window !== 'undefined' && window.location && window.location.host) ? window.location.host : '';
     const isLocal = host.includes('localhost') || host.startsWith('127.0.0.1') || host === '::1' || host.endsWith('.local') || host === '';
     const isDevHost = host === 'tamilnadu.inzighted.com' || host.endsWith('.tamilnadu.inzighted.com');
+    const isGatewayHost = host === 'web.inzighted.com';
 
-    // Local / dev-domain safe fallback (no remote lookup)
-    if (isLocal || isDevHost) {
+    // Local / dev-domain / gateway safe fallback (no remote lookup)
+    if (isLocal || isDevHost || isGatewayHost) {
       setState({
         status: 'ready',
         institution: { institutionId: 'dev', displayName: 'InzightEd' }
