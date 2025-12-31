@@ -44,9 +44,10 @@ function InstitutionBootstrap() {
   useEffect(() => {
     const host = (typeof window !== 'undefined' && window.location && window.location.host) ? window.location.host : '';
     const isLocal = host.includes('localhost') || host.startsWith('127.0.0.1') || host === '::1' || host.endsWith('.local') || host === '';
+    const isDevHost = host === 'tamilnadu.inzighted.com' || host.endsWith('.tamilnadu.inzighted.com');
 
-    // Local development safe fallback
-    if (isLocal) {
+    // Local / dev-domain safe fallback (no remote lookup)
+    if (isLocal || isDevHost) {
       setState({
         status: 'ready',
         institution: { institutionId: 'dev', displayName: 'InzightEd' }
