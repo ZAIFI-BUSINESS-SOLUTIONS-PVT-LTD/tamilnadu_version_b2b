@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import ChatHistory from './ChatHistory';
-import Modal from '../../../components/ui/modal.jsx';
+import Modal from '../../../../components/modal.jsx';
 import { Plus, WarningCircle, ArrowClockwise, Clock } from '@phosphor-icons/react';
 
 const ChatInterface = ({

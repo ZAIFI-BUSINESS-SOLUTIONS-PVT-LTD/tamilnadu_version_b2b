@@ -6,7 +6,7 @@ import {
     AlertCircle,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button.jsx';
-import Modal from './ui/modal.jsx';
+import Modal from '../../components/modal.jsx';
 
 function StudentDeleteModal({
     open,
@@ -62,13 +62,13 @@ function StudentDeleteModal({
                 <div className="flex items-start gap-3">
                     <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-1" />
                     <div>
-                        <p className="text-sm text-gray-700">
+                        <p className="text-sm text-foreground">
                             Are you sure you want to delete <strong>{studentNameMap[modalStudent.student_id] || modalStudent.student_name}</strong> (ID: <strong>{modalStudent.student_id}</strong>)?
                         </p>
-                        <p className="text-sm text-gray-600 mt-2">
+                        <p className="text-sm text-muted-foreground mt-2">
                             This will permanently delete:
                         </p>
-                        <ul className="list-disc ml-5 text-sm text-gray-600 mt-1">
+                        <ul className="list-disc ml-5 text-sm text-muted-foreground mt-1">
                             <li>Student profile and all personal data</li>
                             <li>All test results and responses</li>
                             <li>All SWOT analysis and insights</li>

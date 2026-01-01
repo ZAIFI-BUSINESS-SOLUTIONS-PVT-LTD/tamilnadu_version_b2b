@@ -5,6 +5,7 @@ import { generateTeacherSelfPdfReport, fetchAvailableSwotTests_InstitutionEducat
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select.jsx';
 import { Button } from '../../../components/ui/button.jsx';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card.jsx';
+import Alert from '../../../components/ui/alert.jsx';
 
 // Modal component for downloading the teacher's report
 export const TeacherReportModal = ({ onClose }) => {
@@ -128,7 +129,7 @@ export const TeacherReportModal = ({ onClose }) => {
         exit={{ opacity: 0 }}
       >
         <motion.div
-          className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg sm:max-w-2xl p-0 sm:p-0 mx-2 sm:mx-0"
+          className="relative bg-card rounded-2xl shadow-2xl w-full max-w-lg sm:max-w-2xl p-0 sm:p-0 mx-2 sm:mx-0"
           initial={{ scale: 0.8, y: 20, opacity: 0.8 }}
           animate={{ scale: 1, y: 0, opacity: 1 }}
           exit={{ scale: 0.8, y: 20, opacity: 0 }}
@@ -137,7 +138,7 @@ export const TeacherReportModal = ({ onClose }) => {
           <Card className="border-0 shadow-none">
             <CardHeader className="pb-3 pt-2 pl-4 pr-2 sm:pb-3 sm:pt-4 sm:pl-6 sm:pr-4">
               <div className="flex flex-row justify-between items-center mb-4 gap-2">
-                <CardTitle className="text-lg sm:text-xl font-semibold text-gray-800 text-left">Download Your Report</CardTitle>
+                <CardTitle className="text-lg sm:text-xl font-semibold text-foreground text-left">Download Your Report</CardTitle>
                 <Button
                   onClick={onClose}
                   variant="ghost"
@@ -155,12 +156,13 @@ export const TeacherReportModal = ({ onClose }) => {
               <AnimatePresence>
                 {error && (
                   <motion.div
-                    className="alert alert-error"
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                   >
-                    <span>{error}</span>
+                    <Alert variant="destructive" className="shadow-sm text-sm" >
+                      {error}
+                    </Alert>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -168,7 +170,7 @@ export const TeacherReportModal = ({ onClose }) => {
               {/* Educator + Test Selection (responsive) */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 sm:gap-6">
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                  <span className="text-sm text-gray-500">Educator:</span>
+                  <span className="text-sm text-muted-foreground">Educator:</span>
                   <Select value={selectedEducatorId} onValueChange={setSelectedEducatorId}>
                     <SelectTrigger className="w-full sm:w-fit text-start">
                       <SelectValue placeholder="Choose Educator" />
@@ -183,7 +185,7 @@ export const TeacherReportModal = ({ onClose }) => {
                   </Select>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                  <span className="text-sm text-gray-500">Test:</span>
+                  <span className="text-sm text-muted-foreground">Test:</span>
                   <Select value={selectedTest} onValueChange={setSelectedTest}>
                     <SelectTrigger className="w-full sm:w-fit text-start">
                       <SelectValue placeholder="Choose Test" />

@@ -100,7 +100,7 @@ export const ILayout = () => {
   }, [selectedEducatorId, location.pathname]);
 
   return (
-    <div className="flex h-screen bg-gray-50 text-text">
+    <div className="flex h-screen bg-background text-foreground">
       {/* Modals */}
       {showStudentReportModal && (
         <StudentReportModal

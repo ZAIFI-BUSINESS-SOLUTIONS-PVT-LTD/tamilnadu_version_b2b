@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Line } from 'react-chartjs-2';
-import { Chart, LineElement, PointElement, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Filler } from 'chart.js';
+import { Chart, LineElement, PointElement, ArcElement, Tooltip as ChartTooltip, Legend, CategoryScale, LinearScale, BarElement, Filler } from 'chart.js';
 import { getInstitutionEducatorDashboardData, fetchInstitutionEducatorAllStudentResults, getTeachersByClass } from '../../utils/api';
 import { Users, Calendar, HelpCircle, Sparkles, BookOpen, Building, Percent } from 'lucide-react';
-import Carousel from '../components/ui/carousel';
-import Stat from '../components/ui/stat';
+import Carousel from '../../components/carousel';
+import Stat from '../../components/stat';
 import { Card } from '../../components/ui/card.jsx';
-import { Tooltip as UITooltip, TooltipTrigger as UITooltipTrigger, TooltipContent as UITooltipContent, TooltipProvider as UITooltipProvider } from '../../components/ui/tooltip.jsx';
+import { Tooltip as UITooltip, TooltipContent as UITooltipContent, TooltipProvider as UITooltipProvider, TooltipTrigger as UITooltipTrigger } from '../../components/ui/tooltip.jsx';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select.jsx';
 import { Button } from '../../components/ui/button.jsx';
 import EStudentListMock from '../components/StudentListMock';
@@ -15,16 +15,16 @@ import LoadingPage from '../components/LoadingPage.jsx';
 import { useInstitution } from './index.jsx';
 
 // Register Chart.js components and set global font family
-Chart.register(LineElement, PointElement, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Filler);
+Chart.register(LineElement, PointElement, ArcElement, ChartTooltip, Legend, CategoryScale, LinearScale, BarElement, Filler);
 Chart.defaults.font.family = 'Tenorite, sans-serif';
 
 const ICON_MAPPING = {
-  Users: <Users aria-hidden="true" className="text-gray-800" />,
-  Calendar: <Calendar aria-hidden="true" className="text-gray-800" />,
-  BookOpen: <BookOpen aria-hidden="true" className="text-gray-800" />,
-  Building: <Building aria-hidden="true" className="text-gray-800" />,
-  Percent: <Percent aria-hidden="true" className="text-gray-800" />,
-  Default: <HelpCircle aria-hidden="true" className="text-gray-800" />
+  Users: <Users aria-hidden="true" className="text-foreground" />,
+  Calendar: <Calendar aria-hidden="true" className="text-foreground" />,
+  BookOpen: <BookOpen aria-hidden="true" className="text-foreground" />,
+  Building: <Building aria-hidden="true" className="text-foreground" />,
+  Percent: <Percent aria-hidden="true" className="text-foreground" />,
+  Default: <HelpCircle aria-hidden="true" className="text-foreground" />
 };
 
 const formatStatValue = (value) => {
@@ -108,28 +108,22 @@ function IDashboard() {
           if (hasField('chem_score') || hasField('chem_total')) subjectKeys['Chemistry'] = 'chem_score';
 
           const hasBioData = results.results.some(r => (Number(r.bio_score) || 0) > 0 || (Number(r.bio_total) || 0) > 0);
-          const hasBotZooData = results.results.some(r => (Number(r.bot_score) || 0) > 0 || (Number(r.bot_total) || 0) > 0 || (Number(r.zoo_score) || 0) > 0 || (Number(r.zoo_total) || 0) > 0);
-
-          if (hasBioData || hasBotZooData) {
-            subjectKeys['Biology'] = 'unified_bio';
+          if (hasBioData) {
+            subjectKeys['Biology'] = 'bio_score';
           }
 
-          if (hasField('bot_score') || hasField('bot_total')) subjectKeys['Botany'] = 'bot_score';
-          if (hasField('zoo_score') || hasField('zoo_total')) subjectKeys['Zoology'] = 'zoo_score';
+          const hasBotData = results.results.some(r => (Number(r.bot_score) || 0) > 0 || (Number(r.bot_total) || 0) > 0);
+          if (hasBotData) subjectKeys['Botany'] = 'bot_score';
+
+          const hasZooData = results.results.some(r => (Number(r.zoo_score) || 0) > 0 || (Number(r.zoo_total) || 0) > 0);
+          if (hasZooData) subjectKeys['Zoology'] = 'zoo_score';
           const avgData = {};
           Object.keys(subjectKeys).forEach(subject => {
             const key = subjectKeys[subject];
             const testMap = {};
             results.results.forEach(r => {
               const testNum = r.test_num;
-              let score;
-              if (key === 'unified_bio') {
-                score = (Number(r.bio_score) || 0) + (Number(r.bot_score) || 0) + (Number(r.zoo_score) || 0);
-              } else if (key === 'computed_bio') {
-                score = (Number(r.bot_score) || 0) + (Number(r.zoo_score) || 0);
-              } else {
-                score = Number(r[key]) || 0;
-              }
+              const score = Number(r[key]) || 0;
               if (!testMap[testNum]) {
                 testMap[testNum] = { total: 0, count: 0, max: score, min: score };
               }
@@ -168,7 +162,7 @@ function IDashboard() {
 
   const subjectOptions = useMemo(() => {
     const keys = Object.keys(testWiseAvgMarks || {});
-    if (!keys || keys.length === 0) return ['Overall', 'Physics', 'Chemistry', 'Biology', 'Botany', 'Zoology'];
+    if (!keys || keys.length === 0) return ['Overall', 'Physics', 'Chemistry', 'Botany', 'Zoology'];
     const others = keys.filter(k => k !== 'Overall');
     const preferredOrder = ['Physics', 'Chemistry', 'Biology', 'Botany', 'Zoology'];
     const ordered = preferredOrder.filter(k => others.includes(k)).concat(others.filter(k => !preferredOrder.includes(k)));
@@ -374,87 +368,69 @@ function IDashboard() {
   if (error) return <div className="text-center py-8 text-error mt-20">{error}</div>;
 
   return (
-    <UITooltipProvider>
+    <UITooltipProvider delayDuration={150}>
       <div className="mt-12">
         {/* Institute Overview Section */}
         <div className="mb-8 mt-8">
           <div className="flex items-center mb-6">
-            <h2 className="text-3xl font-semibold text-gray-800">Institute Overview</h2>
+            <h2 className="text-3xl font-semibold text-foreground">Institute Overview</h2>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <Stat
               icon={ICON_MAPPING.Users}
-              iconBg="bg-blue-50"
-              iconClass="text-blue-600"
+              iconBg="bg-blue-50 dark:bg-blue-950/30"
+              iconClass="text-blue-600 dark:text-blue-400"
               label="Students Enrolled"
               info={"Total number of students enrolled across all classrooms."}
               value={formatStatValue(instituteOverview.totalStudents)}
-              badge={(
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="rounded-full text-blue-400 hover:text-blue-700 bg-transparent hover:bg-blue-50"
-                  onClick={() => navigate('/institution/students')}
-                >
-                  View More
-                </Button>
-              )}
+              action={{
+                label: 'View More',
+                onClick: () => navigate('/institution/students')
+              }}
             />
             <Stat
               icon={ICON_MAPPING.BookOpen}
-              iconBg="bg-violet-50"
-              iconClass="text-violet-600"
+              iconBg="bg-violet-50 dark:bg-violet-950/30"
+              iconClass="text-violet-600 dark:text-violet-400"
               label="Teachers Assigned"
               info={"Total number of educators assigned across all classrooms."}
               value={formatStatValue(instituteOverview.totalTeachers)}
-              badge={(
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="rounded-full text-blue-400 hover:text-blue-700 bg-transparent hover:bg-blue-50"
-                  onClick={() => navigate('/institution/students')}
-                >
-                  View More
-                </Button>
-              )}
+              action={{
+                label: 'View More',
+                onClick: () => navigate('/institution/students')
+              }}
             />
             <Stat
               icon={ICON_MAPPING.Building}
-              iconBg="bg-yellow-50"
-              iconClass="text-yellow-600"
+              iconBg="bg-amber-50 dark:bg-amber-950/30"
+              iconClass="text-amber-600 dark:text-amber-400"
               label="Classrooms Enrolled"
               info={"Total number of classrooms with enrollment."}
               value={formatStatValue(instituteOverview.totalClassrooms)}
-              badge={(
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="rounded-full text-blue-400 hover:text-blue-700 bg-transparent hover:bg-blue-50"
-                  onClick={() => navigate('/institution/students')}
-                >
-                  View More
-                </Button>
-              )}
+              action={{
+                label: 'View More',
+                onClick: () => navigate('/institution/students')
+              }}
             />
             <Stat
               icon={ICON_MAPPING.Percent}
-              iconBg="bg-green-50"
-              iconClass="text-green-600"
+              iconBg="bg-emerald-50 dark:bg-emerald-950/30"
+              iconClass="text-emerald-600 dark:text-emerald-400"
               label="Overall Test Attendance"
               info={"Overall attendance percentage across all classrooms in the latest test."}
               value={instituteOverview.overallAttendance}
             />
           </div>
         </div>
-        <div className='p-6 border rounded-2xl bg-white'>
+        <div className='p-6 border rounded-2xl bg-card'>
           <div className="hidden lg:flex lg:flex-row lg:items-center lg:justify-between mb-4 pb-4">
             <div className="flex items-center">
-              <h2 className="text-3xl font-semibold text-gray-800">Classroom Performances</h2>
+              <h2 className="text-3xl font-semibold text-foreground">Classroom Performances</h2>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-400 min-w-max pl-1">Classroom</span>
+              <span className="text-sm text-muted-foreground min-w-max pl-1">Classroom</span>
               <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
-                <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-[220px] lg:w-auto text-start">
+                <SelectTrigger className="m-1 w-[220px] lg:w-auto justify-start truncate text-start bg-card">
                   <SelectValue placeholder="Select Classroom" />
                 </SelectTrigger>
                 <SelectContent side="bottom" align="start">
@@ -469,9 +445,9 @@ function IDashboard() {
           </div>
 
           <div className="lg:hidden">
-            <div className="flex w-full bg-white px-3 border-b justify-between items-center rounded-xl">
+            <div className="flex w-full bg-card px-3 border-b justify-between items-center rounded-xl">
               <div className="text-left py-3">
-                <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+                <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
                 <div className="mt-2">
                   <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
                     <SelectTrigger className="w-36">
@@ -495,6 +471,8 @@ function IDashboard() {
               <div className="grid grid-cols-1 gap-3 sm:gap-6 sm:grid-cols-2">
                 <Stat
                   icon={ICON_MAPPING.Users}
+                  iconBg="bg-blue-50 dark:bg-blue-950/30"
+                  iconClass="text-blue-600 dark:text-blue-400"
                   label="Recent Test Performance"
                   info={"Average total score in the latest test (as % of full marks)."}
                   value={formatStatValue(overallPerformance)}
@@ -509,7 +487,7 @@ function IDashboard() {
                       <UITooltip>
                         <UITooltipTrigger asChild>
                           <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${isNegative ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${isNegative ? 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-200 border border-red-200/60 dark:border-red-800/60' : 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-200 border border-green-200/60 dark:border-green-800/60'}`}>
                             {isNegative ? (
                               <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 4v8M8 12l3-3M8 12l-3-3" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                             ) : (
@@ -518,7 +496,7 @@ function IDashboard() {
                             <span className="whitespace-nowrap">{formatStatValue(improvementRate)}</span>
                           </span>
                         </UITooltipTrigger>
-                        <UITooltipContent sideOffset={6}>
+                        <UITooltipContent side="top">
                           {isNegative ? "Drop compared to previous test (rounded %)." : "Improvement compared to previous test (rounded %)."}
                         </UITooltipContent>
                       </UITooltip>
@@ -527,6 +505,8 @@ function IDashboard() {
                 />
                 <Stat
                   icon={ICON_MAPPING.Calendar}
+                  iconBg="bg-green-50 dark:bg-green-950/30"
+                  iconClass="text-green-600 dark:text-green-400"
                   label="Recent Test Attendance"
                   info={"Percentage of students who attended the latest test."}
                   value={`${attendanceData.percentage}%`}
@@ -534,7 +514,7 @@ function IDashboard() {
                     <UITooltip>
                       <UITooltipTrigger asChild>
                         <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold ml-1 sm:ml-2 text-xs sm:text-sm ${attendanceData.direction === 'up' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold ml-1 sm:ml-2 text-xs sm:text-sm ${attendanceData.direction === 'up' ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-200 border border-green-200/60 dark:border-green-800/60' : 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-200 border border-red-200/60 dark:border-red-800/60'}`}>
                           {attendanceData.direction === 'up' ? (
                             <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 12V4M8 4l-3 3M8 4l3 3" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                           ) : (
@@ -544,16 +524,20 @@ function IDashboard() {
                           {attendanceData.change === 1 || attendanceData.change === -1 ? ' student' : ' students'}
                         </span>
                       </UITooltipTrigger>
-                      <UITooltipContent sideOffset={6}>{attendanceData.direction === 'up' ? 'Attendance increased compared to the previous test.' : 'Attendance decreased compared to the previous test.'}</UITooltipContent>
+                      <UITooltipContent side="top">
+                        {attendanceData.direction === 'up' ? 'Attendance increased compared to the previous test.' : 'Attendance decreased compared to the previous test.'}
+                      </UITooltipContent>
                     </UITooltip>
                   ) : attendanceData.direction === 'same' ? (
                     <UITooltip>
                       <UITooltipTrigger asChild>
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-semibold ml-1 sm:ml-2 text-xs sm:text-sm">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border font-semibold ml-1 sm:ml-2 text-xs sm:text-sm">
                           No change
                         </span>
                       </UITooltipTrigger>
-                      <UITooltipContent sideOffset={6}>No change in student attendance between the last two tests.</UITooltipContent>
+                      <UITooltipContent side="top">
+                        No change in student attendance between the last two tests.
+                      </UITooltipContent>
                     </UITooltip>
                   ) : null}
                 />
@@ -567,8 +551,8 @@ function IDashboard() {
                         title: 'Quick Recommendations',
                         items: keyInsightsData.quickRecommendations || [],
                         tag: (
-                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-                            <Sparkles size={12} />
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 flex items-center gap-1">
+                            <Sparkles size={12} className="text-primary" />
                             AI Generated
                           </span>
                         ),
@@ -578,8 +562,8 @@ function IDashboard() {
                         title: 'Key Strengths',
                         items: keyInsightsData.keyStrengths || [],
                         tag: (
-                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-                            <Sparkles size={12} />
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 flex items-center gap-1">
+                            <Sparkles size={12} className="text-primary" />
                             AI Generated
                           </span>
                         ),
@@ -590,8 +574,8 @@ function IDashboard() {
                         title: 'Additional Focus Areas',
                         items: keyInsightsData.yetToDecide || [],
                         tag: (
-                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-                            <Sparkles size={12} />
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 flex items-center gap-1">
+                            <Sparkles size={12} className="text-primary" />
                             AI Generated
                           </span>
                         ),
@@ -605,10 +589,10 @@ function IDashboard() {
                 </div>
               </div>
             </div>
-            <Card className="rounded-2xl border border-gray-250 bg-gray-100 flex flex-col items-start justify-start sm:p-0 p-2">
-              <div className="w-full flex flex-col bg-white p-3 sm:p-6 rounded-2xl">
+            <Card className="rounded-2xl border border-border bg-muted flex flex-col items-start justify-start sm:p-0 p-2">
+              <div className="w-full flex flex-col bg-card border border-border p-3 sm:p-6 rounded-2xl">
                 <div className="w-full flex justify-between items-center mb-0.5 sm:mb-1">
-                  <span className="text-base sm:text-xl font-semibold text-primary text-left">Performance Trend</span>
+                  <span className="text-base sm:text-xl font-semibold text-foreground text-left">Performance Trend</span>
                   <Select value={selectedSubject} onValueChange={setSelectedSubject}>
                     <SelectTrigger className="w-[140px]">
                       <SelectValue />
@@ -623,9 +607,9 @@ function IDashboard() {
                   </Select>
                 </div>
 
-                <p className="text-gray-500 text-xs sm:text-sm mb-3 sm:mb-6">Average marks across all students</p>
+                <p className="text-muted-foreground text-xs sm:text-sm mb-3 sm:mb-6">Average marks across all students</p>
 
-                <div className="flex flex-col items-center justify-center w-full mb-3 sm:mb-6 bg-white h-56 sm:h-80">
+                <div className="flex flex-col items-center justify-center w-full mb-3 sm:mb-6 bg-card h-56 sm:h-80">
                   {(() => {
                     const currentData = testWiseAvgMarks[selectedSubject] || [];
                     const dataValues = currentData.map(d => d.avg);
@@ -746,19 +730,19 @@ function IDashboard() {
                       lowest = Math.min(...currentData.map(t => t.avg));
                     }
                     return <>
-                      <div className="flex flex-col items-center border-r border-gray-200 pr-2 sm:pr-0">
-                        <span className="text-gray-500 text-xs sm:text-sm">Avg Highest Score</span>
+                      <div className="flex flex-col items-center border-r border-border pr-2 sm:pr-0">
+                        <span className="text-muted-foreground text-xs sm:text-sm">Avg Highest Score</span>
                         <div className="flex items-center">
-                          <span className="text-base sm:text-lg font-semibold">{highest}</span>
+                          <span className="text-base sm:text-lg font-semibold text-foreground">{highest}</span>
                           <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500 ml-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M5 15l7-7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </div>
                       </div>
                       <div className="flex flex-col items-center">
-                        <span className="text-gray-500 text-xs sm:text-sm">Avg Lowest Score</span>
+                        <span className="text-muted-foreground text-xs sm:text-sm">Avg Lowest Score</span>
                         <div className="flex items-center">
-                          <span className="text-base sm:text-lg font-semibold">{lowest}</span>
+                          <span className="text-base sm:text-lg font-semibold text-foreground">{lowest}</span>
                           <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-500 ml-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M19 9l-7 7-7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
@@ -770,9 +754,9 @@ function IDashboard() {
               </div>
             </Card>
           </div>
-          <Card className="hidden md:block rounded-2xl border border-gray-250 bg-white w-full mt-4 sm:mt-8 p-3 sm:p-8">
-            <div className="flex items-center justify-between pb-2 sm:pb-6 border-b border-gray-200">
-              <h2 className="text-base sm:text-xl font-bold text-gray-800">Recent Test Results</h2>
+          <Card className="hidden md:block rounded-2xl border border-gray-250 bg-card w-full mt-4 sm:mt-8 p-3 sm:p-8">
+            <div className="flex items-center justify-between pb-2 sm:pb-6">
+              <h2 className="text-base sm:text-xl font-bold text-foreground">Recent Test Results</h2>
               <Button
                 variant="ghost"
                 size="sm"

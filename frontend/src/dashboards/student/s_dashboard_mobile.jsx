@@ -6,12 +6,13 @@ import { Line, Doughnut } from 'react-chartjs-2';
 import PageLoader from '../components/LoadingPage';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import FilterDrawer from '../../components/ui/filter-drawer.jsx';
-import Stat from '../components/ui/stat-mobile.jsx';
+import Stat from '../../components/stat-mobile.jsx';
 import { Card } from '../../components/ui/card.jsx';
 import ActionPlanCard from './components/ActionPlanCard.jsx';
 import ChecklistCard from './components/ChecklistCard.jsx';
 import { Button } from '../../components/ui/button.jsx';
 import StudyTipsCard from './components/StudyTipsCard.jsx';
+import Alert from '../../components/ui/alert.jsx';
 
 // Register ChartJS components (safe to call even if imported elsewhere)
 ChartJS.register(
@@ -218,13 +219,16 @@ function SDashboardMobile() {
   // Display an error message if data fetching failed.
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-96 p-4 bg-base-100 rounded-lg shadow-md">
-        <div className="alert alert-error max-w-md shadow-lg">
-          <AlertTriangle className="stroke-current shrink-0 h-6 w-6" />
-          <div>
-            <h3 className="font-bold">Error loading dashboard!</h3>
-            <div className="text-xs">{error}</div>
-          </div>
+      <div className="flex flex-col items-center justify-center h-96 p-4 bg-white rounded-lg shadow-md">
+        <div className="max-w-md w-full">
+          <Alert
+            variant="destructive"
+            icon={<AlertTriangle className="h-5 w-5 text-rose-600" aria-hidden />}
+            className="shadow-sm"
+          >
+            <div className="font-semibold text-sm">Error loading dashboard!</div>
+            <div className="text-xs text-rose-800/80 break-words">{error}</div>
+          </Alert>
         </div>
       </div>
     );
@@ -934,7 +938,7 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
 
         {/* Mobile: open FilterDrawer instead of dropdown */}
         <button
-          className="btn btn-sm bg-gray-200 inline-flex items-center gap-2 rounded-xl"
+          className="inline-flex items-center gap-2 rounded-xl bg-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300"
           onClick={() => setDrawerOpen(true)}
           aria-label="Open filters"
         >

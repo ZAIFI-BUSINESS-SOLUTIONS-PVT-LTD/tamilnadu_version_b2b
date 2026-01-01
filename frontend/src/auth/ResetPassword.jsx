@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 import { Mail, Eye, EyeOff } from 'lucide-react';
 import logo from '../assets/images/logo.svg';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card.jsx';
+import { Input } from '../components/ui/input.jsx';
+import { Button } from '../components/ui/button.jsx';
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -53,82 +55,83 @@ const ResetPassword = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
+    <div className="min-h-screen flex items-center justify-center bg-background p-6">
       <motion.div className="w-full max-w-md" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
         <div className="flex flex-col items-center mb-4">
-          <img src={logo} alt="Inzighted" className="w-24 h-auto" />
-          <p className="text-sm text-slate-600 mt-2">An AI Powered Learning Journey</p>
+          <img src={logo} alt="Inzighted" className="w-24 h-auto dark:hidden" />
+          <img src={logoInverted} alt="Inzighted" className="w-24 h-auto hidden dark:block" />
+          <p className="text-sm text-muted-foreground mt-2">An AI Powered Learning Journey</p>
         </div>
 
         <Card className="overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-5">
+          <div className="bg-primary p-5">
             <CardHeader className="p-0">
               <div className="flex flex-col items-center text-center">
-                <CardTitle className="text-white text-lg">Reset Password</CardTitle>
-                <CardDescription className="text-blue-100 text-sm">Choose a new password for your account</CardDescription>
+                <CardTitle className="text-primary-foreground text-lg">Reset Password</CardTitle>
+                <CardDescription className="text-primary-foreground/80 text-sm">Choose a new password for your account</CardDescription>
               </div>
             </CardHeader>
           </div>
 
           <CardContent className="p-6">
             {status && (
-              <div className={`mb-4 p-3 rounded ${status.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+              <div className={`mb-4 p-3 rounded ${status.ok ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-200' : 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-200'}`}>
                 {status.message}
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Email</label>
-                <div className="relative mt-1">
+                <label className="block text-sm font-medium text-foreground mb-1">Email</label>
+                <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail size={16} className="text-gray-400" />
+                    <Mail size={16} className="text-muted-foreground" />
                   </div>
-                  <input
+                  <Input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-2.5 border border-slate-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm bg-white"
+                    className="pl-10 bg-card border-border"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">New Password</label>
-                <div className="relative mt-1">
-                  <input
+                <label className="block text-sm font-medium text-foreground mb-1">New Password</label>
+                <div className="relative">
+                  <Input
                     type={showPassword ? 'text' : 'password'}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="block w-full pr-10 pl-3 py-2.5 border border-slate-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm bg-white"
+                    className="pr-10 bg-card border-border"
                   />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                    {showPassword ? <EyeOff size={18} className="text-gray-500" /> : <Eye size={18} className="text-gray-500" />}
+                    {showPassword ? <EyeOff size={18} className="text-muted-foreground hover:text-primary" /> : <Eye size={18} className="text-muted-foreground hover:text-primary" />}
                   </button>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Confirm Password</label>
-                <div className="relative mt-1">
-                  <input
+                <label className="block text-sm font-medium text-foreground mb-1">Confirm Password</label>
+                <div className="relative">
+                  <Input
                     type={showConfirm ? 'text' : 'password'}
                     required
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
-                    className="block w-full pr-10 pl-3 py-2.5 border border-slate-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm bg-white"
+                    className="pr-10 bg-card border-border"
                   />
                   <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                    {showConfirm ? <EyeOff size={18} className="text-gray-500" /> : <Eye size={18} className="text-gray-500" />}
+                    {showConfirm ? <EyeOff size={18} className="text-muted-foreground hover:text-primary" /> : <Eye size={18} className="text-muted-foreground hover:text-primary" />}
                   </button>
                 </div>
               </div>
 
               <div className="flex items-center justify-between">
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded" disabled={loading}>{loading ? 'Updating…' : 'Reset Password'}</button>
-                <button type="button" className="text-sm text-gray-600 underline" onClick={() => navigate('/auth')}>Back to login</button>
+                <Button type="submit" disabled={loading}>{loading ? 'Updating…' : 'Reset Password'}</Button>
+                <Button type="button" variant="link" onClick={() => navigate('/auth')}>Back to login</Button>
               </div>
             </form>
           </CardContent>

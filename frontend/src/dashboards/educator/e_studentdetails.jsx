@@ -13,9 +13,11 @@ import {
   ChevronUp,
   ChevronDown
 } from 'lucide-react';
-import Table from '../components/ui/table.jsx';
-import Modal from '../components/ui/modal.jsx';
+import Table from '../../components/table.jsx';
+import Modal from '../../components/modal.jsx';
 import LoadingPage from '../components/LoadingPage.jsx';
+import { Button } from '../../components/ui/button.jsx';
+import Alert from '../../components/ui/alert.jsx';
 
 function EResults() {
   const [loading, setLoading] = useState(true);
@@ -219,19 +221,19 @@ function EResults() {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-screen p-4">
-        <div className="alert alert-error max-w-md shadow-lg">
-          <AlertCircle className="stroke-current shrink-0 h-6 w-6" />
-          <div>
-            <h3 className="font-bold">Error!</h3>
-            <div className="text-xs">{error}</div>
-          </div>
+        <div className="max-w-md w-full space-y-4">
+          <Alert
+            variant="destructive"
+            icon={<AlertCircle className="h-5 w-5 text-rose-600" aria-hidden />}
+            className="shadow-sm"
+          >
+            <div className="font-semibold text-sm">Error!</div>
+            <div className="text-xs text-rose-800/80 break-words">{error}</div>
+          </Alert>
+          <Button onClick={fetchResults} className="w-full sm:w-auto">
+            Retry
+          </Button>
         </div>
-        <button
-          onClick={fetchResults}
-          className="mt-4 btn btn-primary"
-        >
-          Retry
-        </button>
       </div>
     );
   }
@@ -249,25 +251,25 @@ function EResults() {
   const renderRow = (student) => (
     <tr
       key={student.student_id}
-      className="hover:bg-gray-50 cursor-pointer transition-colors"
+      className="hover:bg-muted cursor-pointer transition-colors"
       onClick={() => setModalStudent(student)}
     >
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{rankMap[student.student_id]}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{student.student_id}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{getStudentName(student)}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{student.tests_taken}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{student.average_score}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{rankMap[student.student_id]}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{student.student_id}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">{getStudentName(student)}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{student.tests_taken}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{student.average_score}</td>
     </tr>
   );
 
   return (
     <div className="sm:pt-4 w-full mx-auto">
-      <div className="card rounded-2xl border border-gray-250 bg-white w-full mt-8 p-8">
+      <div className="rounded-2xl border border-border bg-card w-full mt-8 p-8 shadow-sm">
         {/* Page Header and Search Bar */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4  pb-6 border-b border-gray-200">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4  pb-6 border-b border-border">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-gray-800">Student Results</h1>
-            <span className="badge badge-lg border-transparent bg-blue-50 text-sm text-blue-700">
+            <span className="inline-flex items-center rounded-full border border-transparent bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
               {groupedResults.length} {groupedResults.length === 1 ? 'Student' : 'Students'}
             </span>
           </div>
@@ -277,7 +279,7 @@ function EResults() {
                 <input
                   type="text"
                   placeholder="Search by ID or name..."
-                  className="input input-bordered w-full pl-10 pr-8"
+                  className="w-full rounded-lg border border-gray-300 bg-white pl-10 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/60"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -294,10 +296,10 @@ function EResults() {
                   </button>
                 )}
               </div>
-              <button className="btn btn-ghost border-gray-300 flex items-center gap-2" onClick={() => setFilterModalOpen(true)}>
+              <Button variant="outline" className="flex items-center gap-2 border-gray-300" onClick={() => setFilterModalOpen(true)}>
                 <SlidersHorizontal className="w-5 h-5" />
                 <span>Filter</span>
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -324,12 +326,9 @@ function EResults() {
                     {searchTerm ? 'Try a different search term' : 'No student results available'}
                   </p>
                   {searchTerm && (
-                    <button
-                      onClick={clearSearch}
-                      className="mt-4 btn btn-sm btn-ghost"
-                    >
+                    <Button variant="ghost" size="sm" className="mt-4" onClick={clearSearch}>
                       Clear search
-                    </button>
+                    </Button>
                   )}
                 </div>
               }
@@ -342,12 +341,9 @@ function EResults() {
                 {searchTerm ? 'Try a different search term' : 'No student results available'}
               </p>
               {searchTerm && (
-                <button
-                  onClick={clearSearch}
-                  className="mt-4 btn btn-sm btn-ghost"
-                >
+                <Button variant="ghost" size="sm" className="mt-4" onClick={clearSearch}>
                   Clear search
-                </button>
+                </Button>
               )}
             </div>
           )}
@@ -416,67 +412,70 @@ function EResults() {
                   </tbody>
                 </table>
               </div>
-              <div className="modal-action mt-6">
-                <button className="btn" onClick={() => setModalStudent(null)}>Close</button>
+              <div className="mt-6 flex justify-end">
+                <Button variant="outline" onClick={() => setModalStudent(null)}>
+                  Close
+                </Button>
               </div>
             </>
           )}
         </Modal>
 
         {/* Filter Modal */}
-        {filterModalOpen && (
-          <div className="modal modal-open">
-            <div className="modal-box max-w-md">
-              <h3 className="font-bold text-lg mb-4">Filter by Average Score</h3>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Average Score Range</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={minAvg}
-                    max={scoreRange[1]}
-                    value={scoreRange[0]}
-                    onChange={e => setScoreRange([Number(e.target.value), scoreRange[1]])}
-                    className="input input-bordered w-20"
-                  />
-                  <span>-</span>
-                  <input
-                    type="number"
-                    min={scoreRange[0]}
-                    max={maxAvg}
-                    value={scoreRange[1]}
-                    onChange={e => setScoreRange([scoreRange[0], Number(e.target.value)])}
-                    className="input input-bordered w-20"
-                  />
-                </div>
+        <Modal
+          open={filterModalOpen}
+          onClose={() => setFilterModalOpen(false)}
+          title="Filter by Average Score"
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Average Score Range</label>
+              <div className="flex items-center gap-2">
                 <input
-                  type="range"
+                  type="number"
                   min={minAvg}
-                  max={maxAvg}
+                  max={scoreRange[1]}
                   value={scoreRange[0]}
                   onChange={e => setScoreRange([Number(e.target.value), scoreRange[1]])}
-                  className="range range-xs mt-2"
+                  className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/60"
                 />
+                <span>-</span>
                 <input
-                  type="range"
-                  min={minAvg}
+                  type="number"
+                  min={scoreRange[0]}
                   max={maxAvg}
                   value={scoreRange[1]}
                   onChange={e => setScoreRange([scoreRange[0], Number(e.target.value)])}
-                  className="range range-xs mt-2"
+                  className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/60"
                 />
-                <div className="flex justify-between text-xs text-gray-400 mt-1">
-                  <span>{minAvg}</span>
-                  <span>{maxAvg}</span>
-                </div>
               </div>
-              <div className="modal-action">
-                <button className="btn" onClick={() => setFilterModalOpen(false)}>Apply</button>
+              <input
+                type="range"
+                min={minAvg}
+                max={maxAvg}
+                value={scoreRange[0]}
+                onChange={e => setScoreRange([Number(e.target.value), scoreRange[1]])}
+                className="mt-2 w-full accent-blue-500"
+              />
+              <input
+                type="range"
+                min={minAvg}
+                max={maxAvg}
+                value={scoreRange[1]}
+                onChange={e => setScoreRange([scoreRange[0], Number(e.target.value)])}
+                className="mt-2 w-full accent-blue-500"
+              />
+              <div className="flex justify-between text-xs text-gray-400 mt-1">
+                <span>{minAvg}</span>
+                <span>{maxAvg}</span>
               </div>
             </div>
-            <div className="modal-backdrop" onClick={() => setFilterModalOpen(false)}></div>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setFilterModalOpen(false)}>Cancel</Button>
+              <Button onClick={() => setFilterModalOpen(false)}>Apply</Button>
+            </div>
           </div>
-        )}
+        </Modal>
 
         <div className="mt-6 text-sm text-gray-500 flex items-center gap-2">
           <BarChart className="w-4 h-4" />

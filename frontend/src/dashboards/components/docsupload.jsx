@@ -1,12 +1,13 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { FileText, Loader, ArrowLeft, ArrowRight, CheckCircle, Download, Atom, Key, File, FlaskConical, Sprout, PawPrint } from 'lucide-react';
-import Modal from './ui/modal.jsx';
+import { FileText, Loader, ArrowLeft, ArrowRight, CheckCircle, Download, Atom, Key, File, FlaskConical, Sprout, PawPrint, BookOpen, Settings, FileStack } from 'lucide-react';
+import Modal from '../../components/modal.jsx';
 import { validateAnswerKeyCSV, validateResponseSheetCSV, formatValidationErrors } from '../../utils/csvValidation.js';
 import { toast } from 'react-hot-toast';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '../../components/ui/tooltip.jsx';
+import { Button } from '../../components/ui/button.jsx';
 
 // DropZone component (merged from e_dropzone.jsx)
-import DropZone from './ui/dropzone.jsx';
+import DropZone from '../../components/dropzone.jsx';
 const EducatorDropZone = (props) => <DropZone {...props} />;
 
 // Modal component for handling multi-step file uploads
@@ -27,17 +28,17 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
       setTestNameError('Test name is required');
       return false;
     }
-    
+
     // Check for duplicate test names (case-insensitive)
     const isDuplicate = existingTests.some(
       test => test.test_name && test.test_name.toLowerCase() === trimmedName.toLowerCase()
     );
-    
+
     if (isDuplicate) {
       setTestNameError('This test name already exists. Please choose a different name.');
       return false;
     }
-    
+
     setTestNameError('');
     return true;
   };
@@ -246,14 +247,14 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
     }
   };
 
-  // File upload steps (kept separate so we can merge with config steps)
+  // File upload steps (kept separate for managing file state)
   const fileSteps = useMemo(
     () => [
       {
         key: 'questionPaper',
         type: 'file',
-        label: 'Question Paper',
-        icon: FileText,
+        label: 'Paper',
+        icon: FileStack,
         file: files.questionPaper,
         setFile: (file) => { console.log('questionPaper selected', file); setFiles({ ...files, questionPaper: file }); },
         accept: '.pdf',
@@ -263,7 +264,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
       {
         key: 'answerKey',
         type: 'file',
-        label: 'Answer Key',
+        label: 'Answers',
         icon: Key,
         file: files.answerKey,
         setFile: (file) => { console.log('answerKey selected', file); setFiles({ ...files, answerKey: file }); setAnswerKeyValidation(null); },
@@ -274,7 +275,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
       {
         key: 'responseSheets',
         type: 'file',
-        label: 'Response Sheets',
+        label: 'Responses',
         icon: File,
         file: files.responseSheets,
         setFile: (file) => { console.log('responseSheets selected', file); setFiles({ ...files, responseSheets: file }); setResponseValidation(null); setCorrectedResponseFile(null); },
@@ -288,9 +289,11 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
 
   // Combined steps: two config steps followed by three file steps
   const steps = [
-    { key: 'syllabus', type: 'config', label: 'Select Syllabus' },
-    { key: 'counts', type: 'config', label: 'Configure Questions' },
-    ...fileSteps,
+    { key: 'syllabus', type: 'config', label: 'Question Syllabus', icon: BookOpen },
+    { key: 'counts', type: 'config', label: 'Question Pattern', icon: Settings },
+    { key: 'questionPaper', type: 'file', label: 'Question Paper', icon: FileStack },
+    { key: 'answerKey', type: 'file', label: 'Answers', icon: Key },
+    { key: 'responseSheets', type: 'file', label: 'Responses', icon: File },
   ];
 
   // Current step object
@@ -314,6 +317,9 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
     return steps.slice(0, 2).length + fileSteps.filter((s, i) => i < step - 2 && steps[step - 2 + i]?.file).length;
   })();
 
+  // Percentage filled for the progress bar (0 - 100)
+  const progressPercent = steps.length > 1 ? Math.round((step / (steps.length - 1)) * 100) : 0;
+
   return (
     <TooltipProvider>
       <Modal
@@ -321,8 +327,8 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
         onClose={onClose}
         title={
           <div className="flex items-center mb-1">
-            <span className="badge badge-ghost badge-sm mr-2">Step {step + 1}/{steps.length}</span>
-            <span className="text-xl font-bold text-gray-800">{currentStep.type === 'file' ? currentStep?.actionText : currentStep.label}</span>
+            <span className="mr-2 inline-flex items-center rounded-full border border-border bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">Step {step + 1}/{steps.length}</span>
+            <span className="text-xl font-bold text-foreground">{currentStep.type === 'file' ? currentStep?.actionText : currentStep.label}</span>
           </div>
         }
         loading={isUploading}
@@ -332,7 +338,9 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
           <div className="flex justify-between items-center w-full">
             <div className="flex items-center gap-2">
               {currentStep.type === 'file' && currentStep.key === 'answerKey' && (
-                <button
+                <Button
+                  size="sm"
+                  variant="ghost"
                   onClick={async () => {
                     try {
                       const response = await fetch('https://api.github.com/repos/ZAIFI-BUSINESS-SOLUTIONS-PVT-LTD/inzighted-public-files/contents/sample%20answer%20key.csv');
@@ -349,15 +357,16 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
                       toast.error('Failed to download sample answer key');
                     }
                   }}
-                  className="btn btn-sm btn-ghost flex items-center gap-1"
                   aria-label="Download sample answer key"
                 >
                   <Download size={14} />
                   <span className="text-xs hidden sm:inline">Sample answer key</span>
-                </button>
+                </Button>
               )}
               {currentStep.type === 'file' && currentStep.key === 'responseSheets' && (
-                <button
+                <Button
+                  size="sm"
+                  variant="ghost"
                   onClick={async () => {
                     try {
                       const response = await fetch('https://api.github.com/repos/ZAIFI-BUSINESS-SOLUTIONS-PVT-LTD/inzighted-public-files/contents/sample%20response%20sheet.csv');
@@ -374,25 +383,27 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
                       toast.error('Failed to download sample response sheet');
                     }
                   }}
-                  className="btn btn-base btn-ghost flex items-center gap-1"
                   aria-label="Download sample response sheet"
                 >
                   <Download size={14} />
                   <span className="text-sm hidden sm:inline">Sample response sheet</span>
-                </button>
+                </Button>
               )}
             </div>
             <div className="flex items-center gap-2">
-              <button
-                className={`btn btn-sm ${step > 0 ? '' : 'invisible'}`}
+              <Button
+                size="sm"
+                variant="outline"
+                className={`${step > 0 ? '' : 'invisible'}`}
                 onClick={() => step > 0 && setStep(step - 1)}
                 disabled={isUploading}
               >
                 <ArrowLeft size={16} className="mr-1" /> Back
-              </button>
+              </Button>
               {!isLastStep ? (
-                <button
-                  className={`btn btn-secondary btn-sm ${!canProceed || isUploading ? 'btn-disabled opacity-50' : ''}`}
+                <Button
+                  size="sm"
+                  variant="primary"
                   onClick={() => {
                     if (!canProceed) return;
                     if (currentStep.key === 'counts') {
@@ -407,10 +418,12 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
                   disabled={!canProceed || isUploading}
                 >
                   Next <ArrowRight size={16} className="ml-1" />
-                </button>
+                </Button>
               ) : (
-                <button
-                  className={`btn btn-success btn-sm px-6 ${!canProceed || isUploading ? 'btn-disabled opacity-50' : ''}`}
+                <Button
+                  size="sm"
+                  variant="success"
+                  className="px-6"
                   onClick={async () => {
                     console.log('Submit All clicked', { files, metadata });
 
@@ -448,35 +461,49 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
                   ) : (
                     'Submit All'
                   )}
-                </button>
+                </Button>
               )}
             </div>
           </div>
         }
       >
         {/* Step indicators (render immediately under header for consistent positioning) */}
-        <div className="flex justify-between mb-6 px-2">
-          {steps.map((s, index) => (
-            <div key={s.key} className="flex flex-col items-center">
-              <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${index < step
-                  ? 'bg-success border-success text-white'
-                  : index === step
-                    ? 'border-primary text-primary'
-                    : 'border-gray-300 text-gray-400'
-                  }`}
-                style={{ cursor: index < step ? 'pointer' : 'default' }}
-                onClick={() => index < step && setStep(index)}
-              >
-                {index < step ? <CheckCircle size={18} className="text-white" /> : (s.type === 'file' ? <s.icon size={18} /> : <FileText size={18} />)}
-              </div>
-              <span
-                className={`text-xs mt-1 ${index === step ? 'font-medium text-primary' : 'text-gray-500'}`}
-              >
-                {s.label}
-              </span>
-            </div>
-          ))}
+        <div className="relative mb-8">
+          <div className="relative z-10 flex justify-between items-center gap-1">
+            {steps.map((s, index) => {
+              const StepIcon = s.icon;
+              return (
+                <div key={s.key} className="flex flex-col items-center flex-1 min-w-0">
+                  <button
+                    className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-200 flex-shrink-0 ${index < step
+                      ? 'bg-green-500 border-green-500 text-white shadow-sm hover:shadow-md'
+                      : index === step
+                        ? 'border-primary text-primary bg-primary/10 shadow-sm ring-2 ring-primary/20'
+                        : 'border-border text-muted-foreground bg-card hover:bg-muted'
+                      }`}
+                    onClick={() => index < step && setStep(index)}
+                    disabled={index >= step}
+                    aria-current={index === step ? 'step' : undefined}
+                    aria-label={`Step ${index + 1}: ${s.label}`}
+                    title={s.label}
+                  >
+                    {index < step ? <CheckCircle size={16} className="text-white" /> : <StepIcon size={16} />}
+                  </button>
+                  <span
+                    className={`text-xs mt-1.5 px-1 truncate ${index === step
+                      ? 'font-semibold text-primary'
+                      : index < step
+                        ? 'font-medium text-green-600 dark:text-green-400'
+                        : 'text-muted-foreground'
+                      }`}
+                    title={s.label}
+                  >
+                    {s.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Config step UI (first two steps) or file header description for file steps */}
@@ -485,8 +512,9 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
             {currentStep.key === 'syllabus' ? (
               <div>
                 <div className="mb-4">
-                  <label className="label">
-                    <span className="label-text font-medium">Test name <span className="text-error">*</span></span>
+                  <label className="text-sm font-medium text-foreground flex items-center gap-1">
+                    <span>Test name</span>
+                    <span className="text-red-600">*</span>
                   </label>
                   <input
                     type="text"
@@ -501,28 +529,24 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
                     }}
                     onBlur={() => validateTestName(testName)}
                     placeholder="Enter a unique name (e.g., Midterm Physics - Oct 2024)"
-                    className={`input input-bordered w-full ${testNameError ? 'input-error border-error' : ''}`}
+                    className={`mt-2 w-full rounded-lg border px-3 py-2 text-sm bg-card text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary ${testNameError ? 'border-red-400' : 'border-border'}`}
                     aria-label="Test name"
                     aria-required="true"
                     aria-invalid={!!testNameError}
                   />
                   {testNameError && (
-                    <label className="label">
-                      <span className="label-text-alt text-error">{testNameError}</span>
-                    </label>
+                    <p className="mt-2 text-xs text-red-600">{testNameError}</p>
                   )}
                   {!testNameError && testName.trim() && (
-                    <label className="label">
-                      <span className="label-text-alt text-success flex items-center gap-1">
-                        <CheckCircle size={12} /> Valid test name
-                      </span>
-                    </label>
+                    <p className="mt-2 text-xs text-green-600 flex items-center gap-1">
+                      <CheckCircle size={12} /> Valid test name
+                    </p>
                   )}
                 </div>
 
                 <div className="mb-3">
-                  <div className="text-sm text-gray-600 font-medium">Select subject syllabus <span className="text-error">*</span></div>
-                  <div className="text-xs text-gray-500">Choose the syllabus pattern that matches your test</div>
+                  <div className="text-sm text-foreground font-medium">Select subject syllabus <span className="text-red-600">*</span></div>
+                  <div className="text-xs text-muted-foreground">Choose the syllabus pattern that matches your test</div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -534,13 +558,13 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
                         onClick={() => { setPattern(key); }}
                         aria-pressed={selected}
                         aria-label={value.label}
-                        className={`relative p-3 text-left border flex items-center justify-center min-h-[56px] rounded-xl transition-all ${selected ? 'border-blue-300 bg-blue-50' : 'border-slate-100 bg-white hover:bg-blue-50 hover:border-blue-300'}`}>
+                        className={`relative p-3 text-left border flex items-center justify-center min-h-[56px] rounded-xl transition-all ${selected ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-muted hover:border-primary/50'}`}>
                         <div className="flex flex-wrap gap-2 justify-center">
                           {(value.subjects || []).map(s => {
                             const Icons = subjectIcons[s] || [FileText];
                             return (
-                              <span key={s} className={`px-3 py-1 rounded-full text-sm flex items-center gap-2 ${selected ? 'bg-blue-100 text-blue-700 border border-blue-100' : 'bg-white text-gray-700 border border-gray-100'}`}>
-                                {Icons.map((Icon, idx) => <Icon key={idx} size={14} className={`${selected ? 'text-blue-600' : 'text-gray-600'}`} />)}
+                              <span key={s} className={`px-3 py-1 rounded-full text-sm flex items-center gap-2 ${selected ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-muted text-muted-foreground border border-border'}`}>
+                                {Icons.map((Icon, idx) => <Icon key={idx} size={14} className={`${selected ? 'text-primary' : 'text-muted-foreground'}`} />)}
                                 <span>{s}</span>
                               </span>
                             );
@@ -559,7 +583,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
                 </div>
 
                 <div className="mb-3">
-                  <label className="label"><span className="label-text">Question Counts per Subject</span></label>
+                  <p className="text-sm font-medium text-foreground">Question Counts per Subject</p>
                 </div>
 
                 <div className="space-y-3">
@@ -568,28 +592,32 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
                     return (
                       <div key={s} className="grid grid-cols-12 items-center gap-3 py-2">
                         <div className="col-span-6 flex items-center gap-3">
-                          {CountIcons.map((Icon, idx) => <Icon key={idx} size={16} className="text-gray-600" />)}
-                          <span className="text-sm font-medium">{s}</span>
+                          {CountIcons.map((Icon, idx) => <Icon key={idx} size={16} className="text-muted-foreground" />)}
+                          <span className="text-sm font-medium text-foreground">{s}</span>
                         </div>
                         <div className="col-span-3 flex justify-center">
                           <input
                             type="number"
                             value={subjectCounts[s] || ''}
                             onChange={e => handleCountChange(s, e.target.value)}
-                            className="input input-bordered w-24 text-center"
+                            className="w-24 rounded-lg border border-border bg-card px-3 py-2 text-center text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
                             aria-label={`${s} question count`}
                           />
                         </div>
                         <div className="col-span-3 flex justify-end gap-2">
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <button onClick={() => moveSubject(idx, 'up')} className="btn btn-xs btn-ghost" aria-label={`Move ${s} up`}>↑</button>
+                              <Button size="sm" variant="ghost" className="h-8 w-8 px-0" onClick={() => moveSubject(idx, 'up')} aria-label={`Move ${s} up`}>
+                                ↑
+                              </Button>
                             </TooltipTrigger>
                             <TooltipContent>Move up</TooltipContent>
                           </Tooltip>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <button onClick={() => moveSubject(idx, 'down')} className="btn btn-xs btn-ghost" aria-label={`Move ${s} down`}>↓</button>
+                              <Button size="sm" variant="ghost" className="h-8 w-8 px-0" onClick={() => moveSubject(idx, 'down')} aria-label={`Move ${s} down`}>
+                                ↓
+                              </Button>
                             </TooltipTrigger>
                             <TooltipContent>Move down</TooltipContent>
                           </Tooltip>
@@ -598,14 +626,14 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
                     );
                   })}
 
-                  <div className="mt-2 text-sm text-gray-600">Total: <span className="font-medium">{calculateTotal()}</span> questions</div>
+                  <div className="mt-2 text-sm text-muted-foreground">Total: <span className="font-medium text-foreground">{calculateTotal()}</span> questions</div>
                 </div>
               </div>
             )}
           </div>
         ) : (
           <div className="mb-4 px-4 pt-2">
-            <p className="text-gray-600 text-sm">{currentStep?.description}</p>
+            <p className="text-muted-foreground text-sm">{currentStep?.description}</p>
           </div>
         )}
         {/* Dropzone (for file steps) */}
@@ -639,7 +667,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
                   <div className="mt-4 p-3 border border-warning rounded bg-warning/5 text-sm">
                     <div className="font-semibold mb-2 text-warning">⚠️ Response Sheet Issues Detected</div>
 
-                    <div className="text-xs max-h-40 overflow-y-auto text-gray-700">
+                    <div className="text-xs max-h-40 overflow-y-auto text-foreground">
                       {responseValidation.warnings.slice(0, 10).map((w, idx) => (
                         <div key={idx} className="mb-1">
                           • {w.message}
@@ -652,7 +680,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
                       )}
                     </div>
 
-                    <div className="mt-2 text-xs text-gray-600 italic">
+                    <div className="mt-2 text-xs text-muted-foreground italic">
                       ℹ️ Original file will be uploaded to backend (no auto-corrections applied)
                     </div>
                   </div>
@@ -670,12 +698,12 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
 
         {/* Help text */}
         {isLastStep && canProceed && !isUploading && (
-          <p className="text-xs text-center mt-4 text-gray-500">
-            Click Submit All to process your files and generate results
+          <p className="text-xs text-center mt-4 text-muted-foreground">
+            All files are ready. Click "Submit All" to finish.
           </p>
         )}
       </Modal>
-    </TooltipProvider>
+    </TooltipProvider >
   );
 };
 

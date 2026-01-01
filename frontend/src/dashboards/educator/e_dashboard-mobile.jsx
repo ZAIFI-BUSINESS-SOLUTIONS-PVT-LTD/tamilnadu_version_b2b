@@ -4,7 +4,7 @@ import { Line } from 'react-chartjs-2';
 import { Chart, LineElement, PointElement, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Filler } from 'chart.js';
 import { getEducatorDashboardData, fetchEducatorAllStudentResults } from '../../utils/api';
 import { Users, Calendar, HelpCircle, Sparkles, ChevronDown } from 'lucide-react';
-import Stat from '../components/ui/stat-mobile';
+import Stat from '../../components/stat-mobile';
 import { Card } from '../../components/ui/card.jsx';
 import { Tooltip as UITooltip, TooltipTrigger as UITooltipTrigger, TooltipContent as UITooltipContent, TooltipProvider as UITooltipProvider } from '../../components/ui/tooltip.jsx';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../../components/ui/dropdown-menu.jsx';
@@ -523,7 +523,7 @@ function EDashboard() {
               <div className="flex items-center justify-between gap-4 mb-6">
                 <span className="text-xl font-bold text-primary">Class Performance</span>
                 <button
-                  className="btn btn-sm bg-gray-200 inline-flex items-center gap-2 rounded-xl"
+                  className="inline-flex items-center gap-2 rounded-xl bg-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300"
                   onClick={() => setDrawerOpen(true)}
                   aria-label="Open filters"
                 >

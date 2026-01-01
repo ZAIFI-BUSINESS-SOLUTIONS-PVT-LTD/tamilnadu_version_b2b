@@ -82,7 +82,7 @@ const MobileEducatorSelect = () => {
     return (
         <>
             <button
-                className="btn btn-sm bg-gray-200 inline-flex items-center gap-2 rounded-xl"
+                className="inline-flex items-center gap-2 rounded-xl bg-muted px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/80"
                 onClick={() => setOpen(true)}
                 aria-label="Open filters"
             >

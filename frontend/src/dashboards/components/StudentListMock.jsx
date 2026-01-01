@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { fetchEducatorAllStudentResults, fetcheducatorstudent, fetchInstitutionEducatorAllStudentResults, fetchInstitutionEducatorStudents } from '../../utils/api';
-import Table from './ui/table.jsx';
+import Table from '../../components/table.jsx';
+import Alert from '../../components/ui/alert.jsx';
 
 // Accept optional props so parent components (like Institution dashboard)
 // can supply `rawResults` and `studentNameMap` directly and avoid the
@@ -104,33 +105,54 @@ const EStudentListMock = ({ rawResults: propRawResults = null, studentNameMap: p
         return `Student ${test.student_id}`;
     };
 
+    const columns = useMemo(() => {
+        const hasData = (field) => rawResults.some(r => {
+            const val = r[field];
+            if (val === null || val === undefined) return false;
+            const str = String(val).trim();
+            if (str === '' || str === '0') return false;
+            const num = Number(str);
+            if (!Number.isNaN(num)) return num !== 0;
+            return true;
+        });
+        const cols = [
+            { field: 'student_id', label: 'Student ID', sortable: false, headerClass: 'text-left', cellClass: 'text-left' },
+            { field: 'student_name', label: 'Student Name', sortable: false, headerClass: 'text-left', cellClass: 'text-left' },
+        ];
+        if (hasData('phy_score')) cols.push({ field: 'phy_score', label: 'Physics', sortable: false, headerClass: 'text-center', cellClass: 'text-center' });
+        if (hasData('chem_score')) cols.push({ field: 'chem_score', label: 'Chemistry', sortable: false, headerClass: 'text-center', cellClass: 'text-center' });
+        if (hasData('bio_score')) cols.push({ field: 'bio_score', label: 'Biology', sortable: false, headerClass: 'text-center', cellClass: 'text-center' });
+        if (hasData('bot_score')) cols.push({ field: 'bot_score', label: 'Botany', sortable: false, headerClass: 'text-center', cellClass: 'text-center' });
+        if (hasData('zoo_score')) cols.push({ field: 'zoo_score', label: 'Zoology', sortable: false, headerClass: 'text-center', cellClass: 'text-center' });
+        cols.push({ field: 'total_score', label: 'Total', sortable: false, headerClass: 'text-center', cellClass: 'text-center' });
+        cols.push({ field: 'improvement_rate', label: 'Score Improvement', sortable: false, headerClass: 'text-center', cellClass: 'text-center' });
+        return cols;
+    }, [rawResults]);
+
     if (loading) {
         return (
             <div className="flex justify-center items-center h-32">
-                <p className="text-gray-600">Loading student results...</p>
+                <p className="text-muted-foreground">Loading student results...</p>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="alert alert-error shadow-lg">
-                <div>
-                    <h3 className="font-bold">Error!</h3>
-                    <div className="text-sm">{error}</div>
-                </div>
-            </div>
+            <Alert variant="destructive" className="shadow-sm">
+                <div className="font-semibold text-sm">Error!</div>
+                <div className="text-sm text-rose-800/80 break-words">{error}</div>
+            </Alert>
         );
     }
 
     if (!rawResults || rawResults.length === 0) {
         return (
-            <div role="alert" className="alert alert-info shadow-lg my-4">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <span>No Students Available.</span>
-            </div>
+            <Alert variant="info" className="shadow-sm my-4">
+                <div className="flex items-start gap-2 text-sm text-foreground">
+                    <span className="font-medium">No Students Available.</span>
+                </div>
+            </Alert>
         );
     }
 
@@ -144,19 +166,6 @@ const EStudentListMock = ({ rawResults: propRawResults = null, studentNameMap: p
     const lastTestArr = Object.values(lastTests);
     lastTestArr.sort((a, b) => b.test_num - a.test_num || a.student_id - b.student_id);
     const tableData = lastTestArr.slice(0, 5);
-
-
-    const columns = [
-        { field: 'student_id', label: 'Student ID', sortable: false, headerClass: 'text-left' },
-        { field: 'student_name', label: 'Student Name', sortable: false, headerClass: 'text-left' },
-        { field: 'phy_score', label: 'Physics', sortable: false, headerClass: 'text-center' },
-        { field: 'chem_score', label: 'Chemistry', sortable: false, headerClass: 'text-center' },
-        { field: 'bio_score', label: 'Biology', sortable: false, headerClass: 'text-center' },
-        { field: 'bot_score', label: 'Botany', sortable: false, headerClass: 'text-center' },
-        { field: 'zoo_score', label: 'Zoology', sortable: false, headerClass: 'text-center' },
-        { field: 'total_score', label: 'Total', sortable: false, headerClass: 'text-center' },
-        { field: 'improvement_rate', label: 'Score Improvement', sortable: false, headerClass: 'text-center' },
-    ];
 
     // Build a map of previous test scores for each student
     const prevTestScoreMap = {};
@@ -180,27 +189,46 @@ const EStudentListMock = ({ rawResults: propRawResults = null, studentNameMap: p
                 const diff = test.total_score - prev.total_score;
                 if (diff > 0) {
                     improvement = `+${diff}`;
-                    badge = <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">{improvement}</span>;
+                    badge = <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/30">{improvement}</span>;
                 } else if (diff < 0) {
                     improvement = `${diff}`;
-                    badge = <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">{improvement}</span>;
+                    badge = <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-600 dark:text-red-200 border border-red-500/30">{improvement}</span>;
                 } else {
                     improvement = '0';
-                    badge = <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">0</span>;
+                    badge = <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-muted text-muted-foreground border border-border">0</span>;
                 }
             }
         }
+        const valueForField = (field) => {
+            switch (field) {
+                case 'student_id':
+                    return test.student_id;
+                case 'student_name':
+                    return getStudentName(test);
+                case 'improvement_rate':
+                    return badge;
+                case 'total_score':
+                    return test.total_score ?? '-';
+                default: {
+                    const val = test[field];
+                    if (val === null || val === undefined) return '-';
+                    const str = String(val).trim();
+                    if (str === '') return '-';
+                    return str;
+                }
+            }
+        };
+
         return (
-            <tr key={test.student_id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-left">{test.student_id}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-left">{getStudentName(test)}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.phy_score || "-"}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.chem_score || "-"}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.bio_score || "-"}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.bot_score || "-"}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.zoo_score || "-"}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{test.total_score}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{badge}</td>
+            <tr key={test.student_id} className="hover:bg-muted">
+                {columns.map(col => (
+                    <td
+                        key={col.field}
+                        className={`px-6 py-4 whitespace-nowrap text-sm text-muted-foreground ${col.cellClass || 'text-center'} ${col.field === 'student_name' ? 'font-medium text-foreground' : ''}`}
+                    >
+                        {valueForField(col.field)}
+                    </td>
+                ))}
             </tr>
         );
     };
@@ -211,12 +239,11 @@ const EStudentListMock = ({ rawResults: propRawResults = null, studentNameMap: p
             data={tableData}
             renderRow={renderRow}
             emptyState={
-                <div role="alert" className="alert alert-info shadow-lg my-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <span>No Students Available.</span>
-                </div>
+                <Alert variant="info" className="shadow-sm my-4">
+                    <div className="flex items-start gap-2 text-sm text-sky-900">
+                        <span className="font-medium">No Students Available.</span>
+                    </div>
+                </Alert>
             }
         />
     );

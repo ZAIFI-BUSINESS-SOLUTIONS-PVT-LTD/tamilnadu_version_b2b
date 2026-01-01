@@ -214,7 +214,7 @@ const QuestionBreakdownCard = ({
                     }}
                     value={effectiveSelectedTest}
                   >
-                    <SelectTrigger className="btn btn-sm justify-between w-full max-w-full truncate text-start">
+                    <SelectTrigger className="w-full max-w-full justify-between truncate text-start bg-white border-gray-200">
                       <SelectValue placeholder="Select Test" />
                     </SelectTrigger>
                     <SelectContent side="bottom" align="start">
@@ -229,7 +229,7 @@ const QuestionBreakdownCard = ({
                     onValueChange={(val) => setSelectedSubject && setSelectedSubject(val)}
                     value={effectiveSelectedSubject}
                   >
-                    <SelectTrigger className="btn btn-sm justify-between w-full max-w-full truncate text-start">
+                    <SelectTrigger className="w-full max-w-full justify-between truncate text-start bg-white border-gray-200">
                       <SelectValue placeholder="Select Subject" />
                     </SelectTrigger>
                     <SelectContent side="bottom" align="start">

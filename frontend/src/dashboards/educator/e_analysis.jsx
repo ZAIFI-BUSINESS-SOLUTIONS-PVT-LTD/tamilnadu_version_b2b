@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/button.jsx';
 import PropTypes from 'prop-types';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card.jsx';
 import { useState, useEffect } from 'react';
+import Alert from '../../components/ui/alert.jsx';
 
 // Preferred ordering for subjects. The dropdown will show subjects
 // present in the fetched SWOT data in this order when possible.
@@ -206,34 +207,34 @@ const SwotSection = ({ label, displayLabel, color, data, selectedSubject }) => {
   const subtitle = zoneSubtitleMap[displayText] || '';
 
   return (
-    <Card className="bg-white h-full flex flex-col border-none rounded-none">
+    <Card className="bg-card h-full flex flex-col border-none rounded-2xl">
       <CardHeader className="p-0 pb-2">
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center">
             <div>
               <CardTitle className={`${color} font-semibold items-center mb-0 text-lg`}>{displayText}</CardTitle>
-              {subtitle && <div className="text-sm text-gray-700">{subtitle}</div>}
+              {subtitle && <div className="text-sm text-muted-foreground">{subtitle}</div>}
             </div>
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="p-0 flex-1 border border-yellow-200 rounded-2xl bg-yellow-100/20">
+      <CardContent className="p-0 flex-1 border border-border rounded-2xl bg-muted/60">
         <div className="flex flex-col h-full">
           <div className="flex-1 overflow-auto">
             {itemsToRender.length > 0 ? (
-              <div className="divide-y divide-yellow-200">
+              <div className="divide-y divide-border/70">
                 {itemsToRender.map((item, idx) => (
                   <div
                     key={item.id || `${displayText}-${selectedSubject}-${item.title || ''}-${idx}`}
-                    className="px-4 py-3 border-t border-yellow-200 first:border-t-0"
+                    className="px-4 py-3 border-t border-border/70 first:border-t-0"
                   >
                     {item.topics && item.topics.length > 0 ? (
-                      <div className="divide-y divide-yellow-200">
+                      <div className="divide-y divide-border/70">
                         {item.topics.map((topic, i) => (
                           <div
                             key={`${item.id || item.title || ''}-topic-${topic}-${i}`}
-                            className="flex items-start gap-2 py-2 text-sm md:text-base text-gray-700"
+                            className="flex items-start gap-2 py-2 text-sm md:text-base text-foreground"
                           >
                             <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary/70" aria-hidden="true" />
                             <span className="leading-relaxed break-words whitespace-pre-wrap">{topic}</span>
@@ -241,13 +242,13 @@ const SwotSection = ({ label, displayLabel, color, data, selectedSubject }) => {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-500 italic">No data available for this category.</p>
+                      <p className="text-sm text-muted-foreground italic">No data available for this category.</p>
                     )}
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="px-4 py-3 text-sm text-gray-500 italic">No data available for this category.</p>
+              <p className="px-4 py-3 text-sm text-muted-foreground italic">No data available for this category.</p>
             )}
           </div>
         </div>
@@ -395,13 +396,14 @@ const ESWOT = () => {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-screen p-4">
-        <div className="alert alert-error max-w-md shadow-lg">
-          <AlertCircle className="stroke-current shrink-0 h-6 w-6" />
-          <div>
-            <h3 className="font-bold">Error</h3>
-            <div className="text-xs">{String(error)}</div>
-          </div>
-        </div>
+        <Alert
+          variant="destructive"
+          className="max-w-md shadow-md"
+          icon={<AlertCircle className="h-6 w-6 text-rose-600" aria-hidden />}
+        >
+          <p className="text-base font-semibold">Error</p>
+          <p className="text-sm text-rose-700">{String(error)}</p>
+        </Alert>
       </div>
     );
   }
@@ -418,7 +420,7 @@ const ESWOT = () => {
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-400 min-w-max pl-1">Test</span>
             <Select value={selectedTest} onValueChange={(v) => setSelectedTest && setSelectedTest(v)}>
-              <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full lg:w-auto text-start">
+              <SelectTrigger className="m-1 w-full lg:w-auto justify-start truncate text-start bg-white border-gray-200">
                 <SelectValue placeholder="Select Test" />
               </SelectTrigger>
               <SelectContent side="bottom" align="end" className="max-h-60">
@@ -432,7 +434,7 @@ const ESWOT = () => {
 
             <span className="text-sm text-gray-400 min-w-max pl-1">Subject</span>
             <Select value={selectedSubject} onValueChange={(v) => setSelectedSubject && setSelectedSubject(v)}>
-              <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full lg:w-auto text-start">
+              <SelectTrigger className="m-1 w-full lg:w-auto justify-start truncate text-start bg-white border-gray-200">
                 <SelectValue placeholder="Select Subject" />
               </SelectTrigger>
               <SelectContent side="bottom" align="end" className="max-h-60">
@@ -456,7 +458,7 @@ const ESWOT = () => {
             </div>
             <div className="py-4">
               <Select value={selectedTest} onValueChange={(v) => setSelectedTest && setSelectedTest(v)}>
-                <SelectTrigger className="btn btn-sm justify-start rounded-lg text-sm w-auto">
+                <SelectTrigger className="justify-start rounded-lg text-sm w-auto bg-white border-gray-200">
                   <SelectValue placeholder="Select Test" />
                   <ChevronDown size={16} className="ml-1" />
                 </SelectTrigger>

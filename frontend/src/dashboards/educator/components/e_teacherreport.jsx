@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+  import React, { useState, useEffect } from 'react';
 import { Download, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateTeacherSelfPdfReport, fetchAvailableSwotTests_Educator, getEducatorDetails } from '../../../utils/api.js';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select.jsx';
 import { Button } from '../../../components/ui/button.jsx';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card.jsx';
+import Alert from '../../../components/ui/alert.jsx';
 
 // Modal component for downloading the teacher's report
 export const TeacherReportModal = ({ onClose }) => {
@@ -141,12 +142,13 @@ export const TeacherReportModal = ({ onClose }) => {
               <AnimatePresence>
                 {error && (
                   <motion.div
-                    className="alert alert-error"
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                   >
-                    <span>{error}</span>
+                    <Alert variant="destructive" className="shadow-sm text-sm">
+                      {error}
+                    </Alert>
                   </motion.div>
                 )}
               </AnimatePresence>
