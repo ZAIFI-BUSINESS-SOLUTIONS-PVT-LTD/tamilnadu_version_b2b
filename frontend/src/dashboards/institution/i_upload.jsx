@@ -139,9 +139,9 @@ const IUpload = () => {
 
     // Check for duplicates (excluding the current test)
     const isDuplicate = tests.some(
-      test => 
-        test.test_num !== selectedTest.test_num && 
-        test.test_name && 
+      test =>
+        test.test_num !== selectedTest.test_num &&
+        test.test_name &&
         test.test_name.toLowerCase() === editedTestName.trim().toLowerCase()
     );
 
@@ -152,7 +152,7 @@ const IUpload = () => {
 
     try {
       const response = await updateTestName(selectedTest.test_num, editedTestName.trim(), selectedEducatorId);
-      
+
       if (response.error) {
         toast.error(response.error);
         return;
@@ -328,7 +328,7 @@ const IUpload = () => {
       </div>
       <div className="hidden sm:block card rounded-2xl border border-border bg-card w-full p-8">
         <div>
-          <div className="flex flex-col sm:flex-row justify-between items-center sm:pb-8 sm:border-b sm:border-border gap-4">
+          <div className="flex flex-col sm:flex-row justify-between items-center sm:pb-8 gap-4">
             <h2 className="hidden sm:flex items-center gap-2 text-2xl font-bold text-foreground w-full sm:w-auto text-left">
               <Clock size={24} className="text-muted-foreground" />
               History

@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
-import { SignOut, CaretDown, CaretRight } from "@phosphor-icons/react";
+import { LogOut, ChevronDown, ChevronRight } from "lucide-react";
 import Logo from '../../../assets/images/logo.svg';
+import LogoInverted from '../../../assets/images/logo-inverted.svg';
 import { motion, AnimatePresence } from 'framer-motion';
 import SidebarItem from './SideBarItem'; // Assuming SidebarItem handles individual link rendering and active states
 
@@ -67,7 +68,12 @@ const DesktopSidebar = ({ items, additionalItems, isCollapsed, onLogout, userInf
               <img
                 src={Logo}
                 alt="InzightEd Logo"
-                className="h-7 pt-1"
+                className="h-7 pt-1 dark:hidden"
+              />
+              <img
+                src={LogoInverted}
+                alt="InzightEd Logo"
+                className="h-7 pt-1 hidden dark:block"
               />
             </motion.div>
           </AnimatePresence>
@@ -199,8 +205,8 @@ const DesktopSidebar = ({ items, additionalItems, isCollapsed, onLogout, userInf
                               className="absolute right-0 -mr-6"
                             >
                               {item.isCollapsed ? // Assuming `item.isCollapsed` is managed externally for this item
-                                <CaretRight size={16} className="text-muted-foreground" /> :
-                                <CaretDown size={16} className="text-muted-foreground" />
+                                <ChevronRight size={16} className="text-muted-foreground" /> :
+                                <ChevronDown size={16} className="text-muted-foreground" />
                               }
                             </motion.div>
                           )}
@@ -278,7 +284,7 @@ const DesktopSidebar = ({ items, additionalItems, isCollapsed, onLogout, userInf
                 role="menuitem"
               >
                 <div className={`flex items-center justify-center text-muted-foreground group-hover:text-red-600${!isCollapsed ? ' mr-3' : ''}`}>
-                  <SignOut size={20} />
+                  <LogOut size={20} />
                 </div>
                 <AnimatePresence>
                   {!isCollapsed && (

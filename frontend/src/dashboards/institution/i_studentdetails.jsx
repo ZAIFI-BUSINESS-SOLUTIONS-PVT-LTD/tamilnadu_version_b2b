@@ -23,6 +23,7 @@ import { Button } from '../../components/ui/button.jsx';
 import { Input } from '../../components/ui/input.jsx';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select.jsx';
 import { Card, CardHeader, CardContent } from '../../components/ui/card.jsx';
+import { Badge } from '../../components/ui/badge.jsx';
 import Modal from '../../components/modal.jsx';
 import LoadingPage from '../components/LoadingPage.jsx';
 import { useInstitution } from './index.jsx';
@@ -622,41 +623,38 @@ function IStudentDetails() {
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                   <h1 className="text-2xl font-bold text-foreground">Class Students</h1>
                 </div>
-                <span className="badge badge-lg border-transparent bg-blue-50 text-sm text-blue-700">
+                <Badge variant="outline" className="text-sm">
                   {groupedResults.length} {groupedResults.length === 1 ? 'Student' : 'Students'}
-                </span>
+                </Badge>
               </div>
 
-
-              <div className="flex gap-2 w-full sm:w-auto">
-                <div className="w-full sm:w-96 flex gap-2">
-                  <div className="relative flex-1">
-                    <Input
-                      type="text"
-                      placeholder="Search by ID or name..."
-                      className="input input-bordered w-full pl-10 pr-8"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                    <Search className="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 opacity-50" />
-                    {searchTerm && (
-                      <button
-                        onClick={clearSearch}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 opacity-70 hover:opacity-100"
-                        aria-label="Clear search"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                  <Button variant="outline" className="flex items-center gap-2" onClick={() => setSortModalOpen(true)}>
-                    <Sliders className="w-5 h-5" />
-                    <span>Sort</span>
-                  </Button>
-                  <Button variant="primary" className="flex items-center gap-2 w-full sm:w-auto" onClick={() => { setCreateModalOpen(true); setNewStudent({ student_id: '', name: '', dob: '' }); }}>
-                    <span>Add Student</span>
-                  </Button>
+              <div className="w-full sm:w-96 flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    type="text"
+                    placeholder="Search by ID or name..."
+                    className="input input-bordered w-full pl-10 pr-8"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  <Search className="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 opacity-50" />
+                  {searchTerm && (
+                    <button
+                      onClick={clearSearch}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 opacity-70 hover:opacity-100"
+                      aria-label="Clear search"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
+                <Button variant="outline" className="flex items-center gap-2" onClick={() => setSortModalOpen(true)}>
+                  <Sliders className="w-5 h-5" />
+                  <span>Sort</span>
+                </Button>
+                <Button variant="primary" className="flex items-center gap-2 w-full sm:w-auto" onClick={() => { setCreateModalOpen(true); setNewStudent({ student_id: '', name: '', dob: '' }); }}>
+                  <span>Add Student</span>
+                </Button>
               </div>
             </CardHeader>
 

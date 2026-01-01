@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { GraduationCap, UserCheck, Building } from 'lucide-react';
 import { motion } from 'framer-motion';
 import logo from '../assets/images/logo.svg';
+import logoInverted from '../assets/images/logo-inverted.svg';
 import {
   Card,
   CardContent,
@@ -25,7 +26,7 @@ const LoginOptions = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-white p-6">
+    <div className="min-h-screen flex items-center justify-center bg-background p-6">
       <motion.div
         className="w-full max-w-md"
         initial="hidden"
@@ -33,17 +34,18 @@ const LoginOptions = () => {
         variants={container}
       >
         <motion.div className="flex flex-col items-center mb-4" variants={item}>
-          <img src={logo} alt="Inzighted" className="w-24 h-auto" />
-          <p className="text-sm text-slate-600 mt-2">An AI Powered Learning Journey</p>
+          <img src={logo} alt="Inzighted" className="w-24 h-auto dark:hidden" />
+          <img src={logoInverted} alt="Inzighted" className="w-24 h-auto hidden dark:block" />
+          <p className="text-sm text-muted-foreground mt-2">An AI Powered Learning Journey</p>
         </motion.div>
         <Card className="overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-5 relative">
+          <div className="bg-primary p-5 relative">
             <CardHeader className="p-0">
               <motion.div className="flex flex-col items-center text-center" variants={item}>
                 <div className="flex items-center mb-2">
-                  <CardTitle className="text-white text-lg">Welcome back</CardTitle>
+                  <CardTitle className="text-primary-foreground text-lg">Welcome back</CardTitle>
                 </div>
-                <CardDescription className="text-blue-100 text-sm max-w-xs">
+                <CardDescription className="text-primary-foreground/80 text-sm max-w-xs">
                   Choose how you'd like to continue.
                 </CardDescription>
               </motion.div>
@@ -53,37 +55,37 @@ const LoginOptions = () => {
           <CardContent className="p-6">
             <motion.div className="grid gap-3" variants={item}>
               <Link to="./student/login" className="group block">
-                <div className="flex items-center gap-4 p-3 rounded-lg border border-slate-100 hover:border-blue-300 hover:bg-blue-50 transition-colors">
-                  <div className="bg-blue-100 p-3 rounded-md">
-                    <GraduationCap size={20} className="text-blue-600" />
+                <div className="flex items-center gap-4 p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-card dark:hover:bg-card transition-colors">
+                  <div className="bg-primary/10 p-3 rounded-md">
+                    <GraduationCap size={20} className="text-primary" />
                   </div>
                   <div className="flex-1 text-left">
-                    <p className="font-medium text-slate-800">Student</p>
-                    <p className="text-sm text-slate-500">Access your evaluated reports</p>
+                    <p className="font-medium text-foreground">Student</p>
+                    <p className="text-sm text-muted-foreground">Access your evaluated reports</p>
                   </div>
                 </div>
               </Link>
 
               <Link to="./educator/login" className="group block">
-                <div className="flex items-center gap-4 p-3 rounded-lg border border-slate-100 hover:border-blue-300 hover:bg-blue-50 transition-colors">
-                  <div className="bg-blue-100 p-3 rounded-md">
-                    <UserCheck size={20} className="text-blue-600" />
+                <div className="flex items-center gap-4 p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-card dark:hover:bg-card transition-colors">
+                  <div className="bg-primary/10 p-3 rounded-md">
+                    <UserCheck size={20} className="text-primary" />
                   </div>
                   <div className="flex-1 text-left">
-                    <p className="font-medium text-slate-800">Educator</p>
-                    <p className="text-sm text-slate-500">Access reports and manage students</p>
+                    <p className="font-medium text-foreground">Educator</p>
+                    <p className="text-sm text-muted-foreground">Access reports and manage students</p>
                   </div>
                 </div>
               </Link>
 
               <Link to="./institution/login" className="group block">
-                <div className="flex items-center gap-4 p-3 rounded-lg border border-slate-100 hover:border-blue-300 hover:bg-blue-50 transition-colors">
-                  <div className="bg-blue-100 p-3 rounded-md">
-                    <Building size={20} className="text-blue-600" />
+                <div className="flex items-center gap-4 p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-card dark:hover:bg-card transition-colors">
+                  <div className="bg-primary/10 p-3 rounded-md">
+                    <Building size={20} className="text-primary" />
                   </div>
                   <div className="flex-1 text-left">
-                    <p className="font-medium text-slate-800">Institution</p>
-                    <p className="text-sm text-slate-500">Manage institution and educators</p>
+                    <p className="font-medium text-foreground">Institution</p>
+                    <p className="text-sm text-muted-foreground">Manage institution and educators</p>
                   </div>
                 </div>
               </Link>
@@ -91,8 +93,8 @@ const LoginOptions = () => {
 
           </CardContent>
 
-          <div className="bg-slate-50 px-6 py-3 text-center border-t border-slate-100">
-            <p className="text-xs text-gray-500">Need help? <a href="https://inzighted.com/contact" className="text-blue-600 hover:underline">Contact support</a></p>
+          <div className="bg-muted px-6 py-3 text-center border-t border-border">
+            <p className="text-xs text-muted-foreground">Need help? <a href="https://inzighted.com/contact" className="text-primary hover:underline">Contact support</a></p>
           </div>
         </Card>
       </motion.div>

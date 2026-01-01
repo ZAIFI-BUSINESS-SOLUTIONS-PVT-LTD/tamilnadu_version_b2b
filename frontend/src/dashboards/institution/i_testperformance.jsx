@@ -115,9 +115,9 @@ const ITestPerformance = () => {
     }
 
     return isCorrect ? (
-      <CheckCircle2 className="w-5 h-5 text-green-600" />
+      <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
     ) : (
-      <XCircle className="w-5 h-5 text-red-600" />
+      <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
     );
   };
 
@@ -126,7 +126,7 @@ const ITestPerformance = () => {
       return 'text-muted-foreground bg-muted';
     }
 
-    return isCorrect ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50';
+    return isCorrect ? 'text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400' : 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400';
   };
 
   const calculateStudentScore = (responses) => {
@@ -211,7 +211,7 @@ const ITestPerformance = () => {
       </div>
       {/** Card area now only shows messages; performance summary and table below will render when data exists **/}
       {testsError && (
-        <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800">{testsError}</div>
+        <div className="mt-2 p-3 bg-error/5 border border-error rounded-md text-sm text-error">{testsError}</div>
       )}
 
       {isLoading && (

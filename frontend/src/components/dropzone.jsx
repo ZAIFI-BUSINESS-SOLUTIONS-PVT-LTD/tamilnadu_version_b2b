@@ -2,16 +2,16 @@ import React, { useState, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   File,
-  UploadSimple,
-  Trash,
+  Upload,
+  Trash2,
   CheckCircle,
   XCircle,
-  WarningCircle,
-  ArrowClockwise,
-  FilePdf,
-  FileCsv,
-  Question,
-} from '@phosphor-icons/react';
+  AlertCircle,
+  RotateCcw,
+  FileText,
+  FileSpreadsheet,
+  HelpCircle,
+} from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { validateFile } from '../utils/validation';
 import { Button } from './ui/button.jsx';
@@ -34,8 +34,8 @@ const DropZone = ({ label, file, setFile, icon: Icon, accept, disabled = false, 
 
   const getFileIcon = useCallback((filename) => {
     if (!filename) return File;
-    if (filename.endsWith('.pdf')) return FilePdf;
-    if (filename.endsWith('.csv')) return FileCsv;
+    if (filename.endsWith('.pdf')) return FileText;
+    if (filename.endsWith('.csv')) return FileSpreadsheet;
     return File;
   }, []);
 
@@ -101,7 +101,7 @@ const DropZone = ({ label, file, setFile, icon: Icon, accept, disabled = false, 
   const handleClick = () => {
     if (disabled) {
       toast.error('File upload is currently disabled', {
-        icon: <XCircle weight="fill" size={20} />,
+        icon: <XCircle size={20} />,
       });
       return;
     }
@@ -112,7 +112,7 @@ const DropZone = ({ label, file, setFile, icon: Icon, accept, disabled = false, 
     e.stopPropagation();
     setFile(null);
     toast.success('File removed', {
-      icon: <CheckCircle weight="fill" size={20} className="text-emerald-600" />,
+      icon: <CheckCircle size={20} className="text-green-600" />,
     });
   };
 
@@ -135,12 +135,12 @@ const DropZone = ({ label, file, setFile, icon: Icon, accept, disabled = false, 
         onClick={handleClick}
         className={`w-full mx-auto border-2 rounded-xl cursor-pointer
           transition-all duration-300 flex flex-col items-center justify-center
-          bg-background p-6 min-h-[220px]
+          bg-card p-6 min-h-[220px]
           ${isDragging
             ? 'border-dashed border-primary bg-primary/5 shadow-lg transform scale-[1.01]'
             : file
-              ? 'border-solid border-gray-200 hover:border-primary/50 hover:shadow'
-              : 'border-dashed border-gray-200 hover:border-primary/50 hover:shadow'
+              ? 'border-solid border-border hover:border-primary/50 hover:shadow'
+              : 'border-dashed border-border hover:border-primary/50 hover:shadow'
           }
           ${disabled ? 'opacity-70 cursor-not-allowed bg-muted' : ''}`}
         aria-label={file ? `Selected file: ${file.name}` : `Upload ${label || 'file'}`}
@@ -198,7 +198,7 @@ const DropZone = ({ label, file, setFile, icon: Icon, accept, disabled = false, 
                   aria-label="Remove file"
                   className="border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
                 >
-                  <Trash size={16} className="mr-1" /> Remove
+                  <Trash2 size={16} className="mr-1" /> Remove
                 </Button>
               </div>
             )}
@@ -221,13 +221,12 @@ const DropZone = ({ label, file, setFile, icon: Icon, accept, disabled = false, 
                   className={`p-4 rounded-full ${isDragging ? 'bg-primary/20' : 'bg-muted'}`}
                   animate={{
                     scale: isDragging ? 1.1 : 1,
-                    backgroundColor: isDragging ? 'rgba(37, 99, 235, 0.2)' : 'rgba(243, 244, 246, 1)',
+                    backgroundColor: isDragging ? 'hsl(var(--primary) / 0.2)' : 'hsl(var(--muted))',
                   }}
                   transition={{ duration: 0.2 }}
                 >
-                  <UploadSimple
+                  <Upload
                     size={40}
-                    weight={isDragging ? 'fill' : 'regular'}
                     className={`${isDragging ? 'text-primary' : 'text-primary/80'}`}
                   />
                 </motion.div>
@@ -254,8 +253,8 @@ const DropZone = ({ label, file, setFile, icon: Icon, accept, disabled = false, 
                       </span>
                       <span className="px-2 py-1 rounded-full bg-muted">Max 50MB</span>
                       <div className="relative group">
-                        <Question size={14} className="text-muted-foreground cursor-help" />
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-white text-xs text-left rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none border border-gray-200 z-10">
+                        <HelpCircle size={14} className="text-muted-foreground cursor-help" />
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-card text-xs text-left rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none border border-border z-10">
                           Only files matching the required format will be accepted. Make sure your file is properly
                           formatted.
                         </div>
