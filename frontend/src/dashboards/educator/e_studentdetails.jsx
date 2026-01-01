@@ -251,22 +251,22 @@ function EResults() {
   const renderRow = (student) => (
     <tr
       key={student.student_id}
-      className="hover:bg-gray-50 cursor-pointer transition-colors"
+      className="hover:bg-muted cursor-pointer transition-colors"
       onClick={() => setModalStudent(student)}
     >
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{rankMap[student.student_id]}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{student.student_id}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{getStudentName(student)}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{student.tests_taken}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{student.average_score}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{rankMap[student.student_id]}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{student.student_id}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">{getStudentName(student)}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{student.tests_taken}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{student.average_score}</td>
     </tr>
   );
 
   return (
     <div className="sm:pt-4 w-full mx-auto">
-      <div className="rounded-2xl border border-gray-200 bg-white w-full mt-8 p-8 shadow-sm">
+      <div className="rounded-2xl border border-border bg-card w-full mt-8 p-8 shadow-sm">
         {/* Page Header and Search Bar */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4  pb-6 border-b border-gray-200">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4  pb-6 border-b border-border">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-gray-800">Student Results</h1>
             <span className="inline-flex items-center rounded-full border border-transparent bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">

@@ -21,9 +21,9 @@ Chart.defaults.font.family = 'Tenorite, sans-serif';
 
 
 const ICON_MAPPING = {
-  Users: <Users aria-hidden="true" className="text-gray-800" />,
-  Calendar: <Calendar aria-hidden="true" className="text-gray-800" />,
-  Default: <HelpCircle aria-hidden="true" className="text-gray-800" />
+  Users: <Users aria-hidden="true" className="text-foreground" />,
+  Calendar: <Calendar aria-hidden="true" className="text-foreground" />,
+  Default: <HelpCircle aria-hidden="true" className="text-foreground" />
 };
 
 const formatStatValue = (value) => {

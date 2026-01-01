@@ -207,7 +207,7 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
 
         {/* Desktop Header Bar */}
         <header
-          className="bg-white fixed top-0 right-0 z-30 h-20 flex items-center justify-between transition-all duration-300 px-8 border-b border-gray-200"
+          className="bg-card fixed top-0 right-0 z-30 h-20 flex items-center justify-between transition-all duration-300 px-8 border-b border-foreground/10"
           style={{
             left: isSidebarCollapsed ? "5rem" : "16rem",
           }}
@@ -216,7 +216,7 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
             {/* Toggle Sidebar Collapse Button */}
             <button
               onClick={toggleSidebarCollapse}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 transition-colors"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:bg-muted transition-colors"
               aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               <AlignLeft size={20} />
@@ -224,10 +224,10 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
 
             {/* Greeting and Current Date */}
             <div className="flex flex-col">
-              <h1 className="text-2xl font-semibold text-gray-800 font-poppins">
+              <h1 className="text-2xl font-semibold text-foreground font-poppins">
                 {getGreeting()}, <span className="text-blue-600">{isLoading ? "Educator" : (educatorInfo?.name?.split?.(' ')[0] ?? 'Educator')}</span>
               </h1>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
             </div>
@@ -235,7 +235,7 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
 
           <div className="flex items-center gap-4">
             {/* Separator */}
-            <div className="h-8 w-px bg-gray-200 mx-1"></div>
+            <div className="h-8 w-px bg-border mx-1"></div>
 
             {/* User Dropdown for Desktop */}
             <div className="relative">

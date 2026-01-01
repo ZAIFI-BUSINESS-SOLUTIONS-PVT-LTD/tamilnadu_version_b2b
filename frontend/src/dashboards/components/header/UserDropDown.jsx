@@ -119,14 +119,14 @@ const UserDropdown = ({
               </button>
             )}
 
-            <button
+            {/* <button
               onClick={toggleTheme}
               className="flex items-center gap-3 w-full py-2 px-3 hover:bg-muted rounded-lg text-foreground transition-colors focus:outline-none"
               role="menuitem"
             >
               {isDark ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
               <span>{isDark ? 'Light Mode' : 'Dark Mode'}</span>
-            </button>
+            </button> */}
 
             <button
               onClick={onLogout}

@@ -207,34 +207,34 @@ const SwotSection = ({ label, displayLabel, color, data, selectedSubject }) => {
   const subtitle = zoneSubtitleMap[displayText] || '';
 
   return (
-    <Card className="bg-white h-full flex flex-col border-none rounded-none">
+    <Card className="bg-card h-full flex flex-col border-none rounded-2xl">
       <CardHeader className="p-0 pb-2">
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center">
             <div>
               <CardTitle className={`${color} font-semibold items-center mb-0 text-lg`}>{displayText}</CardTitle>
-              {subtitle && <div className="text-sm text-gray-700">{subtitle}</div>}
+              {subtitle && <div className="text-sm text-muted-foreground">{subtitle}</div>}
             </div>
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="p-0 flex-1 border border-yellow-200 rounded-2xl bg-yellow-100/20">
+      <CardContent className="p-0 flex-1 border border-border rounded-2xl bg-muted/60">
         <div className="flex flex-col h-full">
           <div className="flex-1 overflow-auto">
             {itemsToRender.length > 0 ? (
-              <div className="divide-y divide-yellow-200">
+              <div className="divide-y divide-border/70">
                 {itemsToRender.map((item, idx) => (
                   <div
                     key={item.id || `${displayText}-${selectedSubject}-${item.title || ''}-${idx}`}
-                    className="px-4 py-3 border-t border-yellow-200 first:border-t-0"
+                    className="px-4 py-3 border-t border-border/70 first:border-t-0"
                   >
                     {item.topics && item.topics.length > 0 ? (
-                      <div className="divide-y divide-yellow-200">
+                      <div className="divide-y divide-border/70">
                         {item.topics.map((topic, i) => (
                           <div
                             key={`${item.id || item.title || ''}-topic-${topic}-${i}`}
-                            className="flex items-start gap-2 py-2 text-sm md:text-base text-gray-700"
+                            className="flex items-start gap-2 py-2 text-sm md:text-base text-foreground"
                           >
                             <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary/70" aria-hidden="true" />
                             <span className="leading-relaxed break-words whitespace-pre-wrap">{topic}</span>
@@ -242,13 +242,13 @@ const SwotSection = ({ label, displayLabel, color, data, selectedSubject }) => {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-500 italic">No data available for this category.</p>
+                      <p className="text-sm text-muted-foreground italic">No data available for this category.</p>
                     )}
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="px-4 py-3 text-sm text-gray-500 italic">No data available for this category.</p>
+              <p className="px-4 py-3 text-sm text-muted-foreground italic">No data available for this category.</p>
             )}
           </div>
         </div>
