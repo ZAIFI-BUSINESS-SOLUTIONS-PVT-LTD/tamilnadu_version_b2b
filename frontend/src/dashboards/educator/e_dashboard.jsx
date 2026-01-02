@@ -59,8 +59,8 @@ function EDashboard() {
       title: 'Quick Recommendations',
       items: dashboardData.keyInsightsData.quickRecommendations || [],
       tag: (
-        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-          <Sparkles size={12} />
+        <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 flex items-center gap-1">
+          <Sparkles size={12} className="text-primary" />
           AI Generated
         </span>
       ),
@@ -71,8 +71,8 @@ function EDashboard() {
       title: 'Key Strengths',
       items: dashboardData.keyInsightsData.keyStrengths || [],
       tag: (
-        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-          <Sparkles size={12} />
+        <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 flex items-center gap-1">
+          <Sparkles size={12} className="text-primary" />
           AI Generated
         </span>
       ),
@@ -84,8 +84,8 @@ function EDashboard() {
       title: 'Consistency Vulnerability',
       items: dashboardData.keyInsightsData.yetToDecide || [],
       tag: (
-        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-          <Sparkles size={12} />
+        <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 flex items-center gap-1">
+          <Sparkles size={12} className="text-primary" />
           AI Generated
         </span>
       ),
@@ -361,7 +361,7 @@ function EDashboard() {
         </div>
 
         {/* Desktop version */}
-        <div className="hidden md:block mt-20">
+        <div className="hidden md:block mt-12">
           {/* Section 1: Grid layout */}
           <div className="grid grid-cols-1 gap-4 sm:gap-8 lg:grid-cols-2">
             {/* Left Column */}
@@ -370,6 +370,8 @@ function EDashboard() {
               <div className="hidden sm:grid grid-cols-1 gap-3 sm:gap-6 sm:grid-cols-2">
                 <Stat
                   icon={ICON_MAPPING.Users}
+                  iconBg="bg-blue-50 dark:bg-blue-950/30"
+                  iconClass="text-blue-600 dark:text-blue-400"
                   label="Recent Test Performance"
                   info={"Average total score in the latest test (as % of full marks)."}
                   value={formatStatValue(overallPerformance)}
@@ -385,7 +387,7 @@ function EDashboard() {
                         <UITooltipTrigger asChild>
                           <span
                             aria-label={isNegative ? "Improvement rate: negative change compared to previous test" : "Improvement rate: positive change compared to previous test"}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${isNegative ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${isNegative ? 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-200 border border-red-200/60 dark:border-red-800/60' : 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-200 border border-green-200/60 dark:border-green-800/60'}`}>
                             {isNegative ? (
                               <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 4v8M8 12l3-3M8 12l-3-3" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                             ) : (
@@ -404,6 +406,8 @@ function EDashboard() {
                 {/* Add hidden accessible tooltip text for the improvement-rate badge */}
                 <Stat
                   icon={ICON_MAPPING.Calendar}
+                  iconBg="bg-green-50 dark:bg-green-950/30"
+                  iconClass="text-green-600 dark:text-green-400"
                   label="Attendance"
                   info={"Percentage of students who attended the latest test."}
                   value={`${attendanceData.percentage}%`}
@@ -412,7 +416,7 @@ function EDashboard() {
                       <UITooltipTrigger asChild>
                         <span
                           aria-label={attendanceData.direction === 'up' ? "Attendance increased since previous test" : "Attendance decreased since previous test"}
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold ml-1 sm:ml-2 text-xs sm:text-sm ${attendanceData.direction === 'up' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold ml-1 sm:ml-2 text-xs sm:text-sm ${attendanceData.direction === 'up' ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-200 border border-green-200/60 dark:border-green-800/60' : 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-200 border border-red-200/60 dark:border-red-800/60'}`}>
                           {attendanceData.direction === 'up' ? (
                             <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 12V4M8 4l-3 3M8 4l3 3" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                           ) : (
@@ -427,7 +431,7 @@ function EDashboard() {
                   ) : attendanceData.direction === 'same' ? (
                     <UITooltip>
                       <UITooltipTrigger asChild>
-                        <span aria-label="No change in attendance" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-semibold ml-1 sm:ml-2 text-xs sm:text-sm">
+                        <span aria-label="No change in attendance" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border font-semibold ml-1 sm:ml-2 text-xs sm:text-sm">
                           No change
                         </span>
                       </UITooltipTrigger>
@@ -464,6 +468,8 @@ function EDashboard() {
                     <div className="snap-center flex-shrink-0 w-full p-2">
                       <Stat
                         icon={ICON_MAPPING.Users}
+                        iconBg="bg-blue-50 dark:bg-blue-950/30"
+                        iconClass="text-blue-600 dark:text-blue-400"
                         label="Overall Performance"
                         info="Shows the overall average performance of all students for the last test."
                         value={formatStatValue(overallPerformance)}
@@ -479,7 +485,7 @@ function EDashboard() {
                               <UITooltipTrigger asChild>
                                 <span
                                   aria-label={isNegative ? "Improvement rate: negative change compared to previous test" : "Improvement rate: positive change compared to previous test"}
-                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${isNegative ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${isNegative ? 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-200 border border-red-200/60 dark:border-red-800/60' : 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-200 border border-green-200/60 dark:border-green-800/60'}`}>
                                   {isNegative ? (
                                     <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 4v8M8 12l3-3M8 12l-3-3" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                                   ) : (
@@ -499,6 +505,8 @@ function EDashboard() {
                     <div className="snap-center flex-shrink-0 w-full p-2">
                       <Stat
                         icon={ICON_MAPPING.Calendar}
+                        iconBg="bg-green-50 dark:bg-green-950/30"
+                        iconClass="text-green-600 dark:text-green-400"
                         label="Attendance"
                         info="Percentage of students who attended the most recent test."
                         value={`${attendanceData.percentage}%`}
@@ -507,7 +515,7 @@ function EDashboard() {
                             <UITooltipTrigger asChild>
                               <span
                                 aria-label={attendanceData.direction === 'up' ? "Attendance increased since previous test" : "Attendance decreased since previous test"}
-                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold ml-1 sm:ml-2 text-xs sm:text-sm ${attendanceData.direction === 'up' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold ml-1 sm:ml-2 text-xs sm:text-sm ${attendanceData.direction === 'up' ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-200 border border-green-200/60 dark:border-green-800/60' : 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-200 border border-red-200/60 dark:border-red-800/60'}`}>
                                 {attendanceData.direction === 'up' ? (
                                   <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 12V4M8 4l-3 3M8 4l3 3" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                                 ) : (
@@ -522,7 +530,7 @@ function EDashboard() {
                         ) : attendanceData.direction === 'same' ? (
                           <UITooltip>
                             <UITooltipTrigger asChild>
-                              <span aria-label="No change in attendance" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-semibold ml-1 sm:ml-2 text-xs sm:text-sm">
+                              <span aria-label="No change in attendance" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border font-semibold ml-1 sm:ml-2 text-xs sm:text-sm">
                                 No change
                               </span>
                             </UITooltipTrigger>
@@ -605,8 +613,8 @@ function EDashboard() {
                         title: 'Quick Recommendations',
                         items: keyInsightsData.quickRecommendations || [],
                         tag: (
-                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-                            <Sparkles size={12} />
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 flex items-center gap-1">
+                            <Sparkles size={12} className="text-primary" />
                             AI Generated
                           </span>
                         ),
@@ -616,8 +624,8 @@ function EDashboard() {
                         title: 'Key Strengths',
                         items: keyInsightsData.keyStrengths || [],
                         tag: (
-                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-                            <Sparkles size={12} />
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 flex items-center gap-1">
+                            <Sparkles size={12} className="text-primary" />
                             AI Generated
                           </span>
                         ),
@@ -627,8 +635,8 @@ function EDashboard() {
                         title: 'Areas for Improvement',
                         items: keyInsightsData.areasForImprovement || [],
                         tag: (
-                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-                            <Sparkles size={12} />
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 flex items-center gap-1">
+                            <Sparkles size={12} className="text-primary" />
                             AI Generated
                           </span>
                         ),
@@ -638,8 +646,8 @@ function EDashboard() {
                         title: 'Consistency Vulnerability',
                         items: keyInsightsData.yetToDecide || [],
                         tag: (
-                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-                            <Sparkles size={12} />
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 flex items-center gap-1">
+                            <Sparkles size={12} className="text-primary" />
                             AI Generated
                           </span>
                         ),
@@ -653,12 +661,12 @@ function EDashboard() {
                 </div>
               </div>
             </div>
-            <Card className="rounded-2xl border border-gray-250 bg-gray-100 flex flex-col items-start justify-start sm:p-0 p-2">
+            <Card className="rounded-2xl border border-border bg-muted flex flex-col items-start justify-start sm:p-0 p-2">
               {/* Title & Chart Container */}
-              <div className="w-full flex flex-col bg-white p-3 sm:p-6 rounded-2xl">
+              <div className="w-full flex flex-col bg-card border border-border p-3 sm:p-6 rounded-2xl">
                 {/* Title Container */}
                 <div className="w-full flex justify-between items-center mb-0.5 sm:mb-1">
-                  <span className="text-base sm:text-xl font-semibold text-primary text-left">Class Performance</span>
+                  <span className="text-base sm:text-xl font-semibold text-foreground text-left">Class Performance</span>
                   <Select value={selectedSubject} onValueChange={setSelectedSubject}>
                     <SelectTrigger className="w-[140px]">
                       <SelectValue />
@@ -673,10 +681,10 @@ function EDashboard() {
                   </Select>
                 </div>
 
-                <p className="text-gray-500 text-xs sm:text-sm mb-3 sm:mb-6">Average marks across all students</p>
+                <p className="text-muted-foreground text-xs sm:text-sm mb-3 sm:mb-6">Average marks across all students</p>
 
                 {/* Area Chart Container */}
-                <div className="flex flex-col items-center justify-center w-full mb-3 sm:mb-6 bg-white h-56 sm:h-80">
+                <div className="flex flex-col items-center justify-center w-full mb-3 sm:mb-6 bg-card h-56 sm:h-80">
                   {(() => {
                     const currentData = testWiseAvgMarks[selectedSubject] || [];
                     const dataValues = currentData.map(d => d.avg);
@@ -796,7 +804,7 @@ function EDashboard() {
                                 font: { family: 'Tenorite, sans-serif', size: 13 },
                                 stepSize: stepSize,
                               },
-                              grid: { color: "#f3f4f6" },
+                              grid: { color: "rgba(156, 163, 175, 0.15)" },
                             },
                           },
                           layout: {
@@ -836,19 +844,19 @@ function EDashboard() {
                       lowest = Math.min(...currentData.map(t => t.avg));
                     }
                     return <>
-                      <div className="flex flex-col items-center border-r border-gray-200 pr-2 sm:pr-0">
-                        <span className="text-gray-500 text-xs sm:text-sm">Avg Highest Score</span>
+                      <div className="flex flex-col items-center border-r border-border pr-2 sm:pr-0">
+                        <span className="text-muted-foreground text-xs sm:text-sm">Avg Highest Score</span>
                         <div className="flex items-center">
-                          <span className="text-base sm:text-lg font-semibold">{highest}</span>
+                          <span className="text-base sm:text-lg font-semibold text-foreground">{highest}</span>
                           <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500 ml-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M5 15l7-7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </div>
                       </div>
                       <div className="flex flex-col items-center">
-                        <span className="text-gray-500 text-xs sm:text-sm">Avg Lowest Score</span>
+                        <span className="text-muted-foreground text-xs sm:text-sm">Avg Lowest Score</span>
                         <div className="flex items-center">
-                          <span className="text-base sm:text-lg font-semibold">{lowest}</span>
+                          <span className="text-base sm:text-lg font-semibold text-foreground">{lowest}</span>
                           <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-500 ml-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M19 9l-7 7-7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
@@ -861,9 +869,9 @@ function EDashboard() {
             </Card>
           </div>
         </div>
-        <Card className="hidden md:block rounded-2xl border border-gray-250 bg-white w-full mt-4 sm:mt-8 p-3 sm:p-8">
-          <div className="flex items-center justify-between pb-2 sm:pb-6 border-b border-gray-200">
-            <h2 className="text-base sm:text-xl font-bold text-gray-800">Recent Test Results</h2>
+        <Card className="hidden md:block rounded-2xl border border-gray-250 bg-card w-full mt-4 sm:mt-8 p-3 sm:p-8">
+          <div className="flex items-center justify-between pb-2 sm:pb-6">
+            <h2 className="text-base sm:text-xl font-bold text-foreground">Recent Test Results</h2>
             <Button
               variant="ghost"
               size="sm"

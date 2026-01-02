@@ -707,7 +707,7 @@ function IDashboard() {
                                 font: { family: 'Tenorite, sans-serif', size: 13 },
                                 stepSize: stepSize,
                               },
-                              grid: { color: "#f3f4f6" },
+                              grid: { color: "rgba(156, 163, 175, 0.15)" },
                             },
                           },
                         }}

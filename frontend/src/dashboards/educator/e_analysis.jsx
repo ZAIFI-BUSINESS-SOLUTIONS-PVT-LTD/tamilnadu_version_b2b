@@ -413,14 +413,14 @@ const ESWOT = () => {
     <div className="md:mt-12 lg:px-4 lg:space-y-6">
       <div className="hidden lg:flex lg:flex-row lg:items-start lg:justify-between gap-6">
         <div className="flex flex-col gap-2">
-          <h2 className="text-3xl font-semibold text-gray-800">Test Wise Analysis</h2>
-          <p className="text-sm text-gray-500">Review strengths and focus areas by subject and test.</p>
+          <h2 className="text-3xl font-semibold text-foreground">Test Wise Analysis</h2>
+          <p className="text-sm text-muted-foreground">Review strengths and focus areas by subject and test.</p>
         </div>
         <div className="flex items-start gap-4 flex-wrap justify-end">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-400 min-w-max pl-1">Test</span>
+            <span className="text-sm text-muted-foreground min-w-max pl-1">Test</span>
             <Select value={selectedTest} onValueChange={(v) => setSelectedTest && setSelectedTest(v)}>
-              <SelectTrigger className="m-1 w-full lg:w-auto justify-start truncate text-start bg-white border-gray-200">
+              <SelectTrigger className="m-1 w-full lg:w-auto justify-start truncate text-start bg-card border-border">
                 <SelectValue placeholder="Select Test" />
               </SelectTrigger>
               <SelectContent side="bottom" align="end" className="max-h-60">
@@ -432,9 +432,9 @@ const ESWOT = () => {
               </SelectContent>
             </Select>
 
-            <span className="text-sm text-gray-400 min-w-max pl-1">Subject</span>
+            <span className="text-sm text-muted-foreground min-w-max pl-1">Subject</span>
             <Select value={selectedSubject} onValueChange={(v) => setSelectedSubject && setSelectedSubject(v)}>
-              <SelectTrigger className="m-1 w-full lg:w-auto justify-start truncate text-start bg-white border-gray-200">
+              <SelectTrigger className="m-1 w-full lg:w-auto justify-start truncate text-start bg-card border-border">
                 <SelectValue placeholder="Select Subject" />
               </SelectTrigger>
               <SelectContent side="bottom" align="end" className="max-h-60">
@@ -452,13 +452,13 @@ const ESWOT = () => {
       {/* Mobile: compact tabbed UI modeled after student mobile (subject tabs, zone tabs, topic list) */}
       <div className="lg:hidden">
         <div>
-          <div className="flex w-full bg-white px-3 border-b justify-between items-center">
+          <div className="flex w-full bg-card px-3 border-b border-border justify-between items-center">
             <div className="text-left py-4">
-              <h1 className="text-2xl font-bold text-gray-800">Test wise analysis</h1>
+              <h1 className="text-2xl font-bold text-foreground">Test wise analysis</h1>
             </div>
             <div className="py-4">
               <Select value={selectedTest} onValueChange={(v) => setSelectedTest && setSelectedTest(v)}>
-                <SelectTrigger className="justify-start rounded-lg text-sm w-auto bg-white border-gray-200">
+                <SelectTrigger className="justify-start rounded-lg text-sm w-auto bg-card border-border">
                   <SelectValue placeholder="Select Test" />
                   <ChevronDown size={16} className="ml-1" />
                 </SelectTrigger>
@@ -474,7 +474,7 @@ const ESWOT = () => {
           </div>
 
           {/* Subject Tabs */}
-          <div className="flex bg-white border-b relative pb-1 overflow-x-auto">
+          <div className="flex bg-card border-b border-border relative pb-1 overflow-x-auto">
             {orderedSubjects.map((subject, idx) => {
               const shortName = subject === 'Physics'
                 ? 'Phy'
@@ -520,7 +520,7 @@ const ESWOT = () => {
                 <button
                   key={subject}
                   onClick={() => setSelectedSubject(subject)}
-                  className={`flex-1 pt-2 px-1 text-center text-sm font-medium flex flex-col items-center justify-center gap-1 transition-all duration-200 ${isSelected ? 'text-gray-800' : 'text-gray-600 hover:text-gray-800'}`}
+                  className={`flex-1 pt-2 px-1 text-center text-sm font-medium flex flex-col items-center justify-center gap-1 transition-all duration-200 ${isSelected ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                   <div className={`${isSelected ? activeBg : baseBg} rounded-lg p-2 mb-1 transform ${isSelected ? 'scale-105 shadow-md' : 'scale-100'}`}>
                     {icon}
@@ -571,11 +571,11 @@ const ESWOT = () => {
                           role="tab"
                           className={`flex-1 py-2 px-2 text-sm font-semibold rounded-xl transition-all duration-300 ease-out transform scale-[1.02] ${isActive
                             ? activeClasses
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-white/50 active:scale-95'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 active:scale-95'
                             }`}
                         >
                           <div className="text-center">
-                            <div className={`font-semibold text-sm ${isActive ? '' : 'text-gray-600'}`}>
+                            <div className={`font-semibold text-sm ${isActive ? '' : 'text-muted-foreground'}`}>
                               {tab.label}
                             </div>
                           </div>
@@ -593,12 +593,12 @@ const ESWOT = () => {
 
                       if (allTopics.length > 0) {
                         return (
-                          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                          <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
                             <ul className="divide-y divide-gray-100/80">
                               {allTopics.map((topic, i) => (
                                 <li
                                   key={`${activeLabel}-${selectedSubject}-${i}`}
-                                  className="py-1 px-4 text-gray-700 hover:bg-gray-50/50 transition-colors duration-200 group"
+                                  className="py-1 px-4 text-foreground hover:bg-muted/70 transition-colors duration-200 group"
                                 >
                                   <div className="flex items-start space-x-2">
                                     <div className="flex-shrink-0 w-1.5 h-1.5 bg-primary rounded-full mt-2 transform transition-transform duration-300" />
@@ -614,14 +614,14 @@ const ESWOT = () => {
                       }
 
                       return (
-                        <div className="text-center py-8 bg-white/50 rounded-2xl border-2 border-dashed border-gray-200/70">
-                          <div className="w-10 h-10 mx-auto mb-3 bg-gray-100/70 rounded-full flex items-center justify-center">
-                            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="text-center py-8 bg-muted/50 rounded-2xl border-2 border-dashed border-border/80">
+                          <div className="w-10 h-10 mx-auto mb-3 bg-muted rounded-full flex items-center justify-center">
+                            <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                             </svg>
                           </div>
-                          <p className="text-gray-500 text-sm font-medium">No insights available</p>
-                          <p className="text-gray-400 text-xs mt-1">Check back later for updates</p>
+                          <p className="text-muted-foreground text-sm font-medium">No insights available</p>
+                          <p className="text-muted-foreground text-xs mt-1">Check back later for updates</p>
                         </div>
                       );
                     })()}
@@ -634,7 +634,7 @@ const ESWOT = () => {
       </div>
 
       {/* Desktop/large screens: stacked vertical layout to make it look more filled */}
-      <div className="hidden lg:flex flex-col space-y-6 bg-white rounded-2xl p-6 border border-gray-200">
+      <div className="hidden lg:flex flex-col space-y-6 bg-card rounded-2xl p-6 border border-border">
         {sections.map(({ label, displayLabel, color }) => (
           <SwotSection
             key={displayLabel}

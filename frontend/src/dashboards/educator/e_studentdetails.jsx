@@ -9,15 +9,23 @@ import {
   X,
   BarChart,
   FileText,
-  SlidersHorizontal,
+  Sliders,
+  ArrowUp,
+  ArrowDown,
+  CheckCircle,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  MoreHorizontal
 } from 'lucide-react';
 import Table from '../../components/table.jsx';
 import Modal from '../../components/modal.jsx';
 import LoadingPage from '../components/LoadingPage.jsx';
 import { Button } from '../../components/ui/button.jsx';
 import Alert from '../../components/ui/alert.jsx';
+import { Card, CardHeader, CardContent } from '../../components/ui/card.jsx';
+import { Badge } from '../../components/ui/badge.jsx';
+import { Input } from '../../components/ui/input.jsx';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../../components/ui/dropdown-menu.jsx';
 
 function EResults() {
   const [loading, setLoading] = useState(true);
@@ -26,10 +34,9 @@ function EResults() {
   const [searchTerm, setSearchTerm] = useState('');
   const [modalStudent, setModalStudent] = useState(null);
   const [studentNameMap, setStudentNameMap] = useState({});
-  const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [sortModalOpen, setSortModalOpen] = useState(false);
   const [sortField, setSortField] = useState('rank');
   const [sortDirection, setSortDirection] = useState('desc');
-  const [scoreRange, setScoreRange] = useState([0, 100]);
   const navigate = useNavigate();
 
   const fetchResults = useCallback(async () => {
@@ -101,18 +108,6 @@ function EResults() {
     fetchResults();
   }, [fetchResults]);
 
-  // Compute min/max average score for slider (move this above useEffect)
-  const minAvg = groupedResults.length ? Math.min(...groupedResults.map(s => s.average_score)) : 0;
-  const maxAvg = groupedResults.length ? Math.max(...groupedResults.map(s => s.average_score)) : 100;
-
-  // Set default range to max range on data load
-  useEffect(() => {
-    if (groupedResults.length) {
-      setScoreRange([minAvg, maxAvg]);
-    }
-    // eslint-disable-next-line
-  }, [groupedResults.length]);
-
   const groupResultsByStudent = (results) => {
     const grouped = {};
 
@@ -157,10 +152,8 @@ function EResults() {
   };
   const sortedResults = [...groupedResults]
     .filter(student =>
-      student.average_score >= scoreRange[0] &&
-      student.average_score <= scoreRange[1] &&
-      (student.student_id.toString().includes(searchTerm) ||
-        getStudentName(student).toLowerCase().includes(searchTerm.toLowerCase()))
+      student.student_id.toString().includes(searchTerm) ||
+      getStudentName(student).toLowerCase().includes(searchTerm.toLowerCase())
     )
     .sort((a, b) => {
       if (sortField === 'rank') {
@@ -189,10 +182,8 @@ function EResults() {
   const rankMap = (() => {
     const sortedByAvg = [...groupedResults]
       .filter(student =>
-        student.average_score >= scoreRange[0] &&
-        student.average_score <= scoreRange[1] &&
-        (student.student_id.toString().includes(searchTerm) ||
-          getStudentName(student).toLowerCase().includes(searchTerm.toLowerCase()))
+        student.student_id.toString().includes(searchTerm) ||
+        getStudentName(student).toLowerCase().includes(searchTerm.toLowerCase())
       )
       .sort((a, b) => b.average_score - a.average_score);
     const map = {};
@@ -202,9 +193,24 @@ function EResults() {
     return map;
   })();
 
+  // Get the highest test_num conducted across all students
+  const lastTestNum = React.useMemo(() => {
+    let maxTestNum = 0;
+    groupedResults.forEach(student => {
+      if (Array.isArray(student.test_results)) {
+        student.test_results.forEach(test => {
+          if (test.test_num > maxTestNum) {
+            maxTestNum = test.test_num;
+          }
+        });
+      }
+    });
+    return maxTestNum;
+  }, [groupedResults]);
+
   // Sort icon component
   const SortIcon = ({ field }) => {
-    if (sortField !== field) return <ChevronDown size={14} className="text-gray-400" />;
+    if (sortField !== field) return <ChevronDown size={14} className="text-muted-foreground" />;
     return sortDirection === 'asc'
       ? <ChevronUp size={14} className="text-primary" />
       : <ChevronDown size={14} className="text-primary" />;
@@ -243,8 +249,9 @@ function EResults() {
     { field: 'rank', label: 'Rank', sortable: true },
     { field: 'student_id', label: 'Student ID', sortable: true },
     { field: 'student_name', label: 'Student Name', sortable: true },
-    { field: 'tests_taken', label: 'No of test attended', sortable: false },
+    { field: 'last_test_score', label: `Last test score (Test ${lastTestNum})`, sortable: false },
     { field: 'average_score', label: 'Average score', sortable: true },
+    { field: 'actions', label: 'Actions', sortable: false, headerClass: 'justify-end' },
   ];
 
   // Render a row for the Table component
@@ -257,56 +264,80 @@ function EResults() {
       <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{rankMap[student.student_id]}</td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{student.student_id}</td>
       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">{getStudentName(student)}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{student.tests_taken}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+        {(() => {
+          if (lastTestNum === 0) {
+            return 'Not attended';
+          }
+          // Find the student's result for the last test conducted
+          const testResult = Array.isArray(student.test_results)
+            ? student.test_results.find(test => test.test_num === lastTestNum)
+            : null;
+          return testResult && testResult.total_score !== undefined && testResult.total_score !== null
+            ? testResult.total_score
+            : 'Not attended';
+        })()}
+      </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{student.average_score}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+        <div className="flex items-center gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full" aria-label="More">
+                <MoreHorizontal className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent sideOffset={6} align="end">
+              <DropdownMenuItem onClick={() => setModalStudent(student)}>View more</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </td>
     </tr>
   );
 
   return (
-    <div className="sm:pt-4 w-full mx-auto">
-      <div className="rounded-2xl border border-border bg-card w-full mt-8 p-8 shadow-sm">
-        {/* Page Header and Search Bar */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4  pb-6 border-b border-border">
+    <div className="sm:pt-12 w-full mx-auto">
+      <Card className="rounded-2xl border border-border bg-card w-full">
+        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-800">Student Results</h1>
-            <span className="inline-flex items-center rounded-full border border-transparent bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
+            <h1 className="text-2xl font-bold text-foreground">Student Results</h1>
+            <Badge variant="outline" className="text-sm">
               {groupedResults.length} {groupedResults.length === 1 ? 'Student' : 'Students'}
-            </span>
+            </Badge>
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
             <div className="w-full sm:w-96 flex gap-2">
               <div className="relative flex-1">
-                <input
+                <Input
                   type="text"
                   placeholder="Search by ID or name..."
-                  className="w-full rounded-lg border border-gray-300 bg-white pl-10 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/60"
+                  className="w-full pl-10 pr-8"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
                 <Search
-                  className="h-5 w-5 absolute left-3 top-3 opacity-50"
+                  className="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 opacity-50"
                 />
                 {searchTerm && (
                   <button
                     onClick={clearSearch}
-                    className="absolute right-3 top-3 opacity-70 hover:opacity-100"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 opacity-70 hover:opacity-100"
                     aria-label="Clear search"
                   >
                     <X className="h-4 w-4" />
                   </button>
                 )}
               </div>
-              <Button variant="outline" className="flex items-center gap-2 border-gray-300" onClick={() => setFilterModalOpen(true)}>
-                <SlidersHorizontal className="w-5 h-5" />
-                <span>Filter</span>
+              <Button variant="outline" className="flex items-center gap-2" onClick={() => setSortModalOpen(true)}>
+                <Sliders className="w-5 h-5" />
+                <span>Sort</span>
               </Button>
             </div>
           </div>
-        </div>
+        </CardHeader>
 
-        {/* Styled Table Layout */}
-
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto p-8">
           {sortedResults.length > 0 ? (
             <Table
               columns={columns}
@@ -320,9 +351,9 @@ function EResults() {
               renderRow={renderRow}
               emptyState={
                 <div className="p-8 text-center">
-                  <Frown className="h-12 w-12 mx-auto text-gray-400" />
-                  <h3 className="mt-2 text-lg font-medium text-gray-900">No results found</h3>
-                  <p className="mt-1 text-sm text-gray-500">
+                  <Frown className="h-12 w-12 mx-auto text-muted-foreground" />
+                  <h3 className="mt-2 text-lg font-medium text-foreground">No results found</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
                     {searchTerm ? 'Try a different search term' : 'No student results available'}
                   </p>
                   {searchTerm && (
@@ -335,9 +366,9 @@ function EResults() {
             />
           ) : (
             <div className="p-8 text-center">
-              <Frown className="h-12 w-12 mx-auto text-gray-400" />
-              <h3 className="mt-2 text-lg font-medium text-gray-900">No results found</h3>
-              <p className="mt-1 text-sm text-gray-500">
+              <Frown className="h-12 w-12 mx-auto text-muted-foreground" />
+              <h3 className="mt-2 text-lg font-medium text-foreground">No results found</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
                 {searchTerm ? 'Try a different search term' : 'No student results available'}
               </p>
               {searchTerm && (
@@ -356,55 +387,55 @@ function EResults() {
           title={modalStudent ? (
             <>
                 {getStudentName(modalStudent)}
-              <span className="text-xs text-gray-400 ml-2">(ID: {modalStudent.student_id})</span>
+              <span className="text-xs text-muted-foreground ml-2">(ID: {modalStudent.student_id})</span>
             </>
           ) : ''}
-          maxWidth="max-w-3xl"
+          maxWidth="max-w-5xl"
         >
           {modalStudent && (
-            <>
+            <div className="flex flex-col h-[80vh]">
               <div className="flex flex-wrap gap-x-6 gap-y-2 mb-4">
                 <div className="flex items-center gap-2">
-                  <FileText className="text-gray-400" />
+                  <FileText className="text-muted-foreground" />
                   <div>
-                    <p className="text-sm text-gray-500">Tests</p>
+                    <p className="text-sm text-muted-foreground">Tests</p>
                     <p className="font-medium">{modalStudent.tests_taken}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <BarChart className="text-gray-400" />
+                  <BarChart className="text-muted-foreground" />
                   <div>
-                    <p className="text-sm text-gray-500">Average</p>
+                    <p className="text-sm text-muted-foreground">Average</p>
                     <p className="font-medium">{modalStudent.average_score}</p>
                   </div>
                 </div>
               </div>
-              <h4 className="text-md font-semibold text-gray-800 mb-2">Test Performance</h4>
-              <div className="overflow-x-auto">
-                <table className="table table-zebra table-sm">
-                  <thead>
+              <h4 className="text-md font-semibold text-foreground mb-2">Test Performance</h4>
+              <div className="overflow-x-auto flex-1">
+                <table className="w-full border-collapse border border-border rounded-lg overflow-hidden">
+                  <thead className="bg-muted/50">
                     <tr>
-                      <th>Test #</th>
-                      <th>Total Score</th>
-                      <th>Physics</th>
-                      <th>Chemistry</th>
-                      <th>Biology</th>
-                      <th>Botany</th>
-                      <th>Zoology</th>
-                      <th>Accuracy</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-foreground border-b border-border">Test #</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-foreground border-b border-border">Total Score</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-foreground border-b border-border">Physics</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-foreground border-b border-border">Chemistry</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-foreground border-b border-border">Biology</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-foreground border-b border-border">Botany</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-foreground border-b border-border">Zoology</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-foreground border-b border-border">Accuracy</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-border">
                     {modalStudent.test_results.map((test, index) => (
-                      <tr key={index}>
-                        <td>{test.test_num}</td>
-                        <td className="font-medium">{test.total_score}</td>
-                        <td>{test.phy_score || "-"}</td>
-                        <td>{test.chem_score || "-"}</td>
-                        <td>{test.bio_score || "-"}</td>
-                        <td>{test.bot_score || "-"}</td>
-                        <td>{test.zoo_score || "-"}</td>
-                        <td>
+                      <tr key={index} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-4 py-3 text-sm text-muted-foreground">{test.test_num}</td>
+                        <td className="px-4 py-3 text-sm font-medium text-foreground">{test.total_score}</td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">{test.phy_score || "-"}</td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">{test.chem_score || "-"}</td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">{test.bio_score || "-"}</td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">{test.bot_score || "-"}</td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">{test.zoo_score || "-"}</td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
                           {test.total_attended ? Math.round((test.total_correct / test.total_attended) * 100) + '%' : '-'}
                         </td>
                       </tr>
@@ -417,71 +448,104 @@ function EResults() {
                   Close
                 </Button>
               </div>
-            </>
+            </div>
           )}
         </Modal>
 
-        {/* Filter Modal */}
+        {/* Sort Modal */}
         <Modal
-          open={filterModalOpen}
-          onClose={() => setFilterModalOpen(false)}
-          title="Filter by Average Score"
+          open={sortModalOpen}
+          onClose={() => setSortModalOpen(false)}
+          title={'Sort'}
+          maxWidth="max-w-md"
         >
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Average Score Range</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={minAvg}
-                  max={scoreRange[1]}
-                  value={scoreRange[0]}
-                  onChange={e => setScoreRange([Number(e.target.value), scoreRange[1]])}
-                  className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/60"
-                />
-                <span>-</span>
-                <input
-                  type="number"
-                  min={scoreRange[0]}
-                  max={maxAvg}
-                  value={scoreRange[1]}
-                  onChange={e => setScoreRange([scoreRange[0], Number(e.target.value)])}
-                  className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/60"
-                />
-              </div>
-              <input
-                type="range"
-                min={minAvg}
-                max={maxAvg}
-                value={scoreRange[0]}
-                onChange={e => setScoreRange([Number(e.target.value), scoreRange[1]])}
-                className="mt-2 w-full accent-blue-500"
-              />
-              <input
-                type="range"
-                min={minAvg}
-                max={maxAvg}
-                value={scoreRange[1]}
-                onChange={e => setScoreRange([scoreRange[0], Number(e.target.value)])}
-                className="mt-2 w-full accent-blue-500"
-              />
-              <div className="flex justify-between text-xs text-gray-400 mt-1">
-                <span>{minAvg}</span>
-                <span>{maxAvg}</span>
-              </div>
+          <p className="text-sm text-muted-foreground mb-4">Choose how the student list should be ordered.</p>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-foreground mb-2">Sort Options</label>
+            <div className="flex flex-col gap-2">
+              {/* 1. Rank - Top to Least */}
+              <Button
+                variant={(sortField === 'rank' && sortDirection === 'desc') ? 'outline' : 'ghost'}
+                className="justify-between"
+                onClick={() => { setSortField('rank'); setSortDirection('desc'); }}
+              >
+                <span className="flex items-center gap-2"><ArrowDown className="w-4 h-4" />Rank — Highest to Lowest</span>
+                {(sortField === 'rank' && sortDirection === 'desc') ? <CheckCircle className="w-5 h-5 text-blue-600" /> : <CheckCircle className="w-5 h-5 opacity-20" />}
+              </Button>
+
+              {/* 2. Rank - Least to top */}
+              <Button
+                variant={(sortField === 'rank' && sortDirection === 'asc') ? 'outline' : 'ghost'}
+                className="justify-between"
+                onClick={() => { setSortField('rank'); setSortDirection('asc'); }}
+              >
+                <span className="flex items-center gap-2"><ArrowUp className="w-4 h-4" />Rank — Lowest to Highest</span>
+                {(sortField === 'rank' && sortDirection === 'asc') ? <CheckCircle className="w-5 h-5 text-blue-600" /> : <CheckCircle className="w-5 h-5 opacity-20" />}
+              </Button>
+
+              {/* 3. Student ID - Ascending */}
+              <Button
+                variant={(sortField === 'student_id' && sortDirection === 'asc') ? 'outline' : 'ghost'}
+                className="justify-between"
+                onClick={() => { setSortField('student_id'); setSortDirection('asc'); }}
+              >
+                <span className="flex items-center gap-2"><ArrowUp className="w-4 h-4" />Student ID — Low to High</span>
+                {(sortField === 'student_id' && sortDirection === 'asc') ? <CheckCircle className="w-5 h-5 text-blue-600" /> : <CheckCircle className="w-5 h-5 opacity-20" />}
+              </Button>
+
+              {/* 4. Student ID - Descending */}
+              <Button
+                variant={(sortField === 'student_id' && sortDirection === 'desc') ? 'outline' : 'ghost'}
+                className="justify-between"
+                onClick={() => { setSortField('student_id'); setSortDirection('desc'); }}
+              >
+                <span className="flex items-center gap-2"><ArrowDown className="w-4 h-4" />Student ID — High to Low</span>
+                {(sortField === 'student_id' && sortDirection === 'desc') ? <CheckCircle className="w-5 h-5 text-blue-600" /> : <CheckCircle className="w-5 h-5 opacity-20" />}
+              </Button>
+
+              {/* 5. Name - Ascending */}
+              <Button
+                variant={(sortField === 'student_name' && sortDirection === 'asc') ? 'outline' : 'ghost'}
+                className="justify-between"
+                onClick={() => { setSortField('student_name'); setSortDirection('asc'); }}
+              >
+                <span className="flex items-center gap-2"><ArrowUp className="w-4 h-4" />Name — A to Z</span>
+                {(sortField === 'student_name' && sortDirection === 'asc') ? <CheckCircle className="w-5 h-5 text-blue-600" /> : <CheckCircle className="w-5 h-5 opacity-20" />}
+              </Button>
+
+              {/* 6. Name - Descending */}
+              <Button
+                variant={(sortField === 'student_name' && sortDirection === 'desc') ? 'outline' : 'ghost'}
+                className="justify-between"
+                onClick={() => { setSortField('student_name'); setSortDirection('desc'); }}
+              >
+                <span className="flex items-center gap-2"><ArrowDown className="w-4 h-4" />Name — Z to A</span>
+                {(sortField === 'student_name' && sortDirection === 'desc') ? <CheckCircle className="w-5 h-5 text-blue-600" /> : <CheckCircle className="w-5 h-5 opacity-20" />}
+              </Button>
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setFilterModalOpen(false)}>Cancel</Button>
-              <Button onClick={() => setFilterModalOpen(false)}>Apply</Button>
-            </div>
+          </div>
+
+          <div className="modal-action mt-4 flex flex-col sm:flex-row gap-2">
+            <Button variant="default" className="w-full sm:w-auto" onClick={() => setSortModalOpen(false)}>Apply</Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setSortField('rank');
+                setSortDirection('desc');
+                setSortModalOpen(false);
+              }}
+            >
+              Cancel
+            </Button>
           </div>
         </Modal>
 
-        <div className="mt-6 text-sm text-gray-500 flex items-center gap-2">
+        <div className="mt-6 text-sm text-muted-foreground flex items-center gap-2">
           <BarChart className="w-4 h-4" />
-          <p>Results are sorted by average score (highest to lowest)</p>
+          <p>Use the Sort button to change how results are ordered</p>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }
