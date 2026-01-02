@@ -34,9 +34,22 @@ if (typeof window !== 'undefined' && window.MutationObserver && window.MutationO
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './index.css';
 import App from './App.jsx';
 import { InstitutionProvider } from './lib/institutionContext.jsx';
+
+// Shared React Query client with sensible defaults for cached data access.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // cache cleanup window
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 function InstitutionBootstrap() {
   const [state, setState] = useState({ status: 'loading', institution: null });
@@ -115,8 +128,10 @@ function InstitutionBootstrap() {
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <BrowserRouter>
-      <InstitutionBootstrap />
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <InstitutionBootstrap />
+      </BrowserRouter>
+    </QueryClientProvider>
   </StrictMode>
 );

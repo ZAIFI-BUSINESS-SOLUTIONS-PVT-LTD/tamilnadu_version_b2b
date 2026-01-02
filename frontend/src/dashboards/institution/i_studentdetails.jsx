@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { fetchInstitutionEducatorAllStudentResults, fetchInstitutionEducatorStudents, createInstitutionStudent, deleteInstitutionStudent, createTeacher, getTeachersByClass, updateTeacher, deleteTeacher } from '../../utils/api';
+import { useQueryClient } from '@tanstack/react-query';
+import { createInstitutionStudent, createTeacher, getTeachersByClass, updateTeacher, deleteTeacher } from '../../utils/api';
 import toast from 'react-hot-toast';
 import {
   Search,
@@ -30,6 +31,7 @@ import { useInstitution } from './index.jsx';
 import StudentMoreDetails from '../components/StudentMoreDetails.jsx';
 import StudentDeleteModal from '../components/StudentDeleteModal.jsx';
 import Alert from '../../components/ui/alert.jsx';
+import { useInstitutionEducatorResults, useInstitutionEducatorStudents } from '../../hooks/useInstitutionData.js';
 
 const SUBJECTS = [
   { key: 'phy_score', label: 'Physics' },
@@ -39,15 +41,47 @@ const SUBJECTS = [
   { key: 'zoo_score', label: 'Zoology' },
 ];
 
+// Hoisted helper to group test results by student
+function groupResultsByStudent(results) {
+  const grouped = {};
+
+  results.forEach(result => {
+    const sid = result.student_id;
+    if (!grouped[sid]) {
+      grouped[sid] = {
+        student_id: sid,
+        student_name: result.student_name || `Student ${sid}`,
+        test_results: [],
+        total_score: 0,
+        tests_taken: 0,
+        average_score: 0,
+      };
+    }
+    grouped[sid].test_results.push(result);
+    grouped[sid].total_score += result.total_score || 0;
+    grouped[sid].tests_taken += 1;
+    grouped[sid].average_score = Math.round(grouped[sid].total_score / grouped[sid].tests_taken);
+  });
+
+  return Object.values(grouped).sort((a, b) => b.average_score - a.average_score);
+}
+
 function IStudentDetails() {
   const { selectedEducatorId, setSelectedEducatorId, educators } = useInstitution();
+  const queryClient = useQueryClient();
+  const {
+    data: resultsData,
+    isLoading: resultsLoading,
+    isFetching: resultsFetching,
+    error: resultsError,
+    refetch: refetchResults,
+  } = useInstitutionEducatorResults(selectedEducatorId);
+  const { data: studentsData } = useInstitutionEducatorStudents(selectedEducatorId);
   const sortedEducators = React.useMemo(() => {
     if (!Array.isArray(educators)) return [];
     return [...educators].sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
   }, [educators]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [groupedResults, setGroupedResults] = useState([]);
+  const [actionError, setActionError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [modalStudent, setModalStudent] = useState(null);
   const [initialEditMode, setInitialEditMode] = useState(false);
@@ -73,80 +107,79 @@ function IStudentDetails() {
   const [editingSubject, setEditingSubject] = useState(null);
   const [subjForm, setSubjForm] = useState({ subject: '', educator: '', email: '', phone_number: '', test_range: '' });
   const [classIdForTeachers, setClassIdForTeachers] = useState(null);
-  const [availableSubjects, setAvailableSubjects] = useState([]);
 
-  const fetchResults = useCallback(async () => {
-    if (!selectedEducatorId) return;
-    setLoading(true);
-    setError(null);
+  const normalizedResults = React.useMemo(() => {
+    if (Array.isArray(resultsData?.results)) return resultsData.results;
+    return [];
+  }, [resultsData]);
 
-    try {
-      const results = await fetchInstitutionEducatorAllStudentResults(selectedEducatorId);
+  const normalizedStudents = React.useMemo(() => {
+    if (!studentsData) return [];
+    if (Array.isArray(studentsData)) return studentsData;
+    if (Array.isArray(studentsData.students)) return studentsData.students;
+    if (Array.isArray(studentsData.data)) return studentsData.data;
+    return [];
+  }, [studentsData]);
 
-      if (results && !results.error) {
-        if (Array.isArray(results.results)) {
-          let grouped = groupResultsByStudent(results.results);
+  useEffect(() => {
+    const map = {};
+    normalizedStudents.forEach((s) => {
+      const id = s.student_id ?? s.studentId ?? s.id;
+      const name = s.student_name ?? s.name ?? s.full_name ?? '';
+      if (id) map[id] = name && String(name).trim() !== '' ? String(name).trim() : `Student ${id}`;
+    });
+    setStudentNameMap(map);
+  }, [normalizedStudents]);
 
-          // Also fetch known students for this educator and include any students
-          // who have no test results so they still appear in the list.
-          try {
-            const studentsRes = await fetchInstitutionEducatorStudents(selectedEducatorId);
-            let students = [];
-            if (!studentsRes) students = [];
-            else if (Array.isArray(studentsRes)) students = studentsRes;
-            else if (Array.isArray(studentsRes.students)) students = studentsRes.students;
-            else if (Array.isArray(studentsRes.data)) students = studentsRes.data;
+  const groupedResults = React.useMemo(() => {
+    const grouped = groupResultsByStudent(normalizedResults);
+    const existingIds = new Set(grouped.map(g => String(g.student_id)));
 
-            const existingIds = new Set(grouped.map(g => String(g.student_id)));
-            students.forEach(s => {
-              const id = s.student_id ?? s.studentId ?? s.id;
-              const name = s.student_name ?? s.name ?? s.full_name ?? '';
-              if (!id) return;
-              if (!existingIds.has(String(id))) {
-                const displayName = name && String(name).trim() !== '' ? String(name).trim() : `Student ${id}`;
-                grouped.push({
-                  student_id: id,
-                  student_name: displayName,
-                  test_results: [],
-                  total_score: 0,
-                  tests_taken: 0,
-                  average_score: 0,
-                });
-                // Ensure studentNameMap contains this name so UI shows it immediately
-                setStudentNameMap(prev => ({ ...prev, [id]: displayName }));
-              }
-            });
-          } catch (err) {
-            console.warn('Could not fetch students to merge with results:', err);
-          }
-
-          // Sort final list by average score (students without results will be at the bottom)
-          grouped = grouped.sort((a, b) => b.average_score - a.average_score);
-          setGroupedResults(grouped);
-
-          // Compute available subjects based on data
-          const availableSubjects = SUBJECTS.filter(sub =>
-            results.results.some(result => {
-              const val = result[sub.key];
-              return val != null && val !== undefined && val !== '' && val !== 0;
-            })
-          );
-          setAvailableSubjects(availableSubjects);
-        }
-      } else {
-        setError('Failed to load student results');
-        setGroupedResults([]);
-        setAvailableSubjects([]);
+    normalizedStudents.forEach((s) => {
+      const id = s.student_id ?? s.studentId ?? s.id;
+      const name = studentNameMap[id] || s.student_name || s.name || s.full_name || '';
+      if (!id) return;
+      if (!existingIds.has(String(id))) {
+        const displayName = name && String(name).trim() !== '' ? String(name).trim() : `Student ${id}`;
+        grouped.push({
+          student_id: id,
+          student_name: displayName,
+          test_results: [],
+          total_score: 0,
+          tests_taken: 0,
+          average_score: 0,
+        });
       }
-    } catch (err) {
-      console.error('Error fetching student results:', err);
-      setError('Failed to load student results');
-      setGroupedResults([]);
-      setAvailableSubjects([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedEducatorId]);
+    });
+
+    return grouped.sort((a, b) => b.average_score - a.average_score);
+  }, [normalizedResults, normalizedStudents, studentNameMap]);
+
+  const availableSubjects = React.useMemo(() => {
+    if (!normalizedResults.length) return [];
+    return SUBJECTS.filter(sub =>
+      normalizedResults.some(result => {
+        const val = result[sub.key];
+        return val != null && val !== '' && val !== 0;
+      })
+    );
+  }, [normalizedResults]);
+
+  const loading = resultsLoading || (resultsFetching && !resultsData);
+  const queryErrorMessage = resultsError
+    ? (resultsError.message || 'Failed to load student results')
+    : (resultsData?.error ? 'Failed to load student results' : null);
+  const combinedError = actionError || queryErrorMessage;
+
+  const refreshData = useCallback(async () => {
+    if (!selectedEducatorId) return;
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['institution', 'results', selectedEducatorId] }),
+      queryClient.invalidateQueries({ queryKey: ['institution', 'educatorStudents', selectedEducatorId] }),
+    ]);
+    await refetchResults();
+    await queryClient.refetchQueries({ queryKey: ['institution', 'educatorStudents', selectedEducatorId] });
+  }, [queryClient, refetchResults, selectedEducatorId]);
 
   // Show a short summary box after deletion with counts returned by backend
   const renderDeleteSummary = () => {
@@ -176,14 +209,6 @@ function IStudentDetails() {
       </div>
     );
   };
-
-  // Note: we no longer fetch students here to obtain class_id or names.
-  // The institution context provides educator information (including `class_id`).
-  // Keep `studentNameMap` empty by default; modal will fall back to `modalStudent.student_name`.
-
-  useEffect(() => {
-    fetchResults();
-  }, [fetchResults]);
 
   // Fetch teachers using class_id from selected educator
   useEffect(() => {
@@ -224,67 +249,6 @@ function IStudentDetails() {
 
     fetchTeachers();
   }, [selectedEducatorId, educators]);
-
-  // Load student names for selected educator and populate studentNameMap
-  useEffect(() => {
-    if (!selectedEducatorId) {
-      setStudentNameMap({});
-      return;
-    }
-
-    let cancelled = false;
-    const loadStudentNames = async () => {
-      try {
-        const res = await fetchInstitutionEducatorStudents(selectedEducatorId);
-
-        let students = [];
-        if (!res) students = [];
-        else if (Array.isArray(res)) students = res;
-        else if (Array.isArray(res.students)) students = res.students;
-        else if (Array.isArray(res.data)) students = res.data;
-        else students = [];
-
-        const map = {};
-        students.forEach((s) => {
-          const id = s.student_id ?? s.studentId ?? s.id;
-          const name = s.student_name ?? s.name ?? s.full_name ?? '';
-          if (id) map[id] = name && String(name).trim() !== '' ? String(name).trim() : `Student ${id}`;
-        });
-
-        if (!cancelled) setStudentNameMap(map);
-      } catch (err) {
-        console.error('Failed to load student names:', err);
-      }
-    };
-
-    loadStudentNames();
-    return () => { cancelled = true; };
-  }, [selectedEducatorId]);
-
-  const groupResultsByStudent = (results) => {
-    const grouped = {};
-
-    results.forEach(result => {
-      const sid = result.student_id;
-      if (!grouped[sid]) {
-        grouped[sid] = {
-          student_id: sid,
-          student_name: result.student_name || `Student ${sid}`,
-          test_results: [],
-          total_score: 0,
-          tests_taken: 0,
-          average_score: 0,
-        };
-      }
-      grouped[sid].test_results.push(result);
-      grouped[sid].total_score += result.total_score || 0;
-      grouped[sid].tests_taken += 1;
-      grouped[sid].average_score = Math.round(grouped[sid].total_score / grouped[sid].tests_taken);
-    });
-
-    return Object.values(grouped).sort((a, b) => b.average_score - a.average_score);
-  };
-
   const clearSearch = useCallback(() => {
     setSearchTerm('');
   }, []);
@@ -391,7 +355,7 @@ function IStudentDetails() {
     );
   }
 
-  if (error) {
+  if (combinedError) {
     return (
       <div className="flex flex-col items-center justify-center h-screen p-4">
         <div className="max-w-md w-full space-y-4">
@@ -401,10 +365,13 @@ function IStudentDetails() {
             className="shadow-sm"
           >
             <div className="font-semibold text-sm">Error!</div>
-            <div className="text-xs text-rose-800/80 break-words">{error}</div>
+            <div className="text-xs text-rose-800/80 break-words">{combinedError}</div>
           </Alert>
         <Button
-          onClick={fetchResults}
+          onClick={() => {
+            setActionError(null);
+            refreshData();
+          }}
           className="mt-4"
           variant="default"
         >
@@ -769,29 +736,29 @@ function IStudentDetails() {
                       variant="default"
                       className="w-full sm:w-auto"
                       onClick={async () => {
-                        setError(null);
+                        setActionError(null);
                         try {
                           // Validate required fields
                           if (!newStudent.student_id || !newStudent.name || !newStudent.dob) {
-                            setError('student_id, name and dob are required');
+                            setActionError('student_id, name and dob are required');
                             return;
                           }
                           const payload = { student_id: newStudent.student_id.trim(), name: newStudent.name.trim(), dob: newStudent.dob };
                           const res = await createInstitutionStudent(selectedEducatorId, payload);
                           if (res.error) {
-                            setError(res.error);
+                            setActionError(res.error);
                           } else {
                             setDeleteSummary({ message: res.message || 'Student created', counts: {} });
                             // Ensure the in-memory name map includes the newly created student so the list shows the name
                             if (payload.name) {
                               setStudentNameMap(prev => ({ ...prev, [payload.student_id]: payload.name }));
                             }
-                            await fetchResults();
+                            await refreshData();
                             setCreateModalOpen(false);
                           }
                         } catch (err) {
                           console.error(err);
-                          setError('Failed to create student');
+                          setActionError('Failed to create student');
                         }
                       }}
                     >
@@ -931,9 +898,9 @@ function IStudentDetails() {
                 setInitialEditMode={setInitialEditMode}
                 studentNameMap={studentNameMap}
                 selectedEducatorId={selectedEducatorId}
-                fetchResults={fetchResults}
+                fetchResults={refreshData}
                 setDeleteSummary={setDeleteSummary}
-                setError={setError}
+                setError={setActionError}
                 setStudentNameMap={setStudentNameMap}
               />
 
@@ -946,9 +913,9 @@ function IStudentDetails() {
                 modalStudent={studentToDelete}
                 studentNameMap={studentNameMap}
                 selectedEducatorId={selectedEducatorId}
-                fetchResults={fetchResults}
+                fetchResults={refreshData}
                 setDeleteSummary={setDeleteSummary}
-                setError={setError}
+                setError={setActionError}
                 setModalStudent={() => {}}
               />
 

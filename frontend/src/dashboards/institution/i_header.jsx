@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlignLeft, Home, UsersRound, FileText, WandSparkles, UploadCloud, ChevronRight, ChevronDown, NotepadText } from 'lucide-react';
 import { useInstitution } from './index.jsx';
@@ -6,9 +6,9 @@ import DesktopSidebar from '../components/header/DesktopSidebar.jsx';
 import UserDropdown from '../components/header/UserDropDown.jsx';
 import FeedbackModal from '../components/feedback/FeedbackModal.jsx';
 // Classroom selector moved to individual pages
-import { fetchAvailableSwotTests_Educator, fetchInstitutionEducatorStudents } from '../../utils/api.js';
 import TeacherReportModal from './components/i_teacherreport.jsx';
 import StudentReportModal from './components/i_studentreport.jsx';
+import { useInstitutionEducatorStudents, useAvailableSwotTestsEducator } from '../../hooks/useInstitutionData.js';
 
 const InstitutionHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
   const { selectedEducatorId } = useInstitution();
@@ -17,8 +17,14 @@ const InstitutionHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
   const [showStudentReportModal, setShowStudentReportModal] = useState(false);
   const [showTeacherReportModal, setShowTeacherReportModal] = useState(false);
   const [isReportsCollapsed, setIsReportsCollapsed] = useState(true);
-  const [students, setStudents] = useState([]);
-  const [availableTests, setAvailableTests] = useState(['Overall']);
+
+  // Use React Query hooks for cached data
+  const { data: studentsData } = useInstitutionEducatorStudents(selectedEducatorId);
+  const { data: availableTestsData } = useAvailableSwotTestsEducator();
+
+  // Extract data with fallbacks
+  const students = studentsData?.students || [];
+  const availableTests = availableTestsData ? ['Overall', ...[...new Set(availableTestsData)].filter((num) => num !== 0).map((num) => `Test ${num}`)] : ['Overall'];
 
   const sidebarItems = [
     {
@@ -85,39 +91,6 @@ const InstitutionHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
     },
     // Feedback moved into user dropdown
   ];
-
-  useEffect(() => {
-    async function loadStudents() {
-      try {
-        if (!selectedEducatorId) {
-          setStudents([]);
-          return;
-        }
-        const data = await fetchInstitutionEducatorStudents(selectedEducatorId);
-        setStudents(Array.isArray(data?.students) ? data.students : []);
-      } catch {
-        setStudents([]);
-      }
-    }
-
-    async function loadTests() {
-      try {
-        const tests = await fetchAvailableSwotTests_Educator();
-        const uniqueTests = [...new Set(tests)].filter((num) => num !== 0);
-        setAvailableTests(['Overall', ...uniqueTests.map((num) => `Test ${num}`)]);
-      } catch {
-        setAvailableTests(['Overall']);
-      }
-    }
-
-    if (selectedEducatorId) {
-      loadStudents();
-      loadTests();
-    } else {
-      setStudents([]);
-      setAvailableTests(['Overall']);
-    }
-  }, [selectedEducatorId]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');

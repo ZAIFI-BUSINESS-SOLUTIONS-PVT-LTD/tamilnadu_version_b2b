@@ -2,7 +2,7 @@ import React from 'react';
 import { CheckCircle, AlertCircle, Filter, Target, Atom, FlaskConical, Microscope, Leaf, PawPrint, User, ChevronDown, Mail, Phone } from 'lucide-react';
 // eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
-import { fetchInstitutionEducatorSWOT, fetchAvailableSwotTests_InstitutionEducator, getTeachersByClass } from '../../utils/api';
+import { getTeachersByClass } from '../../utils/api';
 import LoadingPage from '../components/LoadingPage.jsx';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, } from '../../components/ui/select.jsx';
 import Alert from '../../components/ui/alert.jsx';
@@ -11,117 +11,34 @@ import PropTypes from 'prop-types';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card.jsx';
 import { useState, useEffect } from 'react';
 import { useInstitution } from './index.jsx';
+import { useAvailableSwotTestsInstitution, useInstitutionEducatorSwot } from '../../hooks/useInstitutionData.js';
 
 const PREFERRED_SUBJECT_ORDER = ['Physics', 'Chemistry', 'Biology', 'Botany', 'Zoology'];
 
-const useSwotData = (fetchSwotData, fetchAvailableTestsData, selectedEducatorId) => {
-  const [selectedSubject, setSelectedSubject] = useState('Physics');
-  const [selectedTest, setSelectedTest] = useState('');
-  const [availableTests, setAvailableTests] = useState([]);
-  const [swotData, setSwotData] = useState({});
-  const [loading, setLoading] = useState(true);
+const organizeSwotData = (rawData) => {
+  const organized = {};
+  for (const metric in rawData) {
+    const subjectMap = rawData[metric];
+    const [category, title, description] = metricToCategoryMap[metric] || [];
+    if (!category) continue;
 
-  useEffect(() => {
-    if (!selectedEducatorId) return;
-    const loadAvailableTests = async () => {
-      try {
-        const tests = await fetchAvailableTestsData(selectedEducatorId);
-        const uniqueTests = [...new Set(tests)];
-        uniqueTests.sort((a, b) => {
-          if (a === 0) return -1;
-          if (b === 0) return 1;
-          return b - a;
-        });
-        const formatted = uniqueTests.map((num) => num === 0 ? 'Overall' : `Test ${num}`);
-        setAvailableTests(formatted);
-        if (!selectedTest && formatted.length > 0) {
-          setSelectedTest(formatted[0]);
-        }
-      } catch (error) {
-        console.error('Error loading available tests:', error);
+    for (const subject in subjectMap) {
+      if (!organized[subject]) {
+        organized[subject] = {
+          Strengths: [],
+          Weaknesses: [],
+          Opportunities: [],
+          Threats: [],
+        };
       }
-    };
-
-    loadAvailableTests();
-  }, [fetchAvailableTestsData, selectedEducatorId, selectedTest]);
-
-  useEffect(() => {
-    if (!selectedTest && availableTests.length > 0) {
-      setSelectedTest(availableTests[0]);
+      organized[subject][category].push({
+        title,
+        description,
+        topics: subjectMap[subject],
+      });
     }
-  }, [availableTests, selectedTest]);
-
-  useEffect(() => {
-    if (!selectedTest || !selectedEducatorId) return;
-
-    const fetchSwot = async () => {
-      setLoading(true);
-      try {
-        let testNum;
-        if (selectedTest === 'Overall') {
-          testNum = 0;
-        } else {
-          const parsed = parseInt(selectedTest.split(' ')[1], 10);
-          testNum = Number.isNaN(parsed) ? null : parsed;
-        }
-        if (testNum === null) {
-          setSwotData({});
-          setLoading(false);
-          return;
-        }
-        const response = await fetchSwotData(selectedEducatorId, testNum);
-        if (!response?.error && response?.swot) {
-          const formatted = organizeSwotData(response.swot);
-          setSwotData(formatted);
-        } else {
-          setSwotData({});
-        }
-      } catch (error) {
-        console.error('Error fetching SWOT data:', error);
-        setSwotData({});
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSwot();
-  }, [selectedTest, fetchSwotData, selectedEducatorId]);
-
-  const organizeSwotData = (rawData) => {
-    const organized = {};
-    for (const metric in rawData) {
-      const subjectMap = rawData[metric];
-      const [category, title, description] = metricToCategoryMap[metric] || [];
-      if (!category) continue;
-
-      for (const subject in subjectMap) {
-        if (!organized[subject]) {
-          organized[subject] = {
-            Strengths: [],
-            Weaknesses: [],
-            Opportunities: [],
-            Threats: [],
-          };
-        }
-        organized[subject][category].push({
-          title,
-          description,
-          topics: subjectMap[subject],
-        });
-      }
-    }
-    return organized;
-  };
-
-  return {
-    selectedSubject,
-    setSelectedSubject,
-    selectedTest,
-    setSelectedTest,
-    availableTests,
-    swotData,
-    loading,
-  };
+  }
+  return organized;
 };
 
 const metricToCategoryMap = {
@@ -219,16 +136,46 @@ const IAnalysis = () => {
     if (!Array.isArray(educators)) return [];
     return [...educators].sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
   }, [educators]);
-  const {
-    selectedSubject,
-    setSelectedSubject,
-    selectedTest,
-    setSelectedTest,
-    availableTests = [],
-    swotData,
-    loading,
-    error
-  } = useSwotData(fetchInstitutionEducatorSWOT, fetchAvailableSwotTests_InstitutionEducator, selectedEducatorId);
+  const [selectedSubject, setSelectedSubject] = useState('Physics');
+  const [selectedTest, setSelectedTest] = useState('');
+
+  const { data: availableTestsData = [], isLoading: availableTestsLoading, error: availableTestsError } = useAvailableSwotTestsInstitution(selectedEducatorId);
+
+  const availableTests = React.useMemo(() => {
+    const uniqueTests = [...new Set(availableTestsData || [])];
+    uniqueTests.sort((a, b) => {
+      if (a === 0) return -1;
+      if (b === 0) return 1;
+      return b - a;
+    });
+    return uniqueTests.map((num) => (num === 0 ? 'Overall' : `Test ${num}`));
+  }, [availableTestsData]);
+
+  useEffect(() => {
+    if (!selectedTest && availableTests.length > 0) {
+      setSelectedTest(availableTests[0]);
+    }
+    if (selectedTest && availableTests.length > 0 && !availableTests.includes(selectedTest)) {
+      setSelectedTest(availableTests[0]);
+    }
+  }, [availableTests, selectedTest]);
+
+  const selectedTestNum = React.useMemo(() => {
+    if (!selectedTest) return null;
+    if (selectedTest === 'Overall') return 0;
+    const parsed = parseInt(selectedTest.split(' ')[1], 10);
+    return Number.isNaN(parsed) ? null : parsed;
+  }, [selectedTest]);
+
+  const { data: swotResponse, isLoading: swotLoading, error: swotError } = useInstitutionEducatorSwot(selectedEducatorId, selectedTestNum);
+
+  const swotData = React.useMemo(() => {
+    if (!swotResponse || swotResponse.error || !swotResponse.swot) return {};
+    return organizeSwotData(swotResponse.swot);
+  }, [swotResponse]);
+
+  const loading = availableTestsLoading || swotLoading;
+  const error = availableTestsError || swotError;
 
   const filteredSwotData = React.useMemo(() => {
     if (!swotData) return swotData;

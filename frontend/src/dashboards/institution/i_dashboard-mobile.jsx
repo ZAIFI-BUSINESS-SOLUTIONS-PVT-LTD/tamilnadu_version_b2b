@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Line } from 'react-chartjs-2';
 import { Chart, LineElement, PointElement, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Filler } from 'chart.js';
-import { getInstitutionEducatorDashboardData, fetchInstitutionEducatorAllStudentResults } from '../../utils/api';
 import { Users, Calendar, HelpCircle, Sparkles, ChevronDown } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../../components/ui/dropdown-menu.jsx';
 import Stat from '../../components/stat-mobile';
@@ -11,6 +10,7 @@ import { Tooltip as UITooltip, TooltipTrigger as UITooltipTrigger, TooltipConten
 import LoadingPage from '../components/LoadingPage.jsx';
 import { useInstitution } from './index.jsx';
 import FilterDrawer from '../../components/ui/filter-drawer.jsx';
+import { useInstitutionEducatorDashboard, useInstitutionEducatorResults } from '../../hooks/useInstitutionData.js';
 
 // Register Chart.js components and set global font family
 Chart.register(LineElement, PointElement, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Filler);
@@ -39,14 +39,11 @@ const formatStatValue = (value) => {
 function IDashboard() {
   const { selectedEducatorId } = useInstitution();
   const navigate = useNavigate();
+  const { data: dashboardDataResp, isLoading: dashboardLoading, error: dashboardError } = useInstitutionEducatorDashboard(selectedEducatorId);
+  const { data: resultsResp, isLoading: resultsLoading, error: resultsError } = useInstitutionEducatorResults(selectedEducatorId);
 
-  const [dashboardData, setDashboardData] = useState({ summaryCardsData: [], keyInsightsData: {}, isLoading: false, error: null });
-  const [testWiseAvgMarks, setTestWiseAvgMarks] = useState({});
   const [selectedSubject, setSelectedSubject] = useState('Overall');
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [rawResults, setRawResults] = useState([]);
-  const [overallPerformance, setOverallPerformance] = useState('N/A');
-  const [improvementRate, setImprovementRate] = useState('N/A');
   const [mobileInsightIdx, setMobileInsightIdx] = useState(0);
   const mobileInsightSections = [
     { key: 'quickRecommendations', title: 'Quick Recommendations' },
@@ -54,62 +51,14 @@ function IDashboard() {
     { key: 'yetToDecide', title: 'Consistency Vulnerability' },
   ];
 
-  useEffect(() => {
-    if (!selectedEducatorId) return;
-    const fetchData = async () => {
-      setDashboardData(prev => ({ ...prev, isLoading: true, error: null }));
-      try {
-        const data = await getInstitutionEducatorDashboardData(selectedEducatorId);
-        if (!data || data.error) {
-          setDashboardData({ summaryCardsData: [], keyInsightsData: {}, isLoading: false, error: data?.error || 'Failed to load dashboard' });
-          return;
-        }
-        setDashboardData({ summaryCardsData: data.summaryCardsData || [], keyInsightsData: data.keyInsightsData || {}, isLoading: false, error: null });
-      } catch (err) {
-        setDashboardData({ summaryCardsData: [], keyInsightsData: {}, isLoading: false, error: err.message || 'Failed to load dashboard' });
-      }
-    };
-    fetchData();
-  }, [selectedEducatorId]);
+  const rawResults = useMemo(() => {
+    if (Array.isArray(resultsResp?.results)) return resultsResp.results;
+    if (Array.isArray(resultsResp)) return resultsResp;
+    return [];
+  }, [resultsResp]);
 
-  useEffect(() => {
-    if (!selectedEducatorId) return;
-    const fetchTestWiseAvg = async () => {
-      try {
-        // Try to reuse dashboard API if it contains test-wise averages, otherwise ignore
-        const resp = await getInstitutionEducatorDashboardData(selectedEducatorId);
-        if (resp && resp.testWiseAvgMarks) {
-          setTestWiseAvgMarks(resp.testWiseAvgMarks);
-        } else if (resp && resp.testWiseAvg) {
-          setTestWiseAvgMarks(resp.testWiseAvg);
-        }
-      } catch (err) {
-        // noop - leave testWiseAvgMarks empty
-      }
-    };
-    fetchTestWiseAvg();
-  }, [selectedEducatorId]);
-
-  useEffect(() => {
-    if (!selectedEducatorId) return;
-    const fetchResults = async () => {
-      try {
-        const results = await fetchInstitutionEducatorAllStudentResults(selectedEducatorId);
-        if (results && Array.isArray(results.results)) {
-          setRawResults(results.results);
-        } else if (Array.isArray(results)) {
-          setRawResults(results);
-        }
-      } catch (err) {
-        // leave rawResults empty on error
-      }
-    };
-    fetchResults();
-  }, [selectedEducatorId]);
-
-  // Compute test-wise averages from rawResults so charts can consume consistent series
-  useEffect(() => {
-    if (!rawResults || rawResults.length === 0) return;
+  const testWiseAvgMarks = useMemo(() => {
+    if (!rawResults || rawResults.length === 0) return {};
     try {
       const hasField = (field) => rawResults.some(r => Object.prototype.hasOwnProperty.call(r, field));
       const subjectKeys = { Overall: 'total_score' };
@@ -156,85 +105,71 @@ function IDashboard() {
             min,
           }));
       });
-      setTestWiseAvgMarks(avgData);
+      return avgData;
     } catch (err) {
-      // leave testWiseAvgMarks as-is on error
+      return {};
     }
   }, [rawResults]);
 
-  useEffect(() => {
-    if (rawResults.length > 0) {
-      const testNums = [...new Set(rawResults.map(r => r.test_num))].sort((a, b) => a - b);
-      const maxTestNum = Math.max(...rawResults.map(r => r.test_num));
-      const lastTestResults = rawResults.filter(r => r.test_num === maxTestNum);
-
-      // Compute average percentage for a set of rows similar to desktop `i_dashboard.jsx`.
-      const computeAvgPercentFromRows = (rows) => {
-        const vals = rows.map(r => {
-          // If API already provides percent, use it
-          if (r.total_percent !== undefined && r.total_percent !== null) return parseFloat(String(r.total_percent).replace('%', ''));
-
-          // Prefer an explicit total_score if present
-          const score = Number(r.total_score) ||
-            ((Number(r.phy_score) || 0) + (Number(r.chem_score) || 0) + (Number(r.bot_score) || 0) + (Number(r.zoo_score) || 0) + (Number(r.bio_score) || 0));
-          if (!isNaN(score) && score > 0) {
-            // total full marks assumed to be 720 (same as desktop dashboard)
-            return (score / 720) * 100;
-          }
-
-          // Fallback: if total and total_max exist, compute percent
-          if (r.total !== undefined && r.total_max !== undefined) return (Number(r.total) / Number(r.total_max)) * 100;
-
-          return null;
-        }).filter(v => v !== null && !isNaN(v));
-
-        if (vals.length === 0) return null;
-        return vals.reduce((a, b) => a + b, 0) / vals.length;
-      };
-
-      if (lastTestResults.length > 0) {
-        const avgLatestPercent = computeAvgPercentFromRows(lastTestResults);
-        if (avgLatestPercent !== null) setOverallPerformance(`${Math.round(avgLatestPercent)}%`);
-        else setOverallPerformance('N/A');
-      } else {
-        setOverallPerformance('N/A');
-      }
-
-      if (testNums.length >= 2) {
-        const last = Math.max(...testNums);
-        const prev = testNums[testNums.length - 2];
-        const lastResults = rawResults.filter(r => r.test_num === last);
-        const prevResults = rawResults.filter(r => r.test_num === prev);
-
-        if (lastResults.length > 0 && prevResults.length > 0) {
-          const calculateTestAveragePercentage = (testResults) => {
-            const total = testResults.reduce((sum, r) => {
-              const score = Number(r.total_score) ||
-                ((Number(r.phy_score) || 0) + (Number(r.chem_score) || 0) + (Number(r.bot_score) || 0) + (Number(r.zoo_score) || 0) + (Number(r.bio_score) || 0));
-              return sum + score;
-            }, 0);
-            const average = total / testResults.length;
-            return (average / 720) * 100;
-          };
-
-          const lastAvgPercent = calculateTestAveragePercentage(lastResults);
-          const prevAvgPercent = calculateTestAveragePercentage(prevResults);
-          const diff = lastAvgPercent - prevAvgPercent;
-          const absolutePoints = Math.round(diff);
-          setImprovementRate(`${absolutePoints}%`);
-        } else {
-          setImprovementRate('N/A');
-        }
-      } else {
-        setImprovementRate('N/A');
-      }
-    } else {
-      setOverallPerformance('N/A');
-      setImprovementRate('N/A');
+  const { overallPerformance, improvementRate } = useMemo(() => {
+    if (!rawResults || rawResults.length === 0) {
+      return { overallPerformance: 'N/A', improvementRate: 'N/A' };
     }
+
+    const testNums = [...new Set(rawResults.map(r => r.test_num))].sort((a, b) => a - b);
+    const maxTestNum = Math.max(...rawResults.map(r => r.test_num));
+    const lastTestResults = rawResults.filter(r => r.test_num === maxTestNum);
+
+    const computeAvgPercentFromRows = (rows) => {
+      const vals = rows.map(r => {
+        if (r.total_percent !== undefined && r.total_percent !== null) return parseFloat(String(r.total_percent).replace('%', ''));
+        const score = Number(r.total_score) ||
+          ((Number(r.phy_score) || 0) + (Number(r.chem_score) || 0) + (Number(r.bot_score) || 0) + (Number(r.zoo_score) || 0) + (Number(r.bio_score) || 0));
+        if (!isNaN(score) && score > 0) return (score / 720) * 100;
+        if (r.total !== undefined && r.total_max !== undefined) return (Number(r.total) / Number(r.total_max)) * 100;
+        return null;
+      }).filter(v => v !== null && !isNaN(v));
+
+      if (vals.length === 0) return null;
+      return vals.reduce((a, b) => a + b, 0) / vals.length;
+    };
+
+    let overallPerf = 'N/A';
+    const avgLatestPercent = lastTestResults.length > 0 ? computeAvgPercentFromRows(lastTestResults) : null;
+    if (avgLatestPercent !== null) overallPerf = `${Math.round(avgLatestPercent)}%`;
+
+    let improv = 'N/A';
+    if (testNums.length >= 2) {
+      const last = Math.max(...testNums);
+      const prev = testNums[testNums.length - 2];
+      const lastResults = rawResults.filter(r => r.test_num === last);
+      const prevResults = rawResults.filter(r => r.test_num === prev);
+
+      if (lastResults.length > 0 && prevResults.length > 0) {
+        const calculateTestAveragePercentage = (testResults) => {
+          const total = testResults.reduce((sum, r) => {
+            const score = Number(r.total_score) ||
+              ((Number(r.phy_score) || 0) + (Number(r.chem_score) || 0) + (Number(r.bot_score) || 0) + (Number(r.zoo_score) || 0) + (Number(r.bio_score) || 0));
+            return sum + score;
+          }, 0);
+          const average = total / testResults.length;
+          return (average / 720) * 100;
+        };
+
+        const lastAvgPercent = calculateTestAveragePercentage(lastResults);
+        const prevAvgPercent = calculateTestAveragePercentage(prevResults);
+        const diff = lastAvgPercent - prevAvgPercent;
+        const absolutePoints = Math.round(diff);
+        improv = `${absolutePoints}%`;
+      }
+    }
+
+    return { overallPerformance: overallPerf, improvementRate: improv };
   }, [rawResults]);
 
-  const { summaryCardsData, keyInsightsData, isLoading, error } = dashboardData;
+  const keyInsightsData = dashboardDataResp?.keyInsightsData || {};
+  const isLoading = dashboardLoading || resultsLoading;
+  const error = (dashboardError && (dashboardError.message || dashboardError)) || (resultsError && (resultsError.message || resultsError)) || null;
 
   const attendanceData = useMemo(() => {
     let percentage = 'N/A';
