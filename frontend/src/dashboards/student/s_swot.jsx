@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, AlertTriangle, Filter, ChevronDown, Target, Zap } from 'lucide-react';
-import { fetchStudentSWOT, fetchAvailableSwotTests, getStudentDashboardData } from '../../utils/api';
+import useStudentDashboard, { useStudentSWOT, useAvailableSwotTests } from '../../hooks/useStudentData';
 // import FilterDrawer from '../../components/ui/filter-drawer.jsx'; // Removed for desktop
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, } from '../../components/ui/select.jsx';
 import PropTypes from 'prop-types';
@@ -12,7 +12,7 @@ import SSWOTMobile from './s_swot-mobile.jsx';
 import LoadingPage from '../components/LoadingPage.jsx';
 import QuestionBreakdownCard from './components/QuestionBreakdownCard.jsx';
 // Custom hook to fetch and manage SWOT analysis data
-const useSwotData = (fetchSwotData, fetchAvailableTestsData) => {
+const useSwotData = () => {
     // State for the currently selected subject. Start empty and set after data loads.
     const [selectedSubject, setSelectedSubject] = useState('');
     // State for the currently selected test
@@ -21,91 +21,71 @@ const useSwotData = (fetchSwotData, fetchAvailableTestsData) => {
     const [availableTests, setAvailableTests] = useState(['Overall']);
     // State to store the organized SWOT data
     const [swotData, setSwotData] = useState({});
-    // State to track the loading status of the data fetch
-    const [loading, setLoading] = useState(true);
+    // State to track the loading status of the data fetch (derived from queries below)
     // State for error handling
     const [error, setError] = useState(null);
 
-    // useEffect hook to load the list of available tests on component mount
-    useEffect(() => {
-        const loadAvailableTests = async () => {
-            try {
-                // Fetch the available test numbers
-                const tests = await fetchAvailableTestsData();
-                // Filter out duplicate test numbers, remove any '0' values and sort descending
-                const uniqueTests = [...new Set(tests)].filter((num) => num !== 0).sort((a, b) => Number(b) - Number(a));
-                // Format the test numbers into displayable strings with 'Overall' at the top
-                const formatted = ['Overall', ...uniqueTests.map((num) => `Test ${num}`)];
-                // Update the availableTests state
-                setAvailableTests(formatted);
-                setError(null); // Clear any previous errors
-            } catch (error) {
-                console.error('Error loading available tests:', error);
-                setError(error);
-            }
-        };
+    // Use cached queries for available tests and SWOT data
+    // Determine numeric test id from selectedTest string
+    let testNum = 0;
+    if (selectedTest !== 'Overall') {
+        const m = String(selectedTest).match(/(\d+)/);
+        testNum = m ? parseInt(m[1], 10) : 0;
+    }
 
-        loadAvailableTests();
-    }, [fetchAvailableTestsData]); // Fetch available tests only once on mount
+    const availableTestsQuery = useAvailableSwotTests();
+    const swotQuery = useStudentSWOT(testNum);
 
-    // useEffect hook to fetch SWOT data whenever the selected test changes
+    // Process available tests when loaded
     useEffect(() => {
-        const fetchSwot = async () => {
-            setLoading(true);
-            setError(null); // Clear previous errors
-            try {
-                // Determine the test number to fetch (0 for 'Overall').
-                // Use regex to extract digits so both "Test 12" and "Test12" work.
-                let testNum = 0;
-                if (selectedTest !== 'Overall') {
-                    const m = String(selectedTest).match(/(\d+)/);
-                    testNum = m ? parseInt(m[1], 10) : 0;
-                }
-                // Fetch the SWOT data for the selected test
-                const response = await fetchSwotData(testNum);
-                // Debug: expose the raw response for debugging in browser console
-                try { console.log('fetchStudentSWOT response:', response); } catch (e) { /* ignore logging errors */ }
-                // If the response is successful and contains SWOT data
-                if (!response?.error && response?.swot) {
-                    // Organize the raw SWOT data into a more structured format
-                    const formatted = organizeSwotData(response.swot);
-                    // Update the swotData state
-                    setSwotData(formatted);
-                    // If there's no selected subject yet or the currently selected subject
-                    // is not present in the new data, pick the first available subject.
-                    const keys = Object.keys(formatted);
-                    if (keys.length > 0 && (!selectedSubject || !keys.includes(selectedSubject))) {
-                        // Preferred ordering for subjects
-                        const preferredOrder = ['Physics', 'Chemistry', 'Biology', 'Botany', 'Zoology'];
-                        // Pick the first subject present in formatted data according to preferred order
-                        let pick = keys[0];
-                        for (const name of preferredOrder) {
-                            const match = keys.find(k => k.toLowerCase() === name.toLowerCase());
-                            if (match) {
-                                pick = match;
-                                break;
-                            }
+        try {
+            const tests = Array.isArray(availableTestsQuery.data) ? availableTestsQuery.data : [];
+            const uniqueTests = [...new Set(tests)].filter((num) => num !== 0).sort((a, b) => Number(b) - Number(a));
+            const formatted = ['Overall', ...uniqueTests.map((num) => `Test ${num}`)];
+            setAvailableTests(formatted.length ? formatted : ['Overall']);
+            if (availableTestsQuery.error) setError(availableTestsQuery.error);
+            else setError(null);
+        } catch (e) {
+            console.error('Error processing available tests:', e);
+            setAvailableTests(['Overall']);
+            setError(e);
+        }
+    }, [availableTestsQuery.data, availableTestsQuery.error]);
+
+    // Process SWOT response when loaded
+    useEffect(() => {
+        try {
+            const response = swotQuery.data;
+            if (!swotQuery.error && response?.swot) {
+                const formatted = organizeSwotData(response.swot);
+                setSwotData(formatted);
+                const keys = Object.keys(formatted);
+                if (keys.length > 0 && (!selectedSubject || !keys.includes(selectedSubject))) {
+                    const preferredOrder = ['Physics', 'Chemistry', 'Biology', 'Botany', 'Zoology'];
+                    let pick = keys[0];
+                    for (const name of preferredOrder) {
+                        const match = keys.find(k => k.toLowerCase() === name.toLowerCase());
+                        if (match) {
+                            pick = match;
+                            break;
                         }
-                        setSelectedSubject(pick);
                     }
-                } else if (response?.error) {
-                    console.error('Error fetching SWOT data:', response.error);
-                    setSwotData({}); // Clear previous data on error
-                    setError(response.error);
-                } else {
-                    setSwotData({}); // Clear data if no SWOT data is present
+                    setSelectedSubject(pick);
                 }
-            } catch (error) {
-                console.error('Error fetching SWOT data:', error);
-                setSwotData({}); // Clear previous data on error
-                setError(error);
-            } finally {
-                setLoading(false);
+                setError(null);
+            } else if (swotQuery.error) {
+                console.error('Error fetching SWOT data:', swotQuery.error);
+                setSwotData({});
+                setError(swotQuery.error);
+            } else {
+                setSwotData({});
             }
-        };
-
-        fetchSwot();
-    }, [selectedTest, fetchSwotData]); // Fetch SWOT data when selectedTest changes
+        } catch (e) {
+            console.error('Error processing SWOT response:', e);
+            setSwotData({});
+            setError(e);
+        }
+    }, [swotQuery.data, swotQuery.error]);
 
     // Function to organize the raw SWOT data into a subject-wise structure
     const organizeSwotData = (rawData) => {
@@ -139,6 +119,8 @@ const useSwotData = (fetchSwotData, fetchAvailableTestsData) => {
     };
 
     // Return the state variables and setter functions for external use
+    const loading = Boolean(availableTestsQuery.isLoading || swotQuery.isLoading);
+
     return {
         selectedSubject,
         setSelectedSubject,
@@ -279,29 +261,15 @@ const SSWOT = () => {
         swotData,
         loading,
         error
-    } = useSwotData(fetchStudentSWOT, fetchAvailableSwotTests);
+    } = useSwotData();
 
-    // Fetch subject-wise mapping once for the Question Breakdown card
-    const [subjectWiseDataMapping, setSubjectWiseDataMapping] = useState([]);
-    const [mappingLoading, setMappingLoading] = useState(true);
+    // Use cached dashboard hook for subject-wise mapping (avoids duplicate fetch)
+    const { data: dashboardDataFromHook = {}, isLoading: dashboardLoading = false } = useStudentDashboard();
 
-    useEffect(() => {
-        const fetchMapping = async () => {
-            setMappingLoading(true);
-            try {
-                const data = await getStudentDashboardData();
-                const mapping = Array.isArray(data?.subjectWiseDataMapping) ? data.subjectWiseDataMapping : [];
-                setSubjectWiseDataMapping(mapping);
-            } catch (e) {
-                console.error('Error loading subjectWiseDataMapping for Question Breakdown:', e);
-                setSubjectWiseDataMapping([]);
-            } finally {
-                setMappingLoading(false);
-            }
-        };
-
-        fetchMapping();
-    }, []);
+    const subjectWiseDataMapping = Array.isArray(dashboardDataFromHook?.subjectWiseDataMapping)
+        ? dashboardDataFromHook.subjectWiseDataMapping
+        : [];
+    const mappingLoading = dashboardLoading;
 
     /**
      * Defines the configuration for each SWOT section, including label, icon, and styling.

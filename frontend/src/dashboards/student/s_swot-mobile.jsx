@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle, XCircle, AlertCircle, Filter, ChevronDown, Target, Zap, Atom, FlaskConical, Leaf, PawPrint, Microscope } from 'lucide-react';
-import { fetchStudentSWOT, fetchAvailableSwotTests, getStudentDashboardData } from '../../utils/api';
+import useStudentDashboard, { useStudentSWOT, useAvailableSwotTests } from '../../hooks/useStudentData';
 import FilterDrawer from '../../components/ui/filter-drawer.jsx';
 import PropTypes from 'prop-types';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card.jsx';
@@ -22,7 +22,7 @@ if (typeof window !== 'undefined' && window.devicePixelRatio) {
 
 // (use the existing mapping-based helpers and Donut implementation further below)
 
-const useSwotData = (fetchSwotData, fetchAvailableTestsData, fetchDashboardData) => {
+const useSwotData = () => {
     // State for the currently selected subject. Start empty and set after data loads.
     const [selectedSubject, setSelectedSubject] = useState('');
     // State for the currently selected test
@@ -33,110 +33,88 @@ const useSwotData = (fetchSwotData, fetchAvailableTestsData, fetchDashboardData)
     const [swotData, setSwotData] = useState({});
     // State to store subject-wise data mapping for Question Breakdown
     const [subjectWiseDataMapping, setSubjectWiseDataMapping] = useState([]);
-    // State to track the loading status of the data fetch
-    const [loading, setLoading] = useState(true);
+    // loading will be derived from query states below
     // State for error handling
     const [error, setError] = useState(null);
 
-    // useEffect hook to load the list of available tests on component mount
-    useEffect(() => {
-        const loadAvailableTests = async () => {
-            try {
-                // Fetch the available test numbers
-                const tests = await fetchAvailableTestsData();
-                // Filter out duplicate test numbers, remove any '0' values and sort descending
-                const uniqueTests = [...new Set(tests)].filter((num) => num !== 0).sort((a, b) => Number(b) - Number(a));
-                // Format the test numbers into displayable strings with 'Overall' at the top
-                // Use the same "Test" format as the dashboard mapping (e.g. "Test1")
-                // This avoids mismatches between availableTests (select options) and
-                // the keys present in `subjectWiseDataMapping` which may be "Test1".
-                const formatted = ['Overall', ...uniqueTests.map((num) => `Test${num}`)];
-                // Update the availableTests state
-                setAvailableTests(formatted);
-                setError(null); // Clear any previous errors
-            } catch (error) {
-                console.error('Error loading available tests:', error);
-                setError(error);
-            }
-        };
+    // Use cached query for available tests
+    const availableTestsQuery = useAvailableSwotTests();
 
-        loadAvailableTests();
-    }, [fetchAvailableTestsData]); // Fetch available tests only once on mount
-
-    // useEffect hook to fetch dashboard data for subjectWiseDataMapping
     useEffect(() => {
-        const loadDashboardData = async () => {
-            try {
-                const dashboardData = await fetchDashboardData();
-                if (dashboardData?.subjectWiseDataMapping) {
-                    setSubjectWiseDataMapping(dashboardData.subjectWiseDataMapping);
-                } else {
-                    setSubjectWiseDataMapping([]);
-                }
-            } catch (error) {
-                console.error('Error loading dashboard data:', error);
+        try {
+            const tests = Array.isArray(availableTestsQuery.data) ? availableTestsQuery.data : [];
+            const uniqueTests = [...new Set(tests)].filter((num) => num !== 0).sort((a, b) => Number(b) - Number(a));
+            const formatted = ['Overall', ...uniqueTests.map((num) => `Test${num}`)];
+            setAvailableTests(formatted.length ? formatted : ['Overall']);
+            if (availableTestsQuery.error) setError(availableTestsQuery.error);
+            else setError(null);
+        } catch (e) {
+            console.error('Error processing available tests:', e);
+            setAvailableTests(['Overall']);
+            setError(e);
+        }
+    }, [availableTestsQuery.data, availableTestsQuery.error]);
+
+    // Use cached dashboard query for subject-wise mapping
+    const dashboardQuery = useStudentDashboard();
+
+    useEffect(() => {
+        try {
+            const dashboardData = dashboardQuery.data || {};
+            if (Array.isArray(dashboardData?.subjectWiseDataMapping)) {
+                setSubjectWiseDataMapping(dashboardData.subjectWiseDataMapping);
+            } else {
                 setSubjectWiseDataMapping([]);
             }
-        };
+            if (dashboardQuery.error) console.warn('Dashboard query error', dashboardQuery.error);
+        } catch (e) {
+            console.error('Error processing dashboard query:', e);
+            setSubjectWiseDataMapping([]);
+        }
+    }, [dashboardQuery.data, dashboardQuery.error]);
 
-        loadDashboardData();
-    }, [fetchDashboardData]); // Fetch dashboard data only once on mount
+    // Use cached SWOT query while deriving testNum from selectedTest
+    let testNum = 0;
+    if (selectedTest !== 'Overall') {
+        const m = String(selectedTest).match(/(\d+)/);
+        testNum = m ? parseInt(m[1], 10) : 0;
+    }
 
-    // useEffect hook to fetch SWOT data whenever the selected test changes
+    const swotQuery = useStudentSWOT(testNum);
+
     useEffect(() => {
-        const fetchSwot = async () => {
-            setLoading(true);
-            setError(null); // Clear previous errors
-            try {
-                // Determine the test number to fetch (0 for 'Overall').
-                // Use a regex to extract digits so both "Test1" and "Test 1" work.
-                let testNum = 0;
-                if (selectedTest !== 'Overall') {
-                    const m = String(selectedTest).match(/(\d+)/);
-                    testNum = m ? parseInt(m[1], 10) : 0;
-                }
-                // Fetch the SWOT data for the selected test
-                const response = await fetchSwotData(testNum);
-                // Debug: expose the raw response for debugging in browser console
-                try { console.log('fetchStudentSWOT response (mobile):', response); } catch (e) { /* ignore logging errors */ }
-                // If the response is successful and contains SWOT data
-                if (!response?.error && response?.swot) {
-                    // Organize the raw SWOT data into a more structured format
-                    const formatted = organizeSwotData(response.swot);
-                    // Update the swotData state
-                    setSwotData(formatted);
-                    // Choose an initial subject based on preferred ordering if none selected
-                    const keys = Object.keys(formatted);
-                    if (keys.length > 0 && (!selectedSubject || !keys.includes(selectedSubject))) {
-                        const preferredOrder = ['Physics', 'Chemistry', 'Biology', 'Botany', 'Zoology'];
-                        let pick = keys[0];
-                        for (const name of preferredOrder) {
-                            const match = keys.find(k => k.toLowerCase() === name.toLowerCase());
-                            if (match) {
-                                pick = match;
-                                break;
-                            }
+        try {
+            const response = swotQuery.data;
+            if (!swotQuery.error && response?.swot) {
+                const formatted = organizeSwotData(response.swot);
+                setSwotData(formatted);
+                const keys = Object.keys(formatted);
+                if (keys.length > 0 && (!selectedSubject || !keys.includes(selectedSubject))) {
+                    const preferredOrder = ['Physics', 'Chemistry', 'Biology', 'Botany', 'Zoology'];
+                    let pick = keys[0];
+                    for (const name of preferredOrder) {
+                        const match = keys.find(k => k.toLowerCase() === name.toLowerCase());
+                        if (match) {
+                            pick = match;
+                            break;
                         }
-                        setSelectedSubject(pick);
                     }
-                } else if (response?.error) {
-                    console.error('Error fetching SWOT data:', response.error);
-                    setSwotData({}); // Clear previous data on error
-                    setError(response.error);
-                } else {
-                    setSwotData({}); // Clear data if no SWOT data is present
+                    setSelectedSubject(pick);
                 }
-            } catch (error) {
-                console.error('Error fetching SWOT data:', error);
-                setSwotData({}); // Clear previous data on error
-                setError(error);
-            } finally {
-                setLoading(false);
+                setError(null);
+            } else if (swotQuery.error) {
+                console.error('Error fetching SWOT data:', swotQuery.error);
+                setSwotData({});
+                setError(swotQuery.error);
+            } else {
+                setSwotData({});
             }
-        };
-
-        fetchSwot();
-    }, [selectedTest, fetchSwotData]); // Fetch SWOT data when selectedTest changes
+        } catch (e) {
+            console.error('Error processing SWOT response:', e);
+            setSwotData({});
+            setError(e);
+        }
+    }, [swotQuery.data, swotQuery.error]);
 
     // Function to organize the raw SWOT data into a subject-wise structure
     const organizeSwotData = (rawData) => {
@@ -168,6 +146,9 @@ const useSwotData = (fetchSwotData, fetchAvailableTestsData, fetchDashboardData)
         }
         return organized;
     };
+
+    // Derive loading from query states
+    const loading = Boolean(availableTestsQuery.isLoading || swotQuery?.isLoading || dashboardQuery.isLoading);
 
     // Return the state variables and setter functions for external use
     return {
@@ -311,7 +292,7 @@ const SSWOTMobile = () => {
         subjectWiseDataMapping,
         loading,
         error
-    } = useSwotData(fetchStudentSWOT, fetchAvailableSwotTests, getStudentDashboardData);
+    } = useSwotData();
 
     /**
      * Defines the configuration for each SWOT section, including label, icon, and styling.

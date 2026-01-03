@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getStudentDashboardData } from '../../utils/api.js';
+import useStudentDashboard from '../../hooks/useStudentData.js';
 import { X, BarChart2, TrendingUp, Archive, Clipboard, HelpCircle, CheckCircle, AlertTriangle, Clock, Sparkles } from 'lucide-react';
 import { Line, Doughnut } from 'react-chartjs-2';
 import { Bar } from 'react-chartjs-2';
@@ -14,149 +14,108 @@ import PageLoader from '../components/LoadingPage';
 import ActionPlanCard from './components/ActionPlanCard.jsx';
 import ChecklistCard from './components/ChecklistCard.jsx';
 import StudyTipsCard from './components/StudyTipsCard.jsx';
+import { TooltipProvider as UITooltipProvider } from '../../components/ui/tooltip.jsx';
 
 function SDashboard() {
-  // State to hold the student dashboard data and loading/error status
-  const [dashboardData, setDashboardData] = useState({
-    keyInsightsData: {},
-    subjectWiseData: {},
-    subjectWiseDataMapping: [],
-    performanceTrendDataMapping: {},
-    actionPlan: [],
-    checklist: [],
-    lastTestImprovement: 0,
-    lastTestPercentage: 0,
-    isLoading: true,
-    error: null,
+  // Use React Query hook for cached loading of student dashboard
+  const { data: remoteData, isLoading: queryLoading, error: queryError } = useStudentDashboard();
+
+  // Keep selected test local state for chart controls
+  const [selectedTest, setSelectedTest] = useState('');
+
+  // Derive normalized subjectWiseData and other aggregates from remoteData (same logic as previous manual fetch)
+  const subjectWiseDataMapping = Array.isArray(remoteData?.subjectWiseDataMapping) ? remoteData.subjectWiseDataMapping : [];
+  const globalSubjects = getSubjectsFromMapping(subjectWiseDataMapping || []);
+  const subjectWiseData = {};
+  subjectWiseDataMapping.forEach((row) => {
+    const testName = row.Test || 'Unknown Test';
+    subjectWiseData[testName] = (globalSubjects || []).map(s => {
+      if (typeof row[s] !== 'undefined' && row[s] !== null) return Number(row[s]) || 0;
+      const c = Number(row[`${s}__correct`] || 0);
+      const i = Number(row[`${s}__incorrect`] || 0);
+      const u = Number(row[`${s}__unattempted`] || row[`${s}__skipped`] || 0);
+      return c + i + u;
+    });
+  });
+  // Compute per-test totals and percentages from the detailed mapping
+  const computedPerTestStats = (subjectWiseDataMapping || []).map(row => {
+    const testName = row.Test || 'Unknown Test';
+    const details = buildSubjectDetailsFromRow(row, getSubjectsFromMapping([row]));
+    const present = Array.isArray(details) ? details.filter(d => {
+      const c = Number(d?.correct || 0);
+      const i = Number(d?.incorrect || 0);
+      const u = Number(d?.unattended ?? d?.skipped ?? d?.unattempted ?? 0);
+      return (c + i + u) > 0;
+    }) : [];
+
+    const subjectsToUse = (present.length ? present : (Array.isArray(details) ? details : []));
+    let totalQuestions = 0;
+    let totalScore = 0;
+    subjectsToUse.forEach(d => {
+      const c = Number(d?.correct || 0);
+      const i = Number(d?.incorrect || 0);
+      const u = Number(d?.unattended ?? d?.skipped ?? d?.unattempted ?? 0);
+      const q = c + i + u;
+      totalQuestions += q;
+      totalScore += (c * 4) + (i * -1) + (u * 0);
+    });
+
+    const percentage = totalQuestions > 0 ? (totalScore / (totalQuestions * 4)) * 100 : 0;
+    return { testName, totalScore, totalQuestions, percentage };
   });
 
+  const extractTestNum = (s) => {
+    const m = String(s || '').match(/(\d+)/);
+    return m ? parseInt(m[1], 10) : NaN;
+  };
+
+  const computedSortedPerTestStats = [...computedPerTestStats].sort((a, b) => {
+    const na = extractTestNum(a.testName);
+    const nb = extractTestNum(b.testName);
+    if (!isNaN(na) && !isNaN(nb)) return na - nb;
+    if (!isNaN(na)) return 1;
+    if (!isNaN(nb)) return -1;
+    return String(a.testName || '').localeCompare(String(b.testName || ''));
+  });
+  const testKeys = computedSortedPerTestStats.map(p => p.testName);
+  let computedLastTestPercentage = 0;
+  let computedLastTestImprovement = 0;
+  if (computedSortedPerTestStats.length > 0) {
+    const last = computedSortedPerTestStats[computedSortedPerTestStats.length - 1];
+    computedLastTestPercentage = Number(last.percentage || 0);
+    if (computedSortedPerTestStats.length > 1) {
+      const prev = computedSortedPerTestStats[computedSortedPerTestStats.length - 2];
+      const prevPct = Number(prev.percentage || 0);
+      computedLastTestImprovement = prevPct > 0 ? ((computedLastTestPercentage - prevPct) / prevPct) * 100 : 0;
+    }
+  }
+
+  // Compose dashboardData to preserve expected shape used throughout the component
+  const dashboardData = {
+    keyInsightsData: remoteData?.keyInsightsData || {},
+    subjectWiseData,
+    subjectWiseDataMapping,
+    performanceTrendDataMapping: remoteData?.performanceTrendDataMapping || {},
+    actionPlan: remoteData?.actionPlan || [],
+    checklist: remoteData?.checklist || [],
+    studyTips: remoteData?.studyTips || [],
+    perTestStats: computedSortedPerTestStats,
+    lastTestImprovement: computedLastTestImprovement,
+    lastTestPercentage: computedLastTestPercentage,
+    isLoading: queryLoading,
+    error: queryError?.message || queryError || null,
+  };
+
+  // Ensure default selected test is set when data arrives
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch student dashboard data from the API
-        const data = await getStudentDashboardData();
-
-        // Print all the data available in getStudentDashboardData to the console
-        console.log('Raw data from getStudentDashboardData:', data);
-
-        // Handle potential errors from the API
-        if (!data || data.error) {
-          throw new Error(data?.error || 'Failed to fetch data');
-        }
-
-        // Keep raw mappings for charts that need details
-        const subjectWiseDataMapping = Array.isArray(data.subjectWiseDataMapping) ? data.subjectWiseDataMapping : [];
-
-        // Build a normalized subjectWiseData object keyed by test name where each value is
-        // an array of subject totals ordered by the global subjects discovered in the mapping.
-        const globalSubjects = getSubjectsFromMapping(subjectWiseDataMapping || []);
-        let subjectWiseData = {};
-        subjectWiseDataMapping.forEach((row) => {
-          const testName = row.Test || 'Unknown Test';
-          subjectWiseData[testName] = (globalSubjects || []).map(s => {
-            if (typeof row[s] !== 'undefined' && row[s] !== null) return Number(row[s]) || 0;
-            const c = Number(row[`${s}__correct`] || 0);
-            const i = Number(row[`${s}__incorrect`] || 0);
-            const u = Number(row[`${s}__unattempted`] || row[`${s}__skipped`] || 0);
-            return c + i + u;
-          });
-        });
-
-        // Compute per-test totals and percentages from the detailed mapping (handles variable subject sets)
-        const perTestStats = (subjectWiseDataMapping || []).map(row => {
-          const testName = row.Test || 'Unknown Test';
-          const details = buildSubjectDetailsFromRow(row, getSubjectsFromMapping([row]));
-          const present = Array.isArray(details) ? details.filter(d => {
-            const c = Number(d?.correct || 0);
-            const i = Number(d?.incorrect || 0);
-            const u = Number(d?.unattended ?? d?.skipped ?? d?.unattempted ?? 0);
-            return (c + i + u) > 0;
-          }) : [];
-
-          // Compute total questions and total score using scoring: +4 for correct, -1 for incorrect, 0 for unattempted
-          const subjectsToUse = (present.length ? present : (Array.isArray(details) ? details : []));
-          let totalQuestions = 0;
-          let totalScore = 0;
-          subjectsToUse.forEach(d => {
-            const c = Number(d?.correct || 0);
-            const i = Number(d?.incorrect || 0);
-            const u = Number(d?.unattended ?? d?.skipped ?? d?.unattempted ?? 0);
-            const q = c + i + u;
-            totalQuestions += q;
-            totalScore += (c * 4) + (i * -1) + (u * 0);
-          });
-
-          const percentage = totalQuestions > 0 ? (totalScore / (totalQuestions * 4)) * 100 : 0;
-          return { testName, totalScore, totalQuestions, percentage };
-        });
-
-        // numeric-aware ordering: ensure tests like Test10 come after Test9
-        const extractTestNum = (s) => {
-          const m = String(s || '').match(/(\d+)/);
-          return m ? parseInt(m[1], 10) : NaN;
-        };
-
-        const sortedPerTestStats = [...perTestStats].sort((a, b) => {
-          const na = extractTestNum(a.testName);
-          const nb = extractTestNum(b.testName);
-          if (!isNaN(na) && !isNaN(nb)) return na - nb; // numeric ascending
-          if (!isNaN(na)) return 1; // numeric after non-numeric
-          if (!isNaN(nb)) return -1;
-          return String(a.testName || '').localeCompare(String(b.testName || ''));
-        });
-
-        const testKeys = sortedPerTestStats.map(p => p.testName);
-        let lastTestPercentage = 0;
-        let lastTestImprovement = 0;
-
-        if (sortedPerTestStats.length > 0) {
-          const last = sortedPerTestStats[sortedPerTestStats.length - 1];
-          lastTestPercentage = Number(last.percentage || 0);
-          if (sortedPerTestStats.length > 1) {
-            const prev = sortedPerTestStats[sortedPerTestStats.length - 2];
-            const prevPct = Number(prev.percentage || 0);
-            lastTestImprovement = prevPct > 0 ? ((lastTestPercentage - prevPct) / prevPct) * 100 : 0;
-          }
-        }
-
-        // Update the dashboard data state with the fetched and transformed data
-        setDashboardData({
-          keyInsightsData: data.keyInsightsData || {},
-          subjectWiseData,
-          subjectWiseDataMapping,
-          performanceTrendDataMapping: data.performanceTrendDataMapping || {},
-          actionPlan: data.actionPlan || [],
-          checklist: data.checklist || [],
-          studyTips: data.studyTips || [],
-          perTestStats: sortedPerTestStats,
-          lastTestImprovement,
-          lastTestPercentage,
-          isLoading: false,
-          error: null,
-        });
-
-        // Set default selections
-        if (testKeys.length > 0) {
-          setSelectedTest(testKeys[testKeys.length - 1]);
-        }
-      } catch (error) {
-        // Update the dashboard data state with the error message
-        setDashboardData((prev) => ({
-          ...prev,
-          isLoading: false,
-          error: error.message,
-        }));
-      }
-    };
-
-    // Call the fetchData function when the component mounts
-    fetchData();
-  }, []); // Empty dependency array ensures this effect runs only once
+    if (!selectedTest && testKeys.length > 0) {
+      setSelectedTest(testKeys[testKeys.length - 1]);
+    }
+  }, [testKeys, selectedTest]);
 
   // Destructure data, loading state, and error from the dashboardData state.
   const {
     keyInsightsData,
-    subjectWiseData,
     actionPlan,
     lastTestImprovement,
     lastTestPercentage,
@@ -172,12 +131,6 @@ function SDashboard() {
     isLoading,
     error
   });
-
-  // State to manage the currently selected subject for the Performance Trend Chart.
-  // Initialized as an empty string, default will be set when rendering the chart.
-  // State to manage the currently selected test for the Subject-Wise Analysis Chart.
-  // Initialized as an empty string, default will be set when rendering the chart.
-  const [selectedTest, setSelectedTest] = useState('');
 
   // --- Conditional Rendering for Loading and Error States ---
 
@@ -269,7 +222,7 @@ function SDashboard() {
   const derivedSubjects = getSubjectsFromMapping(_mapping || []) || SUBJECTS;
 
   return (
-    <>
+    <UITooltipProvider delayDuration={150}>
       {/* Mobile version */}
       <div className="block md:hidden">
         <SDashboardMobile />
@@ -444,7 +397,7 @@ function SDashboard() {
           </div>
         </div>
       </div>
-    </>
+    </UITooltipProvider>
   );
 }
 

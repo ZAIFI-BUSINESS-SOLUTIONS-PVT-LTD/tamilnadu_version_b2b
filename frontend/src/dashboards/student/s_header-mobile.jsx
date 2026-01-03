@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
-import { fetchstudentdetail } from '../../utils/api.js';
+import { useStudentDetails } from '../../hooks/useStudentData';
 import HeaderBase from '../components/header/HeaderBase.jsx';
 import UserDropdown from '../components/header/UserDropDown.jsx';
 import FeedbackModal from '../components/feedback/FeedbackModal.jsx';
@@ -16,8 +16,8 @@ import Logo from '../../assets/images/logo.svg';
  * @returns {JSX.Element} The rendered StudentHeaderMobile component.
  */
 const StudentHeaderMobile = () => {
-  // Fetch student user data using a custom hook
-  const { userData: studentInfo, isLoading } = useUserData(fetchstudentdetail, { name: '', student_id: '' });
+  // Fetch student user data using cached react-query hook
+  const { data: studentInfo = {}, isLoading } = useStudentDetails();
 
   // State for controlling the visibility of the feedback modal
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);

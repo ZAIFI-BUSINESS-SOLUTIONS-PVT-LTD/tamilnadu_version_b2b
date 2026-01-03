@@ -39,4 +39,4 @@ export const SLayout = () => {
 // Export all student dashboard components for easy import
 export { default as SDashboard } from './s_dashboard.jsx';
 export { default as SSWOT } from './s_swot';
-export { default as SPerformance } from './s_performance/s_performance.jsx';
+export { default as SPerformance } from './s_performance.jsx';

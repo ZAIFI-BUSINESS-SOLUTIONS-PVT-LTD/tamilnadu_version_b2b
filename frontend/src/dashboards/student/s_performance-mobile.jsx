@@ -11,12 +11,12 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import usePerformanceData from '../../components/hooks/s_performance/s_usePerformanceData.js';
-import LoadingPage from '../../components/LoadingPage.jsx';
+import usePerformanceData from '../components/hooks/s_performance/s_usePerformanceData.js';
+import LoadingPage from '../components/LoadingPage.jsx';
 import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
-import FilterDrawer from '../../../components/ui/filter-drawer.jsx';
-import { Button } from '../../../components/ui/button.jsx';
+import FilterDrawer from '../../components/ui/filter-drawer.jsx';
+import { Button } from '../../components/ui/button.jsx';
 
 // Define InsightCard component
 const InsightCard = ({ item, insights, className = '' }) => (

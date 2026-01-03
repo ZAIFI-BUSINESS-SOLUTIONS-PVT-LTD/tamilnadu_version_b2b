@@ -9,7 +9,7 @@ import {
   AlignLeft
 } from "lucide-react";
 import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
-import { fetchstudentdetail } from '../../utils/api.js';
+import { useStudentDetails } from '../../hooks/useStudentData';
 import DesktopSidebar from '../components/header/DesktopSidebar.jsx';
 import UserDropdown from '../components/header/UserDropDown.jsx';
 import DownloadReportModal from './components/s_studentreport.jsx';
@@ -29,8 +29,8 @@ import StudentHeaderMobile from './s_header-mobile.jsx';
  * @returns {JSX.Element} The rendered StudentHeader component.
  */
 const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
-  // Fetch student user data using a custom hook
-  const { userData: studentInfo, isLoading } = useUserData(fetchstudentdetail, { name: '', student_id: '' });
+  // Fetch student user data using cached react-query hook
+  const { data: studentInfo = {}, isLoading } = useStudentDetails();
 
   // State for controlling the visibility of the student report download modal
   const [showDownloadModal, setShowDownloadModal] = useState(false);
@@ -146,7 +146,7 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
             {/* Greeting and Current Date */}
             <div className="flex flex-col">
               <h1 className="text-2xl font-semibold text-gray-800 font-poppins">
-                {getGreeting()}, <span className="text-blue-600">{isLoading ? "Student" : studentInfo.name.split(' ')[0]}</span>
+                {getGreeting()}, <span className="text-blue-600">{studentInfo?.name?.split?.(' ')[0] || 'Student'}</span>
               </h1>
               <p className="text-sm text-gray-500">
                 {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
