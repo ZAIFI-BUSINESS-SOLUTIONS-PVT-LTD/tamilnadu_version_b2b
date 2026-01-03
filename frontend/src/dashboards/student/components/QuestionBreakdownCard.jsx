@@ -195,8 +195,8 @@ const QuestionBreakdownCard = ({
   const effectiveSelectedSubject = selectedSubject || 'Overall';
 
   return (
-    <Card className="h-full rounded-2xl border border-gray-250 bg-gray-100 flex flex-col items-start justify-start sm:p-0 p-2">
-      <div className="w-full flex flex-col h-full bg-white p-3 sm:p-6 rounded-2xl">
+    <Card className="h-full rounded-2xl border border-border bg-card flex flex-col items-start justify-start sm:p-0 p-2">
+      <div className="w-full flex flex-col h-full p-3 sm:p-6 rounded-2xl">
         <div className="w-full flex flex-col sm:flex-row justify-between items-start mb-0.5 sm:mb-1">
           <div className="flex flex-col items-start justify-start gap-0">
             <h3 className="text-primary text-lg font-semibold">{title}</h3>

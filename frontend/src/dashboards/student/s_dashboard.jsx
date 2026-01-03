@@ -14,7 +14,7 @@ import PageLoader from '../components/LoadingPage';
 import ActionPlanCard from './components/ActionPlanCard.jsx';
 import ChecklistCard from './components/ChecklistCard.jsx';
 import StudyTipsCard from './components/StudyTipsCard.jsx';
-import { TooltipProvider as UITooltipProvider } from '../../components/ui/tooltip.jsx';
+import { Tooltip as UITooltip, TooltipTrigger as UITooltipTrigger, TooltipContent as UITooltipContent, TooltipProvider as UITooltipProvider } from '../../components/ui/tooltip.jsx';
 
 function SDashboard() {
   // Use React Query hook for cached loading of student dashboard
@@ -142,15 +142,15 @@ function SDashboard() {
   // Display an error message if data fetching failed.
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-96 p-4 bg-white rounded-lg shadow-md">
+      <div className="flex flex-col items-center justify-center h-96 p-4 bg-white dark:bg-slate-900 rounded-lg shadow-md">
         <div className="max-w-md w-full">
           <Alert
             variant="destructive"
             icon={<AlertTriangle className="h-5 w-5 text-rose-600" aria-hidden />}
             className="shadow-sm"
           >
-            <div className="font-semibold text-sm">Error loading dashboard!</div>
-            <div className="text-xs text-rose-800/80 break-words">{error}</div>
+            <div className="font-semibold text-sm text-rose-700 dark:text-rose-300">Error loading dashboard!</div>
+            <div className="text-xs text-rose-800/80 dark:text-rose-200/80 break-words">{error}</div>
           </Alert>
         </div>
       </div>
@@ -239,47 +239,71 @@ function SDashboard() {
                 {summaryCards.length ? (
                   summaryCards.map((card, idx) => {
                     const { icon: iconName = 'Default', title = 'Untitled Stat', value, id, description } = card;
-                    const iconMap = {
-                      ChartLine: <BarChart2 />,
-                      ClipboardText: <Clipboard />,
-                      TrendUp: <TrendingUp />,
-                      Archive: <Archive />,
-                      Default: <HelpCircle />
+                    const iconComponent = ICON_MAPPING[iconName] || ICON_MAPPING.Default;
+                    const iconStyles = {
+                      ChartLine: { iconBg: 'bg-blue-50 dark:bg-blue-950/30', iconClass: 'text-blue-600 dark:text-blue-400' },
+                      TrendUp: { iconBg: 'bg-emerald-50 dark:bg-emerald-950/30', iconClass: 'text-emerald-600 dark:text-emerald-400' },
+                      ClipboardText: { iconBg: 'bg-violet-50 dark:bg-violet-950/30', iconClass: 'text-violet-600 dark:text-violet-400' },
+                      Archive: { iconBg: 'bg-amber-50 dark:bg-amber-950/30', iconClass: 'text-amber-600 dark:text-amber-400' },
+                      Default: { iconBg: 'bg-muted', iconClass: 'text-muted-foreground' }
                     };
+                    const { iconBg, iconClass } = iconStyles[iconName] || iconStyles.Default;
 
-                    // same badge generation as before
+                    // theme-aligned badges using tooltip wrapper (matches educator/institution dashboards)
                     const badgeForThis = (() => {
+                      const renderIcon = (type) => {
+                        if (type === 'up') return (<svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 12V4M8 4l-3 3M8 4l3 3" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>);
+                        if (type === 'down') return (<svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 4v8M8 12l3-3M8 12l-3-3" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>);
+                        return (<svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 8h8M8 8H0" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" /></svg>);
+                      };
+
                       if (title === 'Recent Test Performance') {
-                        const isPositive = lastTestImprovement > 0;
-                        const isNegative = lastTestImprovement < 0;
+                        const rate = Number(lastTestImprovement || 0);
+                        const isPositive = rate > 0;
+                        const isNegative = rate < 0;
+                        const cls = isPositive
+                          ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-200 border border-green-200/60 dark:border-green-800/60'
+                          : isNegative
+                            ? 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-200 border border-red-200/60 dark:border-red-800/60'
+                            : 'bg-muted text-muted-foreground border border-border font-semibold';
+
                         return (
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${isPositive ? 'bg-green-50 text-green-700' : isNegative ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-700'}`}>
-                            {isPositive ? '+' : ''}{lastTestImprovement.toFixed(1)}%
-                            {isPositive ? (
-                              <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 12V4M8 4l-3 3M8 4l3 3" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                            ) : isNegative ? (
-                              <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 4v8M8 12l3-3M8 12l-3-3" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                            ) : (
-                              <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 8h8M8 8H0" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" /></svg>
-                            )}
-                          </span>
+                          <UITooltip>
+                            <UITooltipTrigger asChild>
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${cls}`}>
+                                {isPositive ? renderIcon('up') : isNegative ? renderIcon('down') : renderIcon('neutral')}
+                                {isPositive ? `+${rate.toFixed(1)}%` : `${rate.toFixed(1)}%`}
+                              </span>
+                            </UITooltipTrigger>
+                            <UITooltipContent side="top">
+                              {isPositive ? 'Improved compared to previous test.' : isNegative ? 'Dropped compared to previous test.' : 'No change compared to previous test.'}
+                            </UITooltipContent>
+                          </UITooltip>
                         );
                       }
 
                       if (title === 'Average Percentage') {
-                        const isPositive = averageMarkImprovement > 0;
-                        const isNegative = averageMarkImprovement < 0;
+                        const rate = Number(averageMarkImprovement || 0);
+                        const isPositive = rate > 0;
+                        const isNegative = rate < 0;
+                        const cls = isPositive
+                          ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-200 border border-green-200/60 dark:border-green-800/60'
+                          : isNegative
+                            ? 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-200 border border-red-200/60 dark:border-red-800/60'
+                            : 'bg-muted text-muted-foreground border border-border font-semibold';
+
                         return (
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${isPositive ? 'bg-green-50 text-green-700' : isNegative ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-700'}`}>
-                            {isPositive ? '+' : ''}{averageMarkImprovement.toFixed(1)}%
-                            {isPositive ? (
-                              <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 12V4M8 4l-3 3M8 4l3 3" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                            ) : isNegative ? (
-                              <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 4v8M8 12l3-3M8 12l-3-3" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                            ) : (
-                              <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 8h8M8 8H0" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" /></svg>
-                            )}
-                          </span>
+                          <UITooltip>
+                            <UITooltipTrigger asChild>
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${cls}`}>
+                                {isPositive ? renderIcon('up') : isNegative ? renderIcon('down') : renderIcon('neutral')}
+                                {isPositive ? `+${rate.toFixed(1)}%` : `${rate.toFixed(1)}%`}
+                              </span>
+                            </UITooltipTrigger>
+                            <UITooltipContent side="top">
+                              {isPositive ? 'Average percentage increased compared to prior tests.' : isNegative ? 'Average percentage decreased compared to prior tests.' : 'No significant change in average percentage.'}
+                            </UITooltipContent>
+                          </UITooltip>
                         );
                       }
 
@@ -289,7 +313,9 @@ function SDashboard() {
                     return (
                       <Stat
                         key={id || `stat-${idx}`}
-                        icon={iconMap[iconName] || iconMap.Default}
+                        icon={iconComponent}
+                        iconBg={iconBg}
+                        iconClass={iconClass}
                         label={title}
                         value={formatStatValue(value)}
                         info={description}
@@ -312,6 +338,8 @@ function SDashboard() {
               {/* Desktop: keep Carousel (visible on sm and up) */}
               <div className="hidden sm:block w-full">
                 <Carousel
+                  height={300}
+                  className="!p-4 md:!p-6 lg:!p-8 !gap-4 md:!gap-6"
                   sections={[
                     {
                       key: 'keyStrengths',
@@ -319,7 +347,7 @@ function SDashboard() {
                       items: keyInsightsData?.keyStrengths || [],
                       icon: <CheckCircle size={18} className="text-green-500" />,
                       tag: (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
+                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 dark:bg-primary-950/20 dark:border-primary-800/40 dark:text-primary-300 flex items-center gap-1">
                           <Sparkles size={12} />
                           AI Generated
                         </span>
@@ -333,7 +361,7 @@ function SDashboard() {
                       items: keyInsightsData?.yetToDecide || [],
                       icon: <Clock size={18} className="text-purple-500" />,
                       tag: (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
+                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 dark:bg-primary-950/20 dark:border-primary-800/40 dark:text-primary-300 flex items-center gap-1">
                           <Sparkles size={12} />
                           AI Generated
                         </span>
@@ -352,6 +380,7 @@ function SDashboard() {
             <div className="flex flex-col gap-3">
               <Carousel
                 height={520}
+                className="!p-4 md:!p-6 lg:!p-8 !gap-4 md:!gap-6"
                 sections={[
                   {
                     key: 'actionPlan',
@@ -417,6 +446,13 @@ ChartJS.register(
   Legend,
   BarElement
 );
+
+// Keep chart fonts consistent with the app theme
+try {
+  Chart.defaults.font.family = 'Tenorite, sans-serif';
+} catch (e) {
+  // ignore if Chart not available as global `Chart` in this build
+}
 
 /** DonutChart component: shows correct/incorrect/unattended counts for a selected test and subject */
 // Helper: normalize a mapping row into an array of subjectDetails with { name, correct, incorrect, unattended, total }
@@ -578,25 +614,24 @@ const DonutChart = ({ subjectWiseDataMapping = [], selectedTest, setSelectedTest
 
 /** SummaryCards (inlined from SummaryCard.jsx) */
 const ICON_MAPPING = {
-  ChartLine: <BarChart2 aria-hidden="true" />,
-  ClipboardText: <Clipboard aria-hidden="true" />,
-  TrendUp: <TrendingUp aria-hidden="true" />,
-  Archive: <Archive aria-hidden="true" />,
-  Default: <HelpCircle aria-hidden="true" />
+  ChartLine: <BarChart2 aria-hidden="true" className="text-foreground" />,
+  ClipboardText: <Clipboard aria-hidden="true" className="text-foreground" />,
+  TrendUp: <TrendingUp aria-hidden="true" className="text-foreground" />,
+  Archive: <Archive aria-hidden="true" className="text-foreground" />,
+  Default: <HelpCircle aria-hidden="true" className="text-foreground" />
 };
 
 const formatStatValue = (value) => {
-  if (value === null || value === undefined || String(value).trim() === '') return 'N/A';
+  if (value === null || value === undefined || String(value).trim() === '') {
+    return 'N/A';
+  }
   const valueStr = String(value);
   const isPercentage = valueStr.includes('%');
-  const numericString = valueStr.replace(/[^0-9.-]+/g, '');
+  const numericString = valueStr.replace(/[^0-9.-]+/g, "");
   const rawValue = parseFloat(numericString);
   if (!isNaN(rawValue)) {
-    // Check if this is likely a percentage value (between 0-100 with decimals)
-    const isLikelyPercentage = rawValue >= 0 && rawValue <= 100 && valueStr.includes('.');
-    const wasIntendedAsInteger = Number.isInteger(rawValue) && !valueStr.includes('.');
-    const formattedValue = wasIntendedAsInteger ? rawValue : rawValue.toFixed(1);
-    return isPercentage || isLikelyPercentage ? `${formattedValue}%` : formattedValue;
+    const formattedValue = isPercentage ? rawValue.toFixed(1) : (Number.isInteger(rawValue) ? rawValue : rawValue.toFixed(1));
+    return isPercentage ? `${formattedValue}%` : formattedValue;
   }
   return valueStr;
 };
@@ -831,6 +866,12 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
     ]
   };
 
+  const isDark = (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')) || (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+  const tooltipColors = isDark
+    ? { backgroundColor: '#0b1220', titleColor: '#ffffff', bodyColor: '#e5e7eb', borderColor: '#1f2937' }
+    : { backgroundColor: '#ffffffff', titleColor: '#374151', bodyColor: '#374151', borderColor: '#d1d5db' };
+
   const options = {
     responsive: true,
     maintainAspectRatio: false,
@@ -838,10 +879,7 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
       legend: { display: false },
       tooltip: {
         enabled: true,
-        backgroundColor: '#ffffffff',
-        titleColor: '#374151',
-        bodyColor: '#374151',
-        borderColor: '#d1d5db',
+        ...tooltipColors,
         borderWidth: 1,
         padding: 12,
         cornerRadius: 8,
@@ -851,7 +889,6 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
         mode: 'index',
         intersect: false,
         callbacks: {
-          // show label as provided (handles Test names)
           title: (items) => items && items[0] ? items[0].label : undefined
         }
       },
@@ -867,7 +904,7 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
     scales: {
       x: {
         title: { display: false },
-        ticks: { color: '#6b7280', font: { family: 'Tenorite, sans-serif', size: 13 } },
+        ticks: { color: isDark ? '#cbd5e1' : '#6b7280', font: { family: 'Tenorite, sans-serif', size: 13 } },
         border: { width: 0 },
         grid: { display: false }
       },
@@ -882,8 +919,8 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
           return base;
         })(),
         border: { width: 0 },
-        ticks: { color: '#6b7280', font: { family: 'Tenorite, sans-serif', size: 13 }, stepSize: 100 },
-        grid: { color: '#f3f4f6' }
+        ticks: { color: isDark ? '#cbd5e1' : '#6b7280', font: { family: 'Tenorite, sans-serif', size: 13 }, stepSize: 100 },
+        grid: { color: isDark ? '#0b1220' : '#f3f4f6' }
       }
     },
     layout: { padding: { top: 16, bottom: 8, left: 8, right: 8 } },
@@ -893,14 +930,14 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
   // subjects already defined above
 
   return (
-    <Card className="rounded-2xl border border-gray-250 bg-gray-100 flex flex-col items-start justify-start sm:p-0 p-2">
+    <Card className="rounded-2xl border border-border bg-muted flex flex-col items-start justify-start sm:p-0 p-2">
       {/* Title & Chart Container */}
-      <div className="w-full flex flex-col bg-white p-3 sm:p-6 rounded-2xl">
+      <div className="w-full flex flex-col bg-card border border-border p-3 sm:p-6 rounded-2xl">
         {/* Title Container: stack on mobile, row on sm+ */}
         <div className="w-full flex flex-col sm:flex-row justify-between items-start mb-0.5 sm:mb-1">
-          <div className="flex flex-col items-start justify-start gap-0">
-            <span className="text-lg sm:text-lg font-bold text-primary">{title}</span>
-            <p className="text-gray-500 text-xs sm:text-sm mb-3 sm:mb-6">Average marks across all students</p>
+            <div className="flex flex-col items-start justify-start gap-0">
+            <span className="text-base sm:text-xl font-semibold text-foreground">{title}</span>
+            <p className="text-muted-foreground text-xs sm:text-sm mb-3 sm:mb-6">Average marks across all students</p>
           </div>
 
           {subjects.length > 0 && (
@@ -910,7 +947,7 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
                 <div className="flex justify-end">
                   <div className="w-fit text-start">
                     <Select onValueChange={(val) => effectiveSetSelectedSubject(val)} value={effectiveSelectedSubject}>
-                      <SelectTrigger className="w-full max-w-full justify-between truncate text-start bg-white border-gray-200">
+                      <SelectTrigger className="w-full max-w-full justify-between truncate text-start bg-card border border-border text-foreground">
                         <SelectValue placeholder="Select Subject" />
                       </SelectTrigger>
                       <SelectContent side="bottom" align="start">
@@ -926,8 +963,8 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
               {/* Mobile: stacked select below the paragraph (visible only on mobile) */}
               <div className="block sm:hidden w-full my-2">
                 <div className="w-full">
-                  <Select onValueChange={(val) => effectiveSetSelectedSubject(val)} value={effectiveSelectedSubject}>
-                    <SelectTrigger className="w-full justify-between text-start bg-white border-gray-200">
+                    <Select onValueChange={(val) => effectiveSetSelectedSubject(val)} value={effectiveSelectedSubject}>
+                    <SelectTrigger className="w-full justify-between text-start bg-card border border-border text-foreground">
                       <SelectValue placeholder="Select Subject" />
                     </SelectTrigger>
                     <SelectContent side="bottom" align="end">
@@ -943,7 +980,7 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
         </div>
 
         {/* Area Chart Container */}
-        <div className="flex flex-col items-center justify-center w-full bg-white h-56 sm:h-80 border border-gray-200 rounded-lg">
+        <div className="flex flex-col items-center justify-center w-full bg-card h-56 sm:h-80 border border-border rounded-lg">
           <Line data={chartData} options={options} width={260} height={140} />
         </div>
       </div>
@@ -1029,12 +1066,12 @@ const SubjectWiseAnalysisChart = ({ selectedTest, setSelectedTest, testData = {}
   };
 
   return (
-    <Card className="rounded-2xl border border-gray-250 bg-gray-100 flex flex-col items-start justify-start sm:p-0 p-2">
-      <div className="w-full flex flex-col bg-white p-3 sm:p-6 rounded-2xl">
+    <Card className="rounded-2xl border border-border bg-muted flex flex-col items-start justify-start sm:p-0 p-2">
+      <div className="w-full flex flex-col bg-card border border-border p-3 sm:p-6 rounded-2xl">
         <div className="w-full flex flex-col sm:flex-row justify-between items-start mb-0.5 sm:mb-1">
           <div className="flex flex-col items-start justify-start gap-0">
-            <h3 className="text-primary text-lg font-semibold">{title}</h3>
-            <p className="text-gray-500 text-xs sm:text-sm mb-3 sm:mb-6">Breakdown of marks across subjects for the selected test</p>
+            <h3 className="text-foreground text-lg sm:text-xl font-semibold">{title}</h3>
+            <p className="text-muted-foreground text-xs sm:text-sm mb-3 sm:mb-6">Breakdown of marks across subjects for the selected test</p>
           </div>
 
           {testList.length > 0 && (
@@ -1044,7 +1081,7 @@ const SubjectWiseAnalysisChart = ({ selectedTest, setSelectedTest, testData = {}
                 <div className="flex justify-end">
                   <div className="w-fit">
                     <Select onValueChange={(val) => effectiveSetSelectedTest(val)} value={effectiveSelectedTest}>
-                      <SelectTrigger className="w-full max-w-full justify-between truncate text-start bg-white border-gray-200">
+                      <SelectTrigger className="w-full max-w-full justify-between truncate text-start bg-card border border-border text-foreground">
                         <SelectValue placeholder="Select Test" />
                       </SelectTrigger>
                       <SelectContent side="bottom" align="start">
@@ -1061,7 +1098,7 @@ const SubjectWiseAnalysisChart = ({ selectedTest, setSelectedTest, testData = {}
               <div className="block sm:hidden w-full mb-2">
                 <div className="w-full">
                   <Select onValueChange={(val) => effectiveSetSelectedTest(val)} value={effectiveSelectedTest}>
-                    <SelectTrigger className="w-full justify-between text-start bg-white border-gray-200">
+                    <SelectTrigger className="w-full justify-between text-start bg-card border border-border text-foreground">
                       <SelectValue placeholder="Select Test" />
                     </SelectTrigger>
                     <SelectContent side="bottom" align="end">
@@ -1077,7 +1114,7 @@ const SubjectWiseAnalysisChart = ({ selectedTest, setSelectedTest, testData = {}
         </div>
 
 
-        <div className="w-full border border-bg-primary rounded-lg p-2 bg-white h-56 sm:h-80">
+        <div className="w-full border border-border rounded-lg p-2 bg-card h-56 sm:h-80">
           {currentTestData.length ? (
             // use a small plugin to draw values above bars using beforeDatasetsDraw hook
             <Bar
@@ -1146,7 +1183,7 @@ const MobileInsightsSelect = ({ keyInsightsData = {} }) => {
 
       <div className="mt-3">
         {items.length ? (
-          <ul className="list-disc list-inside space-y-2 text-sm text-gray-700 bg-gray-100 p-3 rounded-lg">
+          <ul className="list-disc list-inside space-y-2 text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
             {items.map((it, i) => (
               <li key={`${selected}-${i}`}>{it}</li>
             ))}
