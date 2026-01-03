@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   fetchInstitutionEducators,
   getInstitutionEducatorDashboardData,
@@ -123,4 +123,29 @@ export const useAllInstitutionEducatorResults = (educators) => {
     staleTime: 10 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
   });
+};
+
+// Prefetch all institution data in the background for faster page navigation
+export const usePrefetchInstitutionData = (selectedEducatorId) => {
+  const queryClient = useQueryClient();
+  
+  const prefetchAll = async () => {
+    if (!selectedEducatorId) return;
+    
+    // Prefetch available SWOT tests for the selected educator
+    queryClient.prefetchQuery({
+      queryKey: ['institution', 'availableSwotTests', selectedEducatorId],
+      queryFn: () => fetchAvailableSwotTests_InstitutionEducator(selectedEducatorId),
+      staleTime: 30 * 60 * 1000,
+    });
+    
+    // Prefetch educator students list
+    queryClient.prefetchQuery({
+      queryKey: ['institution', 'educatorStudents', selectedEducatorId],
+      queryFn: () => fetchInstitutionEducatorStudents(selectedEducatorId),
+      staleTime: 10 * 60 * 1000,
+    });
+  };
+  
+  return { prefetchAll };
 };

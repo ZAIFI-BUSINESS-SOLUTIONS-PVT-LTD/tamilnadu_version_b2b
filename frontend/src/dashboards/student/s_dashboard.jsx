@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import useStudentDashboard from '../../hooks/useStudentData.js';
+import useStudentDashboard, { usePrefetchStudentData } from '../../hooks/useStudentData.js';
 import { X, BarChart2, TrendingUp, Archive, Clipboard, HelpCircle, CheckCircle, AlertTriangle, Clock, Sparkles } from 'lucide-react';
 import { Line, Doughnut } from 'react-chartjs-2';
 import { Bar } from 'react-chartjs-2';
@@ -22,6 +22,9 @@ const CHART_HEIGHT_CLASS = 'h-56 sm:h-80';
 function SDashboard() {
   // Use React Query hook for cached loading of student dashboard
   const { data: remoteData, isLoading: queryLoading, error: queryError } = useStudentDashboard();
+  
+  // Prefetch other page data in background
+  const { prefetchAll } = usePrefetchStudentData();
 
   // Keep selected test local state for chart controls
   const [selectedTest, setSelectedTest] = useState('');
@@ -115,6 +118,13 @@ function SDashboard() {
       setSelectedTest(testKeys[testKeys.length - 1]);
     }
   }, [testKeys, selectedTest]);
+  
+  // Prefetch all other page data in background after dashboard loads
+  useEffect(() => {
+    if (remoteData && !queryLoading) {
+      prefetchAll();
+    }
+  }, [remoteData, queryLoading, prefetchAll]);
 
   // Destructure data, loading state, and error from the dashboardData state.
   const {

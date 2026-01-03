@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Line } from 'react-chartjs-2';
 import { Chart, LineElement, PointElement, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Filler } from 'chart.js';
-import { useEducatorDashboard, useEducatorResults } from '../../hooks/useEducatorData.js';
+import { useEducatorDashboard, useEducatorResults, usePrefetchEducatorData } from '../../hooks/useEducatorData.js';
 import { Users, Calendar, HelpCircle, Sparkles, ChevronDown } from 'lucide-react';
 import Carousel from '../../components/carousel';
 import Stat from '../../components/stat';
@@ -47,6 +47,7 @@ function EDashboard() {
   const [mobileInsightIdx, setMobileInsightIdx] = useState(0);
   const navigate = useNavigate();
   const { data: dashboardDataResp, isLoading: dashboardLoading, error: dashboardError } = useEducatorDashboard();
+  const { prefetchAll } = usePrefetchEducatorData();
   // For mobile insights dropdown (must be after dashboardData is defined)
   const mobileInsightSections = [
     {
@@ -241,6 +242,13 @@ function EDashboard() {
       else setSelectedSubject(keys[0]);
     }
   }, [testWiseAvgMarks, selectedSubject]);
+  
+  // Prefetch all other page data in background after dashboard loads
+  useEffect(() => {
+    if (dashboardDataResp && !dashboardLoading) {
+      prefetchAll();
+    }
+  }, [dashboardDataResp, dashboardLoading, prefetchAll]);
 
   const summaryCardsData = dashboardDataResp?.summaryCardsData || [];
   const keyInsightsData = dashboardDataResp?.keyInsightsData || {};

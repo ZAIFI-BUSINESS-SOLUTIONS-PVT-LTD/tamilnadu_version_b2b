@@ -12,7 +12,7 @@ import { Button } from '../../components/ui/button.jsx';
 import EStudentListMock from '../components/StudentListMock';
 import LoadingPage from '../components/LoadingPage.jsx';
 import { useInstitution } from './index.jsx';
-import { useInstitutionEducatorDashboard, useInstitutionEducatorResults, useAllInstitutionEducatorResults } from '../../hooks/useInstitutionData';
+import { useInstitutionEducatorDashboard, useInstitutionEducatorResults, useAllInstitutionEducatorResults, usePrefetchInstitutionData } from '../../hooks/useInstitutionData';
 
 // Register Chart.js components and set global font family
 Chart.register(LineElement, PointElement, ArcElement, ChartTooltip, Legend, CategoryScale, LinearScale, BarElement, Filler);
@@ -58,6 +58,7 @@ function IDashboard() {
   const { data: dashboardData, isLoading: dashboardLoading, error: dashboardError } = useInstitutionEducatorDashboard(selectedEducatorId);
   const { data: resultsData, isLoading: resultsLoading, error: resultsError } = useInstitutionEducatorResults(selectedEducatorId);
   const { data: allEducatorResults } = useAllInstitutionEducatorResults(educators);
+  const { prefetchAll } = usePrefetchInstitutionData(selectedEducatorId);
 
   useEffect(() => {
     if (!selectedEducatorId) return;
@@ -193,6 +194,13 @@ function IDashboard() {
       setImprovementRate('N/A');
     }
   }, [rawResults]);
+  
+  // Prefetch all other page data in background after dashboard loads
+  useEffect(() => {
+    if (dashboardData && !dashboardLoading && selectedEducatorId) {
+      prefetchAll();
+    }
+  }, [dashboardData, dashboardLoading, selectedEducatorId, prefetchAll]);
 
   const summaryCardsData = dashboardData?.summaryCardsData || [];
   const keyInsightsData = dashboardData?.keyInsightsData || {};

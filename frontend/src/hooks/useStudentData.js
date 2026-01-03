@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getStudentDashboardData, getStudentPerformanceData, fetchStudentSWOT, fetchAvailableSwotTests, fetchstudentdetail } from '../utils/api.js';
 
 export function useStudentDashboard(options = {}) {
@@ -55,6 +55,43 @@ export function useStudentDetails(options = {}) {
     retry: 1,
     ...options,
   });
+}
+
+// Prefetch all student data in the background for faster page navigation
+export function usePrefetchStudentData() {
+  const queryClient = useQueryClient();
+  
+  const prefetchAll = async () => {
+    // Prefetch available SWOT tests first to get test numbers
+    queryClient.prefetchQuery({
+      queryKey: ['student', 'available-swot-tests'],
+      queryFn: fetchAvailableSwotTests,
+      staleTime: 1000 * 60 * 30,
+    });
+    
+    // Prefetch performance data
+    queryClient.prefetchQuery({
+      queryKey: ['student', 'performance'],
+      queryFn: getStudentPerformanceData,
+      staleTime: 1000 * 60 * 5,
+    });
+    
+    // Prefetch student details
+    queryClient.prefetchQuery({
+      queryKey: ['student', 'details'],
+      queryFn: fetchstudentdetail,
+      staleTime: 1000 * 60 * 10,
+    });
+    
+    // Prefetch SWOT for most recent test (test 0)
+    queryClient.prefetchQuery({
+      queryKey: ['student', 'swot', 0],
+      queryFn: () => fetchStudentSWOT(0),
+      staleTime: 1000 * 60 * 5,
+    });
+  };
+  
+  return { prefetchAll };
 }
 
 export default useStudentDashboard;

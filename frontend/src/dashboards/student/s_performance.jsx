@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { WarningCircle } from '@phosphor-icons/react';
+import { CircleAlert } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -466,7 +466,7 @@ const SPerformance = () => {
     return (
       <div className="flex flex-col items-center justify-center h-96 p-4 bg-base-100 rounded-lg shadow-md">
         <div className="alert alert-error max-w-md shadow-lg">
-          <WarningCircle className="stroke-current shrink-0 h-6 w-6" weight="bold" />
+          <CircleAlert className="stroke-current shrink-0 h-6 w-6" weight="bold" />
           <div>
             <h3 className="font-bold">Error loading performance data!</h3>
             <div className="text-xs">{error}</div> {/* Display the specific error message */}

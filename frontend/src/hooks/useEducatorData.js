@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getEducatorDashboardData,
   fetchEducatorAllStudentResults,
@@ -66,4 +66,34 @@ export const useEducatorSwot = (testNum) => {
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
+};
+
+// Prefetch all educator data in the background for faster page navigation
+export const usePrefetchEducatorData = () => {
+  const queryClient = useQueryClient();
+  
+  const prefetchAll = async () => {
+    // Prefetch student results
+    queryClient.prefetchQuery({
+      queryKey: ['educator', 'results'],
+      queryFn: fetchEducatorAllStudentResults,
+      staleTime: 10 * 60 * 1000,
+    });
+    
+    // Prefetch students list
+    queryClient.prefetchQuery({
+      queryKey: ['educator', 'students'],
+      queryFn: fetcheducatorstudent,
+      staleTime: 10 * 60 * 1000,
+    });
+    
+    // Prefetch available SWOT tests
+    queryClient.prefetchQuery({
+      queryKey: ['educator', 'availableSwotTests'],
+      queryFn: fetchAvailableSwotTests_Educator,
+      staleTime: 30 * 60 * 1000,
+    });
+  };
+  
+  return { prefetchAll };
 };
