@@ -2,7 +2,7 @@ import React, { useState, useEffect, createContext, useContext } from 'react';
 import { Outlet } from 'react-router-dom';
 import IHeader from './i_header.jsx';
 import { ILayout as ILayoutMobile } from './index-mobile.jsx';
-import { fetchInstitutionEducators } from '../../utils/api';
+import { useInstitutionEducators } from '../../hooks/useInstitutionData';
 
 export const InstitutionContext = createContext();
 
@@ -10,33 +10,22 @@ export const useInstitution = () => useContext(InstitutionContext);
 
 export const ILayout = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [educators, setEducators] = useState([]);
   const [selectedEducatorId, setSelectedEducatorId] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: educatorsData, isLoading } = useInstitutionEducators();
 
   const toggleSidebarCollapse = () => setIsSidebarCollapsed(prev => !prev);
   const sidebarMarginClass = isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64';
 
+  const educators = React.useMemo(() => {
+    if (!educatorsData || educatorsData.error) return [];
+    return Array.isArray(educatorsData) ? educatorsData : (educatorsData.educators || []);
+  }, [educatorsData]);
+
   useEffect(() => {
-    const loadEducators = async () => {
-      try {
-        const data = await fetchInstitutionEducators();
-        if (data && !data.error) {
-            // Assuming data is an array or has an educators property
-            const eduList = Array.isArray(data) ? data : (data.educators || []);
-            setEducators(eduList);
-            if (eduList.length > 0) {
-                setSelectedEducatorId(eduList[0].id); // Default to first educator
-            }
-        }
-      } catch (err) {
-        console.error("Failed to load educators", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadEducators();
-  }, []);
+    if (!selectedEducatorId && educators.length > 0) {
+      setSelectedEducatorId(educators[0].id);
+    }
+  }, [educators, selectedEducatorId]);
 
   return (
     <InstitutionContext.Provider value={{ educators, selectedEducatorId, setSelectedEducatorId, isLoading }}>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Line } from 'react-chartjs-2';
 import { Chart, LineElement, PointElement, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Filler } from 'chart.js';
-import { getEducatorDashboardData, fetchEducatorAllStudentResults } from '../../utils/api';
+import { useEducatorDashboard, useEducatorResults, usePrefetchEducatorData } from '../../hooks/useEducatorData.js';
 import { Users, Calendar, HelpCircle, Sparkles, ChevronDown } from 'lucide-react';
 import Carousel from '../../components/carousel';
 import Stat from '../../components/stat';
@@ -46,21 +46,17 @@ const formatStatValue = (value) => {
 function EDashboard() {
   const [mobileInsightIdx, setMobileInsightIdx] = useState(0);
   const navigate = useNavigate();
-  const [dashboardData, setDashboardData] = useState({
-    summaryCardsData: [],
-    keyInsightsData: {},
-    isLoading: true,
-    error: null,
-  });
+  const { data: dashboardDataResp, isLoading: dashboardLoading, error: dashboardError } = useEducatorDashboard();
+  const { prefetchAll } = usePrefetchEducatorData();
   // For mobile insights dropdown (must be after dashboardData is defined)
   const mobileInsightSections = [
     {
       key: 'quickRecommendations',
       title: 'Quick Recommendations',
-      items: dashboardData.keyInsightsData.quickRecommendations || [],
+      items: dashboardDataResp?.keyInsightsData?.quickRecommendations || [],
       tag: (
-        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-          <Sparkles size={12} />
+        <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 flex items-center gap-1">
+          <Sparkles size={12} className="text-primary" />
           AI Generated
         </span>
       ),
@@ -69,10 +65,10 @@ function EDashboard() {
     {
       key: 'keyStrengths',
       title: 'Key Strengths',
-      items: dashboardData.keyInsightsData.keyStrengths || [],
+      items: dashboardDataResp?.keyInsightsData?.keyStrengths || [],
       tag: (
-        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-          <Sparkles size={12} />
+        <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 flex items-center gap-1">
+          <Sparkles size={12} className="text-primary" />
           AI Generated
         </span>
       ),
@@ -82,10 +78,10 @@ function EDashboard() {
     {
       key: 'yetToDecide',
       title: 'Consistency Vulnerability',
-      items: dashboardData.keyInsightsData.yetToDecide || [],
+      items: dashboardDataResp?.keyInsightsData?.yetToDecide || [],
       tag: (
-        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-          <Sparkles size={12} />
+        <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 flex items-center gap-1">
+          <Sparkles size={12} className="text-primary" />
           AI Generated
         </span>
       ),
@@ -93,128 +89,134 @@ function EDashboard() {
     },
   ];
 
-  const [testWiseAvgMarks, setTestWiseAvgMarks] = useState({});
+  
   const [selectedSubject, setSelectedSubject] = useState('Overall');
-  const [rawResults, setRawResults] = useState([]);
-  const [overallPerformance, setOverallPerformance] = useState('N/A');
-  const [improvementRate, setImprovementRate] = useState('N/A');
+  const { data: resultsResp, isLoading: resultsLoading, error: resultsError } = useEducatorResults();
   // Local refs/state for mobile-only stat carousel (custom implementation)
   const statScrollRef = useRef(null);
   const [statIdx, setStatIdx] = useState(0);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const data = await getEducatorDashboardData();
-        if (!data || data.error) {
-          throw new Error(data?.error || 'Failed to fetch data');
-        }
-        setDashboardData({
-          summaryCardsData: data.summaryCardsData || [],
-          keyInsightsData: data.keyInsightsData || {},
-          isLoading: false,
-          error: null,
-        });
-      } catch (error) {
-        setDashboardData((prev) => ({
-          ...prev,
-          isLoading: false,
-          error: error.message,
-        }));
-      }
-    };
-    fetchData();
-  }, []);
+  
 
-  useEffect(() => {
-    const fetchTestWiseAvg = async () => {
-      try {
-        const results = await fetchEducatorAllStudentResults();
-        if (results && Array.isArray(results.results)) {
-          // Dynamically detect which subject score fields exist in the results
-          const hasField = (field) => results.results.some(r => Object.prototype.hasOwnProperty.call(r, field));
-          const subjectKeys = { Overall: 'total_score' };
-          if (hasField('phy_score') || hasField('phy_total')) subjectKeys['Physics'] = 'phy_score';
-          if (hasField('chem_score') || hasField('chem_total')) subjectKeys['Chemistry'] = 'chem_score';
-          const hasBioData = results.results.some(r => (Number(r.bio_score) || 0) > 0 || (Number(r.bio_total) || 0) > 0);
-          if (hasBioData) {
-            subjectKeys['Biology'] = 'bio_score';
+  
+  
+  // derive rawResults array from query response
+  const rawResults = useMemo(() => {
+    if (!resultsResp) return [];
+    if (Array.isArray(resultsResp.results)) return resultsResp.results;
+    if (Array.isArray(resultsResp)) return resultsResp;
+    return [];
+  }, [resultsResp]);
+
+  // derive testWiseAvgMarks from rawResults (same logic as before)
+  const testWiseAvgMarks = useMemo(() => {
+    if (!rawResults || rawResults.length === 0) return {};
+    try {
+      const hasField = (field) => rawResults.some(r => Object.prototype.hasOwnProperty.call(r, field));
+      const subjectKeys = { Overall: 'total_score' };
+      if (hasField('phy_score') || hasField('phy_total')) subjectKeys['Physics'] = 'phy_score';
+      if (hasField('chem_score') || hasField('chem_total')) subjectKeys['Chemistry'] = 'chem_score';
+
+      const hasBioData = rawResults.some(r => (Number(r.bio_score) || 0) > 0 || (Number(r.bio_total) || 0) > 0);
+      const hasBotZooData = rawResults.some(r => (Number(r.bot_score) || 0) > 0 || (Number(r.bot_total) || 0) > 0 || (Number(r.zoo_score) || 0) > 0 || (Number(r.zoo_total) || 0) > 0);
+
+      if (hasBioData || hasBotZooData) {
+        subjectKeys['Biology'] = 'unified_bio';
+      }
+
+      if (hasField('bot_score') || hasField('bot_total')) subjectKeys['Botany'] = 'bot_score';
+      if (hasField('zoo_score') || hasField('zoo_total')) subjectKeys['Zoology'] = 'zoo_score';
+
+      const avgData = {};
+      Object.keys(subjectKeys).forEach(subject => {
+        const key = subjectKeys[subject];
+        const testMap = {};
+        rawResults.forEach(r => {
+          const testNum = r.test_num;
+          let score;
+          if (key === 'unified_bio') {
+            score = (Number(r.bio_score) || 0) + (Number(r.bot_score) || 0) + (Number(r.zoo_score) || 0);
+          } else if (key === 'computed_bio') {
+            score = (Number(r.bot_score) || 0) + (Number(r.zoo_score) || 0);
+          } else {
+            score = Number(r[key]) || 0;
           }
+          if (!testMap[testNum]) testMap[testNum] = { total: 0, count: 0, max: score, min: score };
+          testMap[testNum].total += score;
+          testMap[testNum].count += 1;
+          if (score > testMap[testNum].max) testMap[testNum].max = score;
+          if (score < testMap[testNum].min) testMap[testNum].min = score;
+        });
+        avgData[subject] = Object.entries(testMap)
+          .sort((a, b) => Number(a[0]) - Number(b[0]))
+          .map(([testNum, { total, count, max, min }]) => ({
+            test: `Test ${testNum}`,
+            testNum: Number(testNum),
+            avg: count ? Math.round(total / count) : 0,
+            max,
+            min,
+          }));
+      });
+      return avgData;
+    } catch (err) {
+      return {};
+    }
+  }, [rawResults]);
 
-          const hasBotData = results.results.some(r => (Number(r.bot_score) || 0) > 0 || (Number(r.bot_total) || 0) > 0);
-          if (hasBotData) subjectKeys['Botany'] = 'bot_score';
+  // compute overallPerformance and improvementRate from rawResults
+  const { overallPerformance, improvementRate } = useMemo(() => {
+    if (!rawResults || rawResults.length === 0) return { overallPerformance: 'N/A', improvementRate: 'N/A' };
 
-          const hasZooData = results.results.some(r => (Number(r.zoo_score) || 0) > 0 || (Number(r.zoo_total) || 0) > 0);
-          if (hasZooData) subjectKeys['Zoology'] = 'zoo_score';
-          const avgData = {};
-          Object.keys(subjectKeys).forEach(subject => {
-            const key = subjectKeys[subject];
-            const testMap = {};
-            results.results.forEach(r => {
-              const testNum = r.test_num;
-              const score = Number(r[key]) || 0;
-              if (!testMap[testNum]) {
-                testMap[testNum] = { total: 0, count: 0, max: score, min: score };
-              }
-              testMap[testNum].total += score;
-              testMap[testNum].count += 1;
-              if (score > testMap[testNum].max) testMap[testNum].max = score;
-              if (score < testMap[testNum].min) testMap[testNum].min = score;
-            });
-            avgData[subject] = Object.entries(testMap)
-              .sort((a, b) => Number(a[0]) - Number(b[0]))
-              .map(([testNum, { total, count, max, min }]) => ({
-                test: `Test ${testNum}`,
-                testNum: Number(testNum),
-                avg: count ? Math.round(total / count) : 0,
-                max: max,
-                min: min
-              }));
-          });
-          // If Biology wasn't directly present but Botany and Zoology were,
-          // compute Biology by summing Botany + Zoology per test to ensure
-          // the UI/chart can show Biology consistently.
-          setTestWiseAvgMarks(avgData);
-        }
-      } catch (err) {
-        // fallback to dummy data if needed
-        const dummyData = {
-          Overall: [
-            { test: 'Test 1', avg: 540, max: 650, min: 400 },
-            { test: 'Test 2', avg: 620, max: 720, min: 500 },
-            { test: 'Test 3', avg: 480, max: 580, min: 350 },
-            { test: 'Test 4', avg: 700, max: 800, min: 600 }
-          ],
-          Physics: [
-            { test: 'Test 1', avg: 20, max: 35, min: 5 },
-            { test: 'Test 2', avg: 25, max: 40, min: 10 },
-            { test: 'Test 3', avg: 18, max: 30, min: 5 },
-            { test: 'Test 4', avg: 30, max: 45, min: 15 }
-          ],
-          Chemistry: [
-            { test: 'Test 1', avg: 15, max: 30, min: 0 },
-            { test: 'Test 2', avg: 20, max: 35, min: 5 },
-            { test: 'Test 3', avg: 12, max: 25, min: 0 },
-            { test: 'Test 4', avg: 25, max: 40, min: 10 }
-          ],
-          Botany: [
-            { test: 'Test 1', avg: 25, max: 40, min: 10 },
-            { test: 'Test 2', avg: 30, max: 45, min: 15 },
-            { test: 'Test 3', avg: 22, max: 35, min: 10 },
-            { test: 'Test 4', avg: 35, max: 50, min: 20 }
-          ],
-          Zoology: [
-            { test: 'Test 1', avg: 10, max: 25, min: 0 },
-            { test: 'Test 2', avg: 15, max: 30, min: 0 },
-            { test: 'Test 3', avg: 8, max: 20, min: 0 },
-            { test: 'Test 4', avg: 20, max: 35, min: 5 }
-          ]
-        };
-        setTestWiseAvgMarks(dummyData);
-      }
+    const testNums = [...new Set(rawResults.map(r => r.test_num))].sort((a, b) => a - b);
+    const maxTestNum = Math.max(...rawResults.map(r => r.test_num));
+    const lastTestResults = rawResults.filter(r => r.test_num === maxTestNum);
+
+    const computeAvgPercentFromRows = (rows) => {
+      const vals = rows.map(r => {
+        if (r.total_percent !== undefined && r.total_percent !== null) return parseFloat(String(r.total_percent).replace('%', ''));
+        const score = Number(r.total_score) ||
+          ((Number(r.phy_score) || 0) + (Number(r.chem_score) || 0) + (Number(r.bot_score) || 0) + (Number(r.zoo_score) || 0) + (Number(r.bio_score) || 0));
+        if (!isNaN(score) && score > 0) return (score / 720) * 100;
+        if (r.total !== undefined && r.total_max !== undefined) return (Number(r.total) / Number(r.total_max)) * 100;
+        return null;
+      }).filter(v => v !== null && !isNaN(v));
+
+      if (vals.length === 0) return null;
+      return vals.reduce((a, b) => a + b, 0) / vals.length;
     };
-    fetchTestWiseAvg();
-  }, []);
+
+    let overallPerf = 'N/A';
+    const avgLatestPercent = lastTestResults.length > 0 ? computeAvgPercentFromRows(lastTestResults) : null;
+    if (avgLatestPercent !== null) overallPerf = `${Math.round(avgLatestPercent)}%`;
+
+    let improv = 'N/A';
+    if (testNums.length >= 2) {
+      const last = Math.max(...testNums);
+      const prev = testNums[testNums.length - 2];
+      const lastResults = rawResults.filter(r => r.test_num === last);
+      const prevResults = rawResults.filter(r => r.test_num === prev);
+
+      if (lastResults.length > 0 && prevResults.length > 0) {
+        const calculateTestAveragePercentage = (testResults) => {
+          const total = testResults.reduce((sum, r) => {
+            const score = Number(r.total_score) ||
+              ((Number(r.phy_score) || 0) + (Number(r.chem_score) || 0) + (Number(r.bot_score) || 0) + (Number(r.zoo_score) || 0) + (Number(r.bio_score) || 0));
+            return sum + score;
+          }, 0);
+          const average = total / testResults.length;
+          return (average / 720) * 100;
+        };
+
+        const lastAvgPercent = calculateTestAveragePercentage(lastResults);
+        const prevAvgPercent = calculateTestAveragePercentage(prevResults);
+        const diff = lastAvgPercent - prevAvgPercent;
+        const absolutePoints = Math.round(diff);
+        improv = `${absolutePoints}%`;
+      }
+    }
+
+    return { overallPerformance: overallPerf, improvementRate: improv };
+  }, [rawResults]);
 
   // Build subject options for the Select control based on the computed testWiseAvgMarks
   const subjectOptions = useMemo(() => {
@@ -240,80 +242,18 @@ function EDashboard() {
       else setSelectedSubject(keys[0]);
     }
   }, [testWiseAvgMarks, selectedSubject]);
-
+  
+  // Prefetch all other page data in background after dashboard loads
   useEffect(() => {
-    fetchEducatorAllStudentResults().then(results => {
-      if (results && Array.isArray(results.results)) {
-        setRawResults(results.results);
-        // Calculate overall performance for the last test only - AVERAGE SCORE AS PERCENTAGE OF 720
-        if (results.results.length > 0) {
-          const maxTestNum = Math.max(...results.results.map(r => r.test_num));
-          const lastTestResults = results.results.filter(r => r.test_num === maxTestNum);
+    if (dashboardDataResp && !dashboardLoading) {
+      prefetchAll();
+    }
+  }, [dashboardDataResp, dashboardLoading, prefetchAll]);
 
-          if (lastTestResults.length > 0) {
-            // Calculate simple average: sum of all student scores / number of students
-            const totalScoreSum = lastTestResults.reduce((sum, r) => {
-              // Use total_score if available, otherwise sum subject scores
-              const score = Number(r.total_score) ||
-                ((Number(r.phy_score) || 0) +
-                  (Number(r.chem_score) || 0) +
-                  (Number(r.bot_score) || 0) +
-                  (Number(r.zoo_score) || 0) +
-                  (Number(r.bio_score) || 0));
-              return sum + score;
-            }, 0);
-
-            const averageScore = totalScoreSum / lastTestResults.length;
-            // Convert average score to percentage of 720
-            const percentage = Math.round((averageScore / 720) * 100);
-            setOverallPerformance(`${percentage}%`);
-          } else {
-            setOverallPerformance('N/A');
-          }
-        } else {
-          setOverallPerformance('N/A');
-        }
-
-        // Calculate improvement rate as difference between last and previous test averages (as percentages)
-        const testNums = [...new Set(results.results.map(r => r.test_num))].sort((a, b) => a - b);
-        if (testNums.length >= 2) {
-          const lastTestNum = testNums[testNums.length - 1];
-          const prevTestNum = testNums[testNums.length - 2];
-          const lastResults = results.results.filter(r => r.test_num === lastTestNum);
-          const prevResults = results.results.filter(r => r.test_num === prevTestNum);
-
-          if (lastResults.length > 0 && prevResults.length > 0) {
-            const calculateTestAveragePercentage = (testResults) => {
-              const total = testResults.reduce((sum, r) => {
-                const score = Number(r.total_score) ||
-                  ((Number(r.phy_score) || 0) +
-                    (Number(r.chem_score) || 0) +
-                    (Number(r.bot_score) || 0) +
-                    (Number(r.zoo_score) || 0) +
-                    (Number(r.bio_score) || 0));
-                return sum + score;
-              }, 0);
-              const average = total / testResults.length;
-              return (average / 720) * 100; // Return as percentage of 720
-            };
-
-            const lastAvgPercent = calculateTestAveragePercentage(lastResults);
-            const prevAvgPercent = calculateTestAveragePercentage(prevResults);
-            const diff = lastAvgPercent - prevAvgPercent;
-            // Absolute improvement in percentage points (rounded) — store this in `improvementRate`
-            const absolutePoints = Math.round(diff);
-            setImprovementRate(`${absolutePoints}%`);
-          } else {
-            setImprovementRate('N/A');
-          }
-        } else {
-          setImprovementRate('N/A');
-        }
-      }
-    });
-  }, []);
-
-  const { summaryCardsData, keyInsightsData, isLoading, error } = dashboardData;
+  const summaryCardsData = dashboardDataResp?.summaryCardsData || [];
+  const keyInsightsData = dashboardDataResp?.keyInsightsData || {};
+  const isLoading = dashboardLoading || resultsLoading;
+  const error = (dashboardError && (dashboardError.message || dashboardError)) || (resultsError && (resultsError.message || resultsError)) || null;
 
   const attendanceData = useMemo(() => {
     let percentage = 'N/A';
@@ -361,7 +301,7 @@ function EDashboard() {
         </div>
 
         {/* Desktop version */}
-        <div className="hidden md:block mt-20">
+        <div className="hidden md:block mt-12">
           {/* Section 1: Grid layout */}
           <div className="grid grid-cols-1 gap-4 sm:gap-8 lg:grid-cols-2">
             {/* Left Column */}
@@ -370,6 +310,8 @@ function EDashboard() {
               <div className="hidden sm:grid grid-cols-1 gap-3 sm:gap-6 sm:grid-cols-2">
                 <Stat
                   icon={ICON_MAPPING.Users}
+                  iconBg="bg-blue-50 dark:bg-blue-950/30"
+                  iconClass="text-blue-600 dark:text-blue-400"
                   label="Recent Test Performance"
                   info={"Average total score in the latest test (as % of full marks)."}
                   value={formatStatValue(overallPerformance)}
@@ -385,7 +327,7 @@ function EDashboard() {
                         <UITooltipTrigger asChild>
                           <span
                             aria-label={isNegative ? "Improvement rate: negative change compared to previous test" : "Improvement rate: positive change compared to previous test"}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${isNegative ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${isNegative ? 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-200 border border-red-200/60 dark:border-red-800/60' : 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-200 border border-green-200/60 dark:border-green-800/60'}`}>
                             {isNegative ? (
                               <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 4v8M8 12l3-3M8 12l-3-3" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                             ) : (
@@ -404,6 +346,8 @@ function EDashboard() {
                 {/* Add hidden accessible tooltip text for the improvement-rate badge */}
                 <Stat
                   icon={ICON_MAPPING.Calendar}
+                  iconBg="bg-green-50 dark:bg-green-950/30"
+                  iconClass="text-green-600 dark:text-green-400"
                   label="Attendance"
                   info={"Percentage of students who attended the latest test."}
                   value={`${attendanceData.percentage}%`}
@@ -412,7 +356,7 @@ function EDashboard() {
                       <UITooltipTrigger asChild>
                         <span
                           aria-label={attendanceData.direction === 'up' ? "Attendance increased since previous test" : "Attendance decreased since previous test"}
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold ml-1 sm:ml-2 text-xs sm:text-sm ${attendanceData.direction === 'up' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold ml-1 sm:ml-2 text-xs sm:text-sm ${attendanceData.direction === 'up' ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-200 border border-green-200/60 dark:border-green-800/60' : 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-200 border border-red-200/60 dark:border-red-800/60'}`}>
                           {attendanceData.direction === 'up' ? (
                             <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 12V4M8 4l-3 3M8 4l3 3" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                           ) : (
@@ -427,7 +371,7 @@ function EDashboard() {
                   ) : attendanceData.direction === 'same' ? (
                     <UITooltip>
                       <UITooltipTrigger asChild>
-                        <span aria-label="No change in attendance" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-semibold ml-1 sm:ml-2 text-xs sm:text-sm">
+                        <span aria-label="No change in attendance" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border font-semibold ml-1 sm:ml-2 text-xs sm:text-sm">
                           No change
                         </span>
                       </UITooltipTrigger>
@@ -464,6 +408,8 @@ function EDashboard() {
                     <div className="snap-center flex-shrink-0 w-full p-2">
                       <Stat
                         icon={ICON_MAPPING.Users}
+                        iconBg="bg-blue-50 dark:bg-blue-950/30"
+                        iconClass="text-blue-600 dark:text-blue-400"
                         label="Overall Performance"
                         info="Shows the overall average performance of all students for the last test."
                         value={formatStatValue(overallPerformance)}
@@ -479,7 +425,7 @@ function EDashboard() {
                               <UITooltipTrigger asChild>
                                 <span
                                   aria-label={isNegative ? "Improvement rate: negative change compared to previous test" : "Improvement rate: positive change compared to previous test"}
-                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${isNegative ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${isNegative ? 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-200 border border-red-200/60 dark:border-red-800/60' : 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-200 border border-green-200/60 dark:border-green-800/60'}`}>
                                   {isNegative ? (
                                     <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 4v8M8 12l3-3M8 12l-3-3" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                                   ) : (
@@ -499,6 +445,8 @@ function EDashboard() {
                     <div className="snap-center flex-shrink-0 w-full p-2">
                       <Stat
                         icon={ICON_MAPPING.Calendar}
+                        iconBg="bg-green-50 dark:bg-green-950/30"
+                        iconClass="text-green-600 dark:text-green-400"
                         label="Attendance"
                         info="Percentage of students who attended the most recent test."
                         value={`${attendanceData.percentage}%`}
@@ -507,7 +455,7 @@ function EDashboard() {
                             <UITooltipTrigger asChild>
                               <span
                                 aria-label={attendanceData.direction === 'up' ? "Attendance increased since previous test" : "Attendance decreased since previous test"}
-                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold ml-1 sm:ml-2 text-xs sm:text-sm ${attendanceData.direction === 'up' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold ml-1 sm:ml-2 text-xs sm:text-sm ${attendanceData.direction === 'up' ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-200 border border-green-200/60 dark:border-green-800/60' : 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-200 border border-red-200/60 dark:border-red-800/60'}`}>
                                 {attendanceData.direction === 'up' ? (
                                   <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 12V4M8 4l-3 3M8 4l3 3" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                                 ) : (
@@ -522,7 +470,7 @@ function EDashboard() {
                         ) : attendanceData.direction === 'same' ? (
                           <UITooltip>
                             <UITooltipTrigger asChild>
-                              <span aria-label="No change in attendance" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-semibold ml-1 sm:ml-2 text-xs sm:text-sm">
+                              <span aria-label="No change in attendance" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border font-semibold ml-1 sm:ml-2 text-xs sm:text-sm">
                                 No change
                               </span>
                             </UITooltipTrigger>
@@ -605,8 +553,8 @@ function EDashboard() {
                         title: 'Quick Recommendations',
                         items: keyInsightsData.quickRecommendations || [],
                         tag: (
-                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-                            <Sparkles size={12} />
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 flex items-center gap-1">
+                            <Sparkles size={12} className="text-primary" />
                             AI Generated
                           </span>
                         ),
@@ -616,8 +564,8 @@ function EDashboard() {
                         title: 'Key Strengths',
                         items: keyInsightsData.keyStrengths || [],
                         tag: (
-                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-                            <Sparkles size={12} />
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 flex items-center gap-1">
+                            <Sparkles size={12} className="text-primary" />
                             AI Generated
                           </span>
                         ),
@@ -627,8 +575,8 @@ function EDashboard() {
                         title: 'Areas for Improvement',
                         items: keyInsightsData.areasForImprovement || [],
                         tag: (
-                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-                            <Sparkles size={12} />
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 flex items-center gap-1">
+                            <Sparkles size={12} className="text-primary" />
                             AI Generated
                           </span>
                         ),
@@ -638,8 +586,8 @@ function EDashboard() {
                         title: 'Consistency Vulnerability',
                         items: keyInsightsData.yetToDecide || [],
                         tag: (
-                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-                            <Sparkles size={12} />
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 flex items-center gap-1">
+                            <Sparkles size={12} className="text-primary" />
                             AI Generated
                           </span>
                         ),
@@ -653,12 +601,12 @@ function EDashboard() {
                 </div>
               </div>
             </div>
-            <Card className="rounded-2xl border border-gray-250 bg-gray-100 flex flex-col items-start justify-start sm:p-0 p-2">
+            <Card className="rounded-2xl border border-border bg-muted flex flex-col items-start justify-start sm:p-0 p-2">
               {/* Title & Chart Container */}
-              <div className="w-full flex flex-col bg-white p-3 sm:p-6 rounded-2xl">
+              <div className="w-full flex flex-col bg-card border border-border p-3 sm:p-6 rounded-2xl">
                 {/* Title Container */}
                 <div className="w-full flex justify-between items-center mb-0.5 sm:mb-1">
-                  <span className="text-base sm:text-xl font-semibold text-primary text-left">Class Performance</span>
+                  <span className="text-base sm:text-xl font-semibold text-foreground text-left">Class Performance</span>
                   <Select value={selectedSubject} onValueChange={setSelectedSubject}>
                     <SelectTrigger className="w-[140px]">
                       <SelectValue />
@@ -673,10 +621,10 @@ function EDashboard() {
                   </Select>
                 </div>
 
-                <p className="text-gray-500 text-xs sm:text-sm mb-3 sm:mb-6">Average marks across all students</p>
+                <p className="text-muted-foreground text-xs sm:text-sm mb-3 sm:mb-6">Average marks across all students</p>
 
                 {/* Area Chart Container */}
-                <div className="flex flex-col items-center justify-center w-full mb-3 sm:mb-6 bg-white h-56 sm:h-80">
+                <div className="flex flex-col items-center justify-center w-full mb-3 sm:mb-6 bg-card h-56 sm:h-80">
                   {(() => {
                     const currentData = testWiseAvgMarks[selectedSubject] || [];
                     const dataValues = currentData.map(d => d.avg);
@@ -796,7 +744,7 @@ function EDashboard() {
                                 font: { family: 'Tenorite, sans-serif', size: 13 },
                                 stepSize: stepSize,
                               },
-                              grid: { color: "#f3f4f6" },
+                              grid: { color: "rgba(156, 163, 175, 0.15)" },
                             },
                           },
                           layout: {
@@ -836,19 +784,19 @@ function EDashboard() {
                       lowest = Math.min(...currentData.map(t => t.avg));
                     }
                     return <>
-                      <div className="flex flex-col items-center border-r border-gray-200 pr-2 sm:pr-0">
-                        <span className="text-gray-500 text-xs sm:text-sm">Avg Highest Score</span>
+                      <div className="flex flex-col items-center border-r border-border pr-2 sm:pr-0">
+                        <span className="text-muted-foreground text-xs sm:text-sm">Avg Highest Score</span>
                         <div className="flex items-center">
-                          <span className="text-base sm:text-lg font-semibold">{highest}</span>
+                          <span className="text-base sm:text-lg font-semibold text-foreground">{highest}</span>
                           <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500 ml-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M5 15l7-7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </div>
                       </div>
                       <div className="flex flex-col items-center">
-                        <span className="text-gray-500 text-xs sm:text-sm">Avg Lowest Score</span>
+                        <span className="text-muted-foreground text-xs sm:text-sm">Avg Lowest Score</span>
                         <div className="flex items-center">
-                          <span className="text-base sm:text-lg font-semibold">{lowest}</span>
+                          <span className="text-base sm:text-lg font-semibold text-foreground">{lowest}</span>
                           <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-500 ml-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M19 9l-7 7-7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
@@ -861,9 +809,9 @@ function EDashboard() {
             </Card>
           </div>
         </div>
-        <Card className="hidden md:block rounded-2xl border border-gray-250 bg-white w-full mt-4 sm:mt-8 p-3 sm:p-8">
-          <div className="flex items-center justify-between pb-2 sm:pb-6 border-b border-gray-200">
-            <h2 className="text-base sm:text-xl font-bold text-gray-800">Recent Test Results</h2>
+        <Card className="hidden md:block rounded-2xl border border-gray-250 bg-card w-full mt-4 sm:mt-8 p-3 sm:p-8">
+          <div className="flex items-center justify-between pb-2 sm:pb-6">
+            <h2 className="text-base sm:text-xl font-bold text-foreground">Recent Test Results</h2>
             <Button
               variant="ghost"
               size="sm"

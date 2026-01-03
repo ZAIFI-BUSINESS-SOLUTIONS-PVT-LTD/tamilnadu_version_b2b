@@ -22,9 +22,7 @@ import {
   ELayout,
   EDashboard,
   ESWOT,
-  EUpload,
   EResults,
-  EChatbot
 } from './dashboards/educator';
 
 // Import student layout and nested pages
@@ -73,10 +71,8 @@ function App() {
         {/* Educator protected pages via layout */}
         <Route path="/educator/*" element={<ELayout />}>
           <Route path="dashboard" element={<EDashboard />} />
-          <Route path="upload" element={<EUpload />} />
           <Route path="swot" element={<ESWOT />} />
           <Route path="students" element={<EResults />} />
-          <Route path="chatbot" element={<EChatbot />} />
         </Route>
         {/* Student protected pages via layout */}
         <Route path="/student/*" element={<SLayout />}>

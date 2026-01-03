@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Line } from 'react-chartjs-2';
 import { Chart, LineElement, PointElement, ArcElement, Tooltip as ChartTooltip, Legend, CategoryScale, LinearScale, BarElement, Filler } from 'chart.js';
-import { getInstitutionEducatorDashboardData, fetchInstitutionEducatorAllStudentResults, getTeachersByClass } from '../../utils/api';
 import { Users, Calendar, HelpCircle, Sparkles, BookOpen, Building, Percent } from 'lucide-react';
 import Carousel from '../../components/carousel';
 import Stat from '../../components/stat';
@@ -13,6 +12,7 @@ import { Button } from '../../components/ui/button.jsx';
 import EStudentListMock from '../components/StudentListMock';
 import LoadingPage from '../components/LoadingPage.jsx';
 import { useInstitution } from './index.jsx';
+import { useInstitutionEducatorDashboard, useInstitutionEducatorResults, useAllInstitutionEducatorResults, usePrefetchInstitutionData } from '../../hooks/useInstitutionData';
 
 // Register Chart.js components and set global font family
 Chart.register(LineElement, PointElement, ArcElement, ChartTooltip, Legend, CategoryScale, LinearScale, BarElement, Filler);
@@ -49,116 +49,71 @@ function IDashboard() {
     if (!Array.isArray(educators)) return [];
     return [...educators].sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
   }, [educators]);
-  const [dashboardData, setDashboardData] = useState({
-    summaryCardsData: [],
-    keyInsightsData: {},
-    isLoading: false,
-    error: null,
-  });
-
   const [testWiseAvgMarks, setTestWiseAvgMarks] = useState({});
   const [selectedSubject, setSelectedSubject] = useState('Overall');
   const [rawResults, setRawResults] = useState([]);
   const [overallPerformance, setOverallPerformance] = useState('N/A');
   const [improvementRate, setImprovementRate] = useState('N/A');
-  const [instituteOverview, setInstituteOverview] = useState({
-    totalStudents: 0,
-    totalTeachers: 0,
-    totalClassrooms: 0,
-    overallAttendance: 'N/A'
-  });
+
+  const { data: dashboardData, isLoading: dashboardLoading, error: dashboardError } = useInstitutionEducatorDashboard(selectedEducatorId);
+  const { data: resultsData, isLoading: resultsLoading, error: resultsError } = useInstitutionEducatorResults(selectedEducatorId);
+  const { data: allEducatorResults } = useAllInstitutionEducatorResults(educators);
+  const { prefetchAll } = usePrefetchInstitutionData(selectedEducatorId);
 
   useEffect(() => {
     if (!selectedEducatorId) return;
 
-    const fetchData = async () => {
-      setDashboardData(prev => ({ ...prev, isLoading: true, error: null }));
-      try {
-        const data = await getInstitutionEducatorDashboardData(selectedEducatorId);
-        if (!data || data.error) {
-          throw new Error(data?.error || 'Failed to fetch data');
+    const results = resultsData?.results;
+    if (!Array.isArray(results)) {
+      setTestWiseAvgMarks({});
+      setRawResults([]);
+      return;
+    }
+
+    const hasField = (field) => results.some(r => Object.prototype.hasOwnProperty.call(r, field));
+    const subjectKeys = { Overall: 'total_score' };
+    if (hasField('phy_score') || hasField('phy_total')) subjectKeys['Physics'] = 'phy_score';
+    if (hasField('chem_score') || hasField('chem_total')) subjectKeys['Chemistry'] = 'chem_score';
+
+    const hasBioData = results.some(r => (Number(r.bio_score) || 0) > 0 || (Number(r.bio_total) || 0) > 0);
+    if (hasBioData) {
+      subjectKeys['Biology'] = 'bio_score';
+    }
+
+    const hasBotData = results.some(r => (Number(r.bot_score) || 0) > 0 || (Number(r.bot_total) || 0) > 0);
+    if (hasBotData) subjectKeys['Botany'] = 'bot_score';
+
+    const hasZooData = results.some(r => (Number(r.zoo_score) || 0) > 0 || (Number(r.zoo_total) || 0) > 0);
+    if (hasZooData) subjectKeys['Zoology'] = 'zoo_score';
+
+    const avgData = {};
+    Object.keys(subjectKeys).forEach(subject => {
+      const key = subjectKeys[subject];
+      const testMap = {};
+      results.forEach(r => {
+        const testNum = r.test_num;
+        const score = Number(r[key]) || 0;
+        if (!testMap[testNum]) {
+          testMap[testNum] = { total: 0, count: 0, max: score, min: score };
         }
-        setDashboardData({
-          summaryCardsData: data.summaryCardsData || [],
-          keyInsightsData: data.keyInsightsData || {},
-          isLoading: false,
-          error: null,
-        });
-      } catch (error) {
-        setDashboardData((prev) => ({
-          ...prev,
-          isLoading: false,
-          error: error.message,
+        testMap[testNum].total += score;
+        testMap[testNum].count += 1;
+        if (score > testMap[testNum].max) testMap[testNum].max = score;
+        if (score < testMap[testNum].min) testMap[testNum].min = score;
+      });
+      avgData[subject] = Object.entries(testMap)
+        .sort((a, b) => Number(a[0]) - Number(b[0]))
+        .map(([testNum, { total, count, max, min }]) => ({
+          test: `Test ${testNum}`,
+          testNum: Number(testNum),
+          avg: count ? Math.round(total / count) : 0,
+          max: max,
+          min: min
         }));
-      }
-    };
-    fetchData();
-  }, [selectedEducatorId]);
-
-  useEffect(() => {
-    if (!selectedEducatorId) return;
-
-    const fetchTestWiseAvg = async () => {
-      try {
-        const results = await fetchInstitutionEducatorAllStudentResults(selectedEducatorId);
-        if (results && Array.isArray(results.results)) {
-          const hasField = (field) => results.results.some(r => Object.prototype.hasOwnProperty.call(r, field));
-          const subjectKeys = { Overall: 'total_score' };
-          if (hasField('phy_score') || hasField('phy_total')) subjectKeys['Physics'] = 'phy_score';
-          if (hasField('chem_score') || hasField('chem_total')) subjectKeys['Chemistry'] = 'chem_score';
-
-          const hasBioData = results.results.some(r => (Number(r.bio_score) || 0) > 0 || (Number(r.bio_total) || 0) > 0);
-          if (hasBioData) {
-            subjectKeys['Biology'] = 'bio_score';
-          }
-
-          const hasBotData = results.results.some(r => (Number(r.bot_score) || 0) > 0 || (Number(r.bot_total) || 0) > 0);
-          if (hasBotData) subjectKeys['Botany'] = 'bot_score';
-
-          const hasZooData = results.results.some(r => (Number(r.zoo_score) || 0) > 0 || (Number(r.zoo_total) || 0) > 0);
-          if (hasZooData) subjectKeys['Zoology'] = 'zoo_score';
-          const avgData = {};
-          Object.keys(subjectKeys).forEach(subject => {
-            const key = subjectKeys[subject];
-            const testMap = {};
-            results.results.forEach(r => {
-              const testNum = r.test_num;
-              const score = Number(r[key]) || 0;
-              if (!testMap[testNum]) {
-                testMap[testNum] = { total: 0, count: 0, max: score, min: score };
-              }
-              testMap[testNum].total += score;
-              testMap[testNum].count += 1;
-              if (score > testMap[testNum].max) testMap[testNum].max = score;
-              if (score < testMap[testNum].min) testMap[testNum].min = score;
-            });
-            avgData[subject] = Object.entries(testMap)
-              .sort((a, b) => Number(a[0]) - Number(b[0]))
-              .map(([testNum, { total, count, max, min }]) => ({
-                test: `Test ${testNum}`,
-                testNum: Number(testNum),
-                avg: count ? Math.round(total / count) : 0,
-                max: max,
-                min: min
-              }));
-          });
-          setTestWiseAvgMarks(avgData);
-          setRawResults(results.results);
-        }
-      } catch {
-        const dummyData = {
-          Overall: [
-            { test: 'Test 1', avg: 540, max: 650, min: 400 },
-            { test: 'Test 2', avg: 620, max: 720, min: 500 },
-            { test: 'Test 3', avg: 480, max: 580, min: 350 },
-            { test: 'Test 4', avg: 700, max: 800, min: 600 }
-          ]
-        };
-        setTestWiseAvgMarks(dummyData);
-      }
-    };
-    fetchTestWiseAvg();
-  }, [selectedEducatorId]);
+    });
+    setTestWiseAvgMarks(avgData);
+    setRawResults(results);
+  }, [resultsData, selectedEducatorId]);
 
   const subjectOptions = useMemo(() => {
     const keys = Object.keys(testWiseAvgMarks || {});
@@ -239,8 +194,20 @@ function IDashboard() {
       setImprovementRate('N/A');
     }
   }, [rawResults]);
+  
+  // Prefetch all other page data in background after dashboard loads
+  useEffect(() => {
+    if (dashboardData && !dashboardLoading && selectedEducatorId) {
+      prefetchAll();
+    }
+  }, [dashboardData, dashboardLoading, selectedEducatorId, prefetchAll]);
 
-  const { keyInsightsData, isLoading, error } = dashboardData;
+  const summaryCardsData = dashboardData?.summaryCardsData || [];
+  const keyInsightsData = dashboardData?.keyInsightsData || {};
+  const isLoading = dashboardLoading || resultsLoading;
+  const error = (dashboardError && (dashboardError.message || String(dashboardError)))
+    || (resultsError && (resultsError.message || String(resultsError)))
+    || null;
 
   const attendanceData = useMemo(() => {
     let percentage = 'N/A';
@@ -274,84 +241,56 @@ function IDashboard() {
     return { percentage, change, direction };
   }, [rawResults]);
 
-  // Fetch institute-wide overview stats
-  useEffect(() => {
-    const fetchInstituteOverview = async () => {
-      try {
-        if (!educators || educators.length === 0) {
-          setInstituteOverview({
-            totalStudents: 0,
-            totalTeachers: 0,
-            totalClassrooms: educators ? educators.length : 0,
-            overallAttendance: 'N/A'
-          });
-          return;
+  // Compute institute-wide overview stats from cached educator results
+  const instituteOverview = useMemo(() => {
+    if (!educators || educators.length === 0) {
+      return {
+        totalStudents: 0,
+        totalTeachers: 0,
+        totalClassrooms: 0,
+        overallAttendance: 'N/A'
+      };
+    }
+
+    if (!allEducatorResults) {
+      return {
+        totalStudents: 0,
+        totalTeachers: 0,
+        totalClassrooms: educators.length,
+        overallAttendance: 'Calculating...'
+      };
+    }
+
+    const allStudents = new Set();
+    const allTeachers = new Set();
+    let lastTestAttendanceCount = 0;
+    let totalStudentsForAttendance = 0;
+
+    allEducatorResults.forEach(({ resultsResp }) => {
+      if (resultsResp && Array.isArray(resultsResp.results)) {
+        resultsResp.results.forEach(r => { if (r.student_id) allStudents.add(r.student_id); });
+
+        if (resultsResp.results.length > 0) {
+          const maxTestNum = Math.max(...resultsResp.results.map(r => r.test_num));
+          const lastTestResults = resultsResp.results.filter(r => r.test_num === maxTestNum);
+          const uniqueLast = new Set(lastTestResults.map(r => r.student_id));
+          lastTestAttendanceCount += uniqueLast.size;
+          totalStudentsForAttendance += new Set(resultsResp.results.map(r => r.student_id)).size;
         }
-
-        // Immediately set a lightweight placeholder so Stat cards render quickly
-        setInstituteOverview(prev => ({
-          ...prev,
-          totalClassrooms: educators.length,
-          overallAttendance: 'Calculating...'
-        }));
-
-        // Run per-educator network calls in parallel to speed up aggregation
-        const educatorPromises = educators.map(async (educator) => {
-          try {
-            const [resultsResp, teachersResp] = await Promise.all([
-              fetchInstitutionEducatorAllStudentResults(educator.id),
-              educator.class_id ? getTeachersByClass(educator.class_id) : Promise.resolve(null)
-            ]);
-
-            return { educatorId: educator.id, resultsResp, teachersResp };
-          } catch (err) {
-            console.error(`Error fetching data for educator ${educator.id}:`, err);
-            return { educatorId: educator.id, resultsResp: null, teachersResp: null };
-          }
-        });
-
-        const educatorResults = await Promise.all(educatorPromises);
-
-        const allStudents = new Set();
-        const allTeachers = new Set();
-        let lastTestAttendanceCount = 0;
-        let totalStudentsForAttendance = 0;
-
-        educatorResults.forEach(({ resultsResp, teachersResp }) => {
-          if (resultsResp && Array.isArray(resultsResp.results)) {
-            resultsResp.results.forEach(r => { if (r.student_id) allStudents.add(r.student_id); });
-
-            if (resultsResp.results.length > 0) {
-              const maxTestNum = Math.max(...resultsResp.results.map(r => r.test_num));
-              const lastTestResults = resultsResp.results.filter(r => r.test_num === maxTestNum);
-              const uniqueLast = new Set(lastTestResults.map(r => r.student_id));
-              lastTestAttendanceCount += uniqueLast.size;
-              totalStudentsForAttendance += new Set(resultsResp.results.map(r => r.student_id)).size;
-            }
-          }
-
-          if (teachersResp && teachersResp.success && Array.isArray(teachersResp.data)) {
-            teachersResp.data.forEach(t => { if (t.id) allTeachers.add(t.id); });
-          }
-        });
-
-        const overallAttendance = totalStudentsForAttendance > 0
-          ? `${Math.round((lastTestAttendanceCount / totalStudentsForAttendance) * 100)}%`
-          : 'N/A';
-
-        setInstituteOverview({
-          totalStudents: allStudents.size,
-          totalTeachers: allTeachers.size,
-          totalClassrooms: educators.length,
-          overallAttendance
-        });
-      } catch (error) {
-        console.error('Error fetching institute overview:', error);
       }
-    };
+    });
 
-    fetchInstituteOverview();
-  }, [educators]);
+    const overallAttendance = totalStudentsForAttendance > 0
+      ? `${Math.round((lastTestAttendanceCount / totalStudentsForAttendance) * 100)}%`
+      : 'N/A';
+
+    return {
+      totalStudents: allStudents.size,
+      totalTeachers: allTeachers.size,
+      totalClassrooms: educators.length,
+      overallAttendance
+    };
+  }, [educators, allEducatorResults]);
 
   if (!selectedEducatorId) {
     return <div className="text-center py-8 mt-20">Please select an educator to view their dashboard.</div>;
@@ -707,7 +646,7 @@ function IDashboard() {
                                 font: { family: 'Tenorite, sans-serif', size: 13 },
                                 stepSize: stepSize,
                               },
-                              grid: { color: "#f3f4f6" },
+                              grid: { color: "rgba(156, 163, 175, 0.15)" },
                             },
                           },
                         }}
