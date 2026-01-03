@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Funnel, WarningCircle } from '@phosphor-icons/react';
+import { WarningCircle } from '@phosphor-icons/react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -255,29 +255,28 @@ const usePerformanceData = () => {
 import LoadingPage from '../components/LoadingPage.jsx';
 import SPerformanceMobile from './s_performance-mobile.jsx';
 
-// Define InsightCard component
+// Define InsightCard component (theme-aware)
 const InsightCard = ({ title, item, insights, className = '' }) => (
   <div
-    className={`card bg-white rounded-2xl p-5 transition-all duration-300 
-      border border-gray-200 h-full ${className}`}
+    className={`rounded-2xl border border-border bg-card p-5 transition-all duration-300 h-full ${className}`}
   >
     <div className="flex flex-col h-full">
       {/* Card Header Section */}
       <div>
-        <h3 className="text-primary text-lg font-semibold mb-4 border-b pb-2">
+        <h3 className="text-foreground text-lg font-semibold mb-4 border-b border-border pb-2">
           {title}
         </h3>
-        <p className="text-sm text-gray-600 mb-3">
+        <p className="text-sm text-muted-foreground mb-3">
           Detailed analysis for{' '}
-          <span className="font-semibold text-gray-800">{item}</span>:
+          <span className="font-semibold text-foreground">{item}</span>:
         </p>
       </div>
 
       {/* Insights List Section (occupies remaining vertical space) */}
       <div className="flex-grow">
-        <ul className="list-disc list-inside text-gray-700 space-y-2 text-sm leading-relaxed">
+        <ul className="list-disc list-inside space-y-2 text-sm leading-relaxed text-muted-foreground">
           {insights.length > 0 ? (
-            // Render each insight if the array is not empty  
+            // Render each insight if the array is not empty
             insights.map((insight, idx) => (
               <li key={idx} className="hover:text-primary transition-colors duration-200">
                 {insight}
@@ -285,7 +284,7 @@ const InsightCard = ({ title, item, insights, className = '' }) => (
             ))
           ) : (
             // Display a fallback message if no insights are available
-            <li className="text-gray-500">No insights available</li>
+            <li className="text-muted-foreground">No insights available</li>
           )}
         </ul>
       </div>
@@ -310,6 +309,7 @@ const PerformanceChart = ({
   data,
   labels,
 }) => {
+  const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
   // Chart data configuration
   const chartData = {
     labels,
@@ -339,6 +339,10 @@ const PerformanceChart = ({
     ],
   };
 
+  const tooltipColors = isDark
+    ? { backgroundColor: '#0b1220', titleColor: '#ffffff', bodyColor: '#e5e7eb', borderColor: '#1f2937' }
+    : { backgroundColor: '#ffffffff', titleColor: '#374151', bodyColor: '#374151', borderColor: '#d1d5db' };
+
   // Chart options configuration
   const options = {
     responsive: true,
@@ -347,10 +351,7 @@ const PerformanceChart = ({
       legend: { display: false },
       tooltip: {
         enabled: true,
-        backgroundColor: '#ffffffff',
-        titleColor: '#374151',
-        bodyColor: '#374151',
-        borderColor: '#d1d5db',
+        ...tooltipColors,
         borderWidth: 1,
         padding: 12,
         cornerRadius: 8,
@@ -372,7 +373,7 @@ const PerformanceChart = ({
     scales: {
       x: {
         title: { display: false },
-        ticks: { color: '#6b7280', font: { family: 'Tenorite, sans-serif', size: 13 } },
+        ticks: { color: isDark ? '#cbd5e1' : '#6b7280', font: { family: 'Tenorite, sans-serif', size: 13 } },
         border: { width: 0 },
         grid: { display: false }
       },
@@ -385,8 +386,8 @@ const PerformanceChart = ({
           return Math.ceil((dataMax + tolerance) / 10) * 10; // Round up to nearest 10
         })(),
         border: { width: 0 },
-        ticks: { color: '#6b7280', font: { family: 'Tenorite, sans-serif', size: 13 }, stepSize: 10 },
-        grid: { color: '#f3f4f6' }
+        ticks: { color: isDark ? '#cbd5e1' : '#6b7280', font: { family: 'Tenorite, sans-serif', size: 13 }, stepSize: 10 },
+        grid: { color: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.06)' }
       }
     },
     layout: { padding: { top: 16, bottom: 8, left: 24, right: 16 } },
@@ -394,21 +395,21 @@ const PerformanceChart = ({
   };
 
   return (
-    <div className="rounded-2xl border border-gray-250 bg-gray-100 flex flex-col items-start justify-start sm:p-0 p-2">
+    <div className="rounded-2xl border border-border bg-card flex flex-col items-start justify-start sm:p-0 p-2">
       {/* Title & Chart Container */}
-      <div className="w-full flex flex-col bg-white p-3 sm:p-6 rounded-2xl">
+      <div className="w-full flex flex-col p-3 sm:p-6 rounded-2xl">
         {/* Title Container */}
         <div className="w-full flex flex-col items-start justify-start gap-0 mb-0.5 sm:mb-1">
-          <span className="text-lg sm:text-lg font-bold text-primary">{title}</span>
-          <p className="text-gray-500 text-xs sm:text-sm mb-3 sm:mb-6">Performance analysis across tests</p>
+          <span className="text-lg sm:text-lg font-bold text-foreground">{title}</span>
+          <p className="text-muted-foreground text-xs sm:text-sm mb-3 sm:mb-6">Performance analysis across tests</p>
         </div>
 
         {/* Area Chart Container */}
-        <div className="flex flex-col items-center justify-center w-full mb-3 sm:mb-6 bg-white h-56 sm:h-80 border border-gray-200 rounded-lg">
+        <div className="flex flex-col items-center justify-center w-full mb-3 sm:mb-6 bg-card h-56 sm:h-80 border border-border rounded-lg">
           {data.length ? (
             <Line data={chartData} options={options} width={260} height={140} />
           ) : (
-            <p className="text-gray-500">No data available</p>
+            <p className="text-muted-foreground">No data available</p>
           )}
         </div>
       </div>
@@ -451,9 +452,13 @@ const SPerformance = () => {
 
   // --- Conditional Rendering for Loading and Error States ---
 
-  // Display a loading indicator while performance data is being fetched.
+  // Display a loading overlay while performance data is being fetched (match i_dashboard behaviour).
   if (loading) {
-    return <LoadingPage />;
+    return (
+      <div className="relative min-h-screen">
+        <LoadingPage fixed={false} className="bg-white/80 dark:bg-gray-900/80 z-10" />
+      </div>
+    );
   }
 
   // Display an error message if data fetching failed.
@@ -499,17 +504,20 @@ const SPerformance = () => {
       {/* Desktop / tablet: keep existing layout for md+ screens */}
       <div className="hidden md:block">
         <div className="space-y-4 pt-6 sm:pt-12 px-4 pb-4">
-          {/* Filter Section */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 mb-4 bg-white shadow-lg p-4 rounded-xl">
-            <Funnel className="hidden sm:block text-gray-400 w-5 h-5 mt-1 sm:mt-0" />
-            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 w-full overflow-x-hidden">
-              <div className="flex flex-col space-y-1 sm:flex-row sm:items-center sm:space-x-2">
-                <span className="text-sm text-gray-400 min-w-max">Subject</span>
+          {/* Header and selector controls */}
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div className="flex flex-col gap-1">
+              <h2 className="text-2xl font-semibold text-foreground">Chapter & Topics Analysis</h2>
+              <p className="text-sm text-muted-foreground">Track accuracy trends across chapters and topics.</p>
+            </div>
+            <div className="flex items-start gap-4 flex-wrap justify-end">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground min-w-max pl-1">Subject</span>
                 <Select value={selectedSubject} onValueChange={handleSubjectChange}>
-                  <SelectTrigger className="w-full sm:w-64 justify-start truncate overflow-hidden text-ellipsis text-start bg-white border-gray-200">
+                  <SelectTrigger title={selectedSubject} className="m-1 w-full lg:w-auto max-w-[220px] overflow-hidden truncate justify-start text-start bg-card border border-border">
                     <SelectValue placeholder="Select Subject" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent side="bottom" align="end">
                     {subjectOptions.map(opt => (
                       <SelectItem key={opt.value} value={opt.value}>
                         {opt.label}
@@ -517,14 +525,13 @@ const SPerformance = () => {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="flex flex-col space-y-1 sm:flex-row sm:items-center sm:space-x-2">
-                <span className="text-sm text-gray-400 min-w-max">Chapter</span>
+
+                <span className="text-sm text-muted-foreground min-w-max pl-1">Chapter</span>
                 <Select value={selectedChapter} onValueChange={handleChapterChange}>
-                  <SelectTrigger className="w-full sm:w-64 justify-start truncate overflow-hidden text-ellipsis text-start bg-white border-gray-200">
+                  <SelectTrigger title={selectedChapter} className="m-1 w-full lg:w-auto max-w-[220px] overflow-hidden truncate justify-start text-start bg-card border border-border">
                     <SelectValue placeholder="Select Chapter" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent side="bottom" align="end">
                     {formattedChapterOptions.map(opt => (
                       <SelectItem key={opt.value} value={opt.value}>
                         <div className="flex items-center justify-between w-full">
@@ -537,14 +544,13 @@ const SPerformance = () => {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="flex flex-col space-y-1 sm:flex-row sm:items-center sm:space-x-2">
-                <span className="text-sm text-gray-400 min-w-max">Topic</span>
+
+                <span className="text-sm text-muted-foreground min-w-max pl-1">Topic</span>
                 <Select value={selectedTopic} onValueChange={handleTopicChange}>
-                  <SelectTrigger className="w-full sm:w-64 justify-start truncate overflow-hidden text-ellipsis text-start bg-white border-gray-200">
+                  <SelectTrigger title={selectedTopic} className="m-1 w-full lg:w-auto max-w-[220px] overflow-hidden truncate justify-start text-start bg-card border border-border">
                     <SelectValue placeholder="Select Topic" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent side="bottom" align="end">
                     {formattedTopicOptions.map(opt => (
                       <SelectItem key={opt.value} value={opt.value}>
                         <div className="flex items-center justify-between w-full">

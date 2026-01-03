@@ -16,6 +16,9 @@ import ChecklistCard from './components/ChecklistCard.jsx';
 import StudyTipsCard from './components/StudyTipsCard.jsx';
 import { Tooltip as UITooltip, TooltipTrigger as UITooltipTrigger, TooltipContent as UITooltipContent, TooltipProvider as UITooltipProvider } from '../../components/ui/tooltip.jsx';
 
+// Shared chart height class used by both charts to keep heights equal
+const CHART_HEIGHT_CLASS = 'h-56 sm:h-80';
+
 function SDashboard() {
   // Use React Query hook for cached loading of student dashboard
   const { data: remoteData, isLoading: queryLoading, error: queryError } = useStudentDashboard();
@@ -134,9 +137,13 @@ function SDashboard() {
 
   // --- Conditional Rendering for Loading and Error States ---
 
-  // Display a loading indicator while dashboard data is being fetched.
+  // Display a loading overlay while dashboard data is being fetched (match i_dashboard behaviour).
   if (isLoading) {
-    return <PageLoader />;
+    return (
+      <div className="relative min-h-screen">
+        <PageLoader fixed={false} className="bg-white/80 dark:bg-gray-900/80 z-10" />
+      </div>
+    );
   }
 
   // Display an error message if data fetching failed.
@@ -232,9 +239,9 @@ function SDashboard() {
       <div className="hidden md:block">
         <div className="space-y-6 sm:space-y-8 pt-6 sm:pt-12 mx-none sm:mx-4 lg:m-4">
           {/* Row 1: Left column = Summary cards (top) + Carousel (bottom). Right column = PerformanceTrendChart */}
-          <div className="grid grid-cols-1 gap-4 sm:gap-8 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:gap-8 lg:grid-cols-2 items-stretch">
             {/* Left stacked column: Summary on top, Carousel below */}
-            <div className="flex flex-col gap-3 sm:gap-8">
+            <div className="flex flex-col gap-3 sm:gap-8 h-full">
               <div className="hidden sm:grid sm:grid-cols-3 gap-3 sm:gap-6">
                 {summaryCards.length ? (
                   summaryCards.map((card, idx) => {
@@ -337,50 +344,52 @@ function SDashboard() {
 
               {/* Desktop: keep Carousel (visible on sm and up) */}
               <div className="hidden sm:block w-full">
-                <Carousel
-                  height={300}
-                  className="!p-4 md:!p-6 lg:!p-8 !gap-4 md:!gap-6"
-                  sections={[
-                    {
-                      key: 'keyStrengths',
-                      title: 'Steady Zone',
-                      items: keyInsightsData?.keyStrengths || [],
-                      icon: <CheckCircle size={18} className="text-green-500" />,
-                      tag: (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 dark:bg-primary-950/20 dark:border-primary-800/40 dark:text-primary-300 flex items-center gap-1">
-                          <Sparkles size={12} />
-                          AI Generated
-                        </span>
-                      ),
-                      tagTooltip: 'AI-generated strengths identified for the student.'
-                    },
+                <div className='h-full'>
+                  <Carousel
+                    height={290}
+                    className="!p-4 md:!p-6 lg:!p-8 !gap-4 md:!gap-6"
+                    sections={[
+                      {
+                        key: 'keyStrengths',
+                        title: 'Steady Zone',
+                        items: keyInsightsData?.keyStrengths || [],
+                        icon: <CheckCircle size={18} className="text-green-500" />,
+                        tag: (
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 dark:bg-primary-950/20 dark:border-primary-800/40 dark:text-primary-300 flex items-center gap-1">
+                            <Sparkles size={12} />
+                            AI Generated
+                          </span>
+                        ),
+                        tagTooltip: 'AI-generated strengths identified for the student.'
+                      },
 
-                    {
-                      key: 'yetToDecide',
-                      title: 'Focus Zone',
-                      items: keyInsightsData?.yetToDecide || [],
-                      icon: <Clock size={18} className="text-purple-500" />,
-                      tag: (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 dark:bg-primary-950/20 dark:border-primary-800/40 dark:text-primary-300 flex items-center gap-1">
-                          <Sparkles size={12} />
-                          AI Generated
-                        </span>
-                      ),
-                      tagTooltip: 'Potential vulnerabilities in consistency, identified by AI.'
-                    }
-                  ]}
-                  emptyMessage="No insights available"
-                />
+                      {
+                        key: 'yetToDecide',
+                        title: 'Focus Zone',
+                        items: keyInsightsData?.yetToDecide || [],
+                        icon: <Clock size={18} className="text-purple-500" />,
+                        tag: (
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 dark:bg-primary-950/20 dark:border-primary-800/40 dark:text-primary-300 flex items-center gap-1">
+                            <Sparkles size={12} />
+                            AI Generated
+                          </span>
+                        ),
+                        tagTooltip: 'Potential vulnerabilities in consistency, identified by AI.'
+                      }
+                    ]}
+                    emptyMessage="No insights available"
+                  />
+                </div>
               </div>
 
               {/* Action Plan / Checklist / Study Tips are now shown as a carousel in the right column */}
             </div>
 
             {/* Right column: single carousel for guidance cards */}
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 h-full ">
               <Carousel
-                height={520}
-                className="!p-4 md:!p-6 lg:!p-8 !gap-4 md:!gap-6"
+                height={500}
+                className="h-full !p-4 md:!p-6 lg:!p-8 !gap-4 md:!gap-6"
                 sections={[
                   {
                     key: 'actionPlan',
@@ -412,6 +421,7 @@ function SDashboard() {
               <PerformanceTrendChart
                 subjectWiseData={subjectWiseData}
                 subjectWiseDataMapping={dashboardData.subjectWiseDataMapping}
+                chartHeight={CHART_HEIGHT_CLASS}
               />
             </div>
             <div>
@@ -421,6 +431,7 @@ function SDashboard() {
                 selectedTest={selectedTest}
                 setSelectedTest={setSelectedTest}
                 subjectLabels={subjectsForSelectedTest}
+                chartHeight={CHART_HEIGHT_CLASS}
               />
             </div>
           </div>
@@ -638,7 +649,7 @@ const formatStatValue = (value) => {
 
 
 /** PerformanceTrendChart (inlined from s_performancetrend.jsx) */
-const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWiseData = {}, subjectWiseDataMapping = [], title = 'Performance Trend' }) => {
+const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWiseData = {}, subjectWiseDataMapping = [], title = 'Performance Trend', chartHeight = CHART_HEIGHT_CLASS }) => {
   // if parent doesn't control selectedSubject, manage it locally
   const [localSelectedSubject, setLocalSelectedSubject] = React.useState('Overall');
   const effectiveSelectedSubject = selectedSubject ?? localSelectedSubject;
@@ -872,6 +883,8 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
     ? { backgroundColor: '#0b1220', titleColor: '#ffffff', bodyColor: '#e5e7eb', borderColor: '#1f2937' }
     : { backgroundColor: '#ffffffff', titleColor: '#374151', bodyColor: '#374151', borderColor: '#d1d5db' };
 
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.18)';
+
   const options = {
     responsive: true,
     maintainAspectRatio: false,
@@ -920,7 +933,7 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
         })(),
         border: { width: 0 },
         ticks: { color: isDark ? '#cbd5e1' : '#6b7280', font: { family: 'Tenorite, sans-serif', size: 13 }, stepSize: 100 },
-        grid: { color: isDark ? '#0b1220' : '#f3f4f6' }
+        grid: { color: gridColor, drawBorder: false, lineWidth: 1 }
       }
     },
     layout: { padding: { top: 16, bottom: 8, left: 8, right: 8 } },
@@ -935,8 +948,8 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
       <div className="w-full flex flex-col bg-card border border-border p-3 sm:p-6 rounded-2xl">
         {/* Title Container: stack on mobile, row on sm+ */}
         <div className="w-full flex flex-col sm:flex-row justify-between items-start mb-0.5 sm:mb-1">
-            <div className="flex flex-col items-start justify-start gap-0">
-            <span className="text-base sm:text-xl font-semibold text-foreground">{title}</span>
+          <div className="flex flex-col items-start justify-start gap-0">
+            <span className="text-base sm:text-xl font-semibold text-foreground whitespace-nowrap">{title}</span>
             <p className="text-muted-foreground text-xs sm:text-sm mb-3 sm:mb-6">Average marks across all students</p>
           </div>
 
@@ -963,7 +976,7 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
               {/* Mobile: stacked select below the paragraph (visible only on mobile) */}
               <div className="block sm:hidden w-full my-2">
                 <div className="w-full">
-                    <Select onValueChange={(val) => effectiveSetSelectedSubject(val)} value={effectiveSelectedSubject}>
+                  <Select onValueChange={(val) => effectiveSetSelectedSubject(val)} value={effectiveSelectedSubject}>
                     <SelectTrigger className="w-full justify-between text-start bg-card border border-border text-foreground">
                       <SelectValue placeholder="Select Subject" />
                     </SelectTrigger>
@@ -980,7 +993,7 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
         </div>
 
         {/* Area Chart Container */}
-        <div className="flex flex-col items-center justify-center w-full bg-card h-56 sm:h-80 border border-border rounded-lg">
+        <div className={`flex flex-col items-center justify-center w-full bg-card ${chartHeight} border border-border rounded-lg`}>
           <Line data={chartData} options={options} width={260} height={140} />
         </div>
       </div>
@@ -989,7 +1002,7 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
 };
 
 /** SubjectWiseAnalysisChart (inlined from s_subjectwiseanalysis.jsx) */
-const SubjectWiseAnalysisChart = ({ selectedTest, setSelectedTest, testData = {}, subjectWiseDataMapping = [], subjectLabels = ['Physics', 'Chemistry', 'Botany', 'Zoology'], title = 'Subject-wise Analysis' }) => {
+const SubjectWiseAnalysisChart = ({ selectedTest, setSelectedTest, testData = {}, subjectWiseDataMapping = [], subjectLabels = ['Physics', 'Chemistry', 'Botany', 'Zoology'], title = 'Subject-wise Analysis', chartHeight = CHART_HEIGHT_CLASS }) => {
   // local selection when parent doesn't control it
   const [localSelectedTest, setLocalSelectedTest] = React.useState('');
   const effectiveSelectedTest = selectedTest ?? localSelectedTest;
@@ -1114,7 +1127,7 @@ const SubjectWiseAnalysisChart = ({ selectedTest, setSelectedTest, testData = {}
         </div>
 
 
-        <div className="w-full border border-border rounded-lg p-2 bg-card h-56 sm:h-80">
+        <div className={`w-full border border-border rounded-lg p-2 bg-card ${chartHeight}`}>
           {currentTestData.length ? (
             // use a small plugin to draw values above bars using beforeDatasetsDraw hook
             <Bar

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, AlertTriangle, Filter, ChevronDown, Target, Zap } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Target } from 'lucide-react';
 import useStudentDashboard, { useStudentSWOT, useAvailableSwotTests } from '../../hooks/useStudentData';
 // import FilterDrawer from '../../components/ui/filter-drawer.jsx'; // Removed for desktop
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, } from '../../components/ui/select.jsx';
@@ -327,9 +327,13 @@ const SSWOT = () => {
 
     // (no active tab needed for mobile — zones will stack)
 
-    // Loading state
+    // Loading state — render layered overlay like in i_dashboard for consistency
     if (loading) {
-        return <LoadingPage />;
+        return (
+            <div className="relative min-h-screen">
+                <LoadingPage fixed={false} className="bg-white/80 dark:bg-gray-900/80 z-10" />
+            </div>
+        );
     }
 
     // Error state

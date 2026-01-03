@@ -15,11 +15,11 @@ import { Card } from '../../../components/ui/card.jsx';
 const ChecklistCard = ({ checklist = [] }) => {
   if (!checklist || checklist.length === 0) {
     return (
-      <Card className="rounded-lg border border-gray-200 bg-white p-3">
+      <Card className="rounded-lg border border-border bg-card p-3">
         <div className="flex flex-col items-center justify-center py-6 text-center">
-          <CheckCircle className="w-10 h-10 text-green-500 mb-2" />
-          <p className="text-gray-700">No critical issues found!</p>
-          <p className="text-xs text-gray-500 mt-1">
+          <CheckCircle className="w-10 h-10 text-emerald-500 mb-2" />
+          <p className="text-foreground">No critical issues found!</p>
+          <p className="text-xs text-muted-foreground mt-1">
             Your performance shows no major problem patterns.
           </p>
         </div>
@@ -41,13 +41,13 @@ const ChecklistCard = ({ checklist = [] }) => {
   };
 
   const getSeverityBg = (accuracy) => {
-    if (accuracy < 0.4) return 'bg-red-50 border-red-200';
-    if (accuracy < 0.6) return 'bg-amber-50 border-amber-200';
-    return 'bg-orange-50 border-orange-200';
+    if (accuracy < 0.4) return 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800/40';
+    if (accuracy < 0.6) return 'bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800/40';
+    return 'bg-orange-50 border-orange-200 dark:bg-orange-950/20 dark:border-orange-800/40';
   };
 
   return (
-    <Card className="rounded-lg border border-gray-200 bg-white p-3">
+    <Card className="rounded-lg border border-border bg-card p-3">
 
       <div className="space-y-2">
         {checklist.map((checkpoint, index) => {
@@ -58,12 +58,12 @@ const ChecklistCard = ({ checklist = [] }) => {
           return (
             <div
               key={index}
-              className={`bg-gray-50 rounded-md p-3 shadow-sm border ${severityBg} transition-all`}
+              className={`rounded-md p-3 shadow-sm border ${severityBg} transition-all`}
             >
               <div className="flex gap-3">
                 {/* Checkpoint Number with Severity Icon */}
                 <div className="flex-shrink-0 flex flex-col items-center gap-1">
-                  <div className="w-7 h-7 rounded-full bg-gray-700 text-white flex items-center justify-center text-sm font-semibold shadow-sm">
+                  <div className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center text-sm font-semibold shadow-sm">
                     {index + 1}
                   </div>
                 </div>
@@ -72,17 +72,17 @@ const ChecklistCard = ({ checklist = [] }) => {
                 <div className="flex-1 min-w-0">
                   {/* Topic and Subject */}
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs text-gray-700">
+                    <span className="text-xs text-foreground">
                       {checkpoint.topic}
                     </span>
-                    <span className="px-2 py-0.5 text-xs rounded bg-purple-100 text-purple-700">
+                    <span className="px-2 py-0.5 text-xs rounded bg-primary/10 text-primary border border-primary/30 dark:bg-primary-950/20 dark:border-primary-800/40 dark:text-primary-300">
                       {checkpoint.subject}
                     </span>
                   </div>
 
                   {/* Problem Description */}
                   <div className="flex items-start gap-2">
-                    <p className="text-sm text-gray-800 leading-tight">
+                    <p className="text-sm text-foreground leading-tight">
                       {checkpoint.problem}
                     </p>
                   </div>

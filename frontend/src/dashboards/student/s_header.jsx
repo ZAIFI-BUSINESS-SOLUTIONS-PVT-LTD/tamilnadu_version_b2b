@@ -1,14 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Home,
-  Target,
-  BarChart3,
+  WandSparkles,
+  Blocks,
   FileText,
-  MessageSquare,
   AlignLeft
 } from "lucide-react";
-import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
 import { useStudentDetails } from '../../hooks/useStudentData';
 import DesktopSidebar from '../components/header/DesktopSidebar.jsx';
 import UserDropdown from '../components/header/UserDropDown.jsx';
@@ -55,14 +53,14 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
     },
     {
       to: '/student/swot',
-      icon: <Target size={20} />,
-      text: 'Analysis',
+      icon: <WandSparkles size={20} />,
+      text: 'AI Analysis',
       activePattern: /^\/student\/swot/
     },
     {
       to: '/student/performance',
-      icon: <BarChart3 size={20} />,
-      text: 'Performance',
+      icon: <Blocks size={20} />,
+      text: 'Chapters & Topics',
       activePattern: /^\/student\/performance/
     },
   ];
