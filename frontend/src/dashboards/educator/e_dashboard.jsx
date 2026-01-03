@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Line } from 'react-chartjs-2';
 import { Chart, LineElement, PointElement, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Filler } from 'chart.js';
-import { getEducatorDashboardData, fetchEducatorAllStudentResults } from '../../utils/api';
+import { useEducatorDashboard, useEducatorResults } from '../../hooks/useEducatorData.js';
 import { Users, Calendar, HelpCircle, Sparkles, ChevronDown } from 'lucide-react';
 import Carousel from '../../components/carousel';
 import Stat from '../../components/stat';
@@ -46,18 +46,13 @@ const formatStatValue = (value) => {
 function EDashboard() {
   const [mobileInsightIdx, setMobileInsightIdx] = useState(0);
   const navigate = useNavigate();
-  const [dashboardData, setDashboardData] = useState({
-    summaryCardsData: [],
-    keyInsightsData: {},
-    isLoading: true,
-    error: null,
-  });
+  const { data: dashboardDataResp, isLoading: dashboardLoading, error: dashboardError } = useEducatorDashboard();
   // For mobile insights dropdown (must be after dashboardData is defined)
   const mobileInsightSections = [
     {
       key: 'quickRecommendations',
       title: 'Quick Recommendations',
-      items: dashboardData.keyInsightsData.quickRecommendations || [],
+      items: dashboardDataResp?.keyInsightsData?.quickRecommendations || [],
       tag: (
         <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 flex items-center gap-1">
           <Sparkles size={12} className="text-primary" />
@@ -69,7 +64,7 @@ function EDashboard() {
     {
       key: 'keyStrengths',
       title: 'Key Strengths',
-      items: dashboardData.keyInsightsData.keyStrengths || [],
+      items: dashboardDataResp?.keyInsightsData?.keyStrengths || [],
       tag: (
         <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 flex items-center gap-1">
           <Sparkles size={12} className="text-primary" />
@@ -82,7 +77,7 @@ function EDashboard() {
     {
       key: 'yetToDecide',
       title: 'Consistency Vulnerability',
-      items: dashboardData.keyInsightsData.yetToDecide || [],
+      items: dashboardDataResp?.keyInsightsData?.yetToDecide || [],
       tag: (
         <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 flex items-center gap-1">
           <Sparkles size={12} className="text-primary" />
@@ -93,128 +88,134 @@ function EDashboard() {
     },
   ];
 
-  const [testWiseAvgMarks, setTestWiseAvgMarks] = useState({});
+  
   const [selectedSubject, setSelectedSubject] = useState('Overall');
-  const [rawResults, setRawResults] = useState([]);
-  const [overallPerformance, setOverallPerformance] = useState('N/A');
-  const [improvementRate, setImprovementRate] = useState('N/A');
+  const { data: resultsResp, isLoading: resultsLoading, error: resultsError } = useEducatorResults();
   // Local refs/state for mobile-only stat carousel (custom implementation)
   const statScrollRef = useRef(null);
   const [statIdx, setStatIdx] = useState(0);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const data = await getEducatorDashboardData();
-        if (!data || data.error) {
-          throw new Error(data?.error || 'Failed to fetch data');
-        }
-        setDashboardData({
-          summaryCardsData: data.summaryCardsData || [],
-          keyInsightsData: data.keyInsightsData || {},
-          isLoading: false,
-          error: null,
-        });
-      } catch (error) {
-        setDashboardData((prev) => ({
-          ...prev,
-          isLoading: false,
-          error: error.message,
-        }));
-      }
-    };
-    fetchData();
-  }, []);
+  
 
-  useEffect(() => {
-    const fetchTestWiseAvg = async () => {
-      try {
-        const results = await fetchEducatorAllStudentResults();
-        if (results && Array.isArray(results.results)) {
-          // Dynamically detect which subject score fields exist in the results
-          const hasField = (field) => results.results.some(r => Object.prototype.hasOwnProperty.call(r, field));
-          const subjectKeys = { Overall: 'total_score' };
-          if (hasField('phy_score') || hasField('phy_total')) subjectKeys['Physics'] = 'phy_score';
-          if (hasField('chem_score') || hasField('chem_total')) subjectKeys['Chemistry'] = 'chem_score';
-          const hasBioData = results.results.some(r => (Number(r.bio_score) || 0) > 0 || (Number(r.bio_total) || 0) > 0);
-          if (hasBioData) {
-            subjectKeys['Biology'] = 'bio_score';
+  
+  
+  // derive rawResults array from query response
+  const rawResults = useMemo(() => {
+    if (!resultsResp) return [];
+    if (Array.isArray(resultsResp.results)) return resultsResp.results;
+    if (Array.isArray(resultsResp)) return resultsResp;
+    return [];
+  }, [resultsResp]);
+
+  // derive testWiseAvgMarks from rawResults (same logic as before)
+  const testWiseAvgMarks = useMemo(() => {
+    if (!rawResults || rawResults.length === 0) return {};
+    try {
+      const hasField = (field) => rawResults.some(r => Object.prototype.hasOwnProperty.call(r, field));
+      const subjectKeys = { Overall: 'total_score' };
+      if (hasField('phy_score') || hasField('phy_total')) subjectKeys['Physics'] = 'phy_score';
+      if (hasField('chem_score') || hasField('chem_total')) subjectKeys['Chemistry'] = 'chem_score';
+
+      const hasBioData = rawResults.some(r => (Number(r.bio_score) || 0) > 0 || (Number(r.bio_total) || 0) > 0);
+      const hasBotZooData = rawResults.some(r => (Number(r.bot_score) || 0) > 0 || (Number(r.bot_total) || 0) > 0 || (Number(r.zoo_score) || 0) > 0 || (Number(r.zoo_total) || 0) > 0);
+
+      if (hasBioData || hasBotZooData) {
+        subjectKeys['Biology'] = 'unified_bio';
+      }
+
+      if (hasField('bot_score') || hasField('bot_total')) subjectKeys['Botany'] = 'bot_score';
+      if (hasField('zoo_score') || hasField('zoo_total')) subjectKeys['Zoology'] = 'zoo_score';
+
+      const avgData = {};
+      Object.keys(subjectKeys).forEach(subject => {
+        const key = subjectKeys[subject];
+        const testMap = {};
+        rawResults.forEach(r => {
+          const testNum = r.test_num;
+          let score;
+          if (key === 'unified_bio') {
+            score = (Number(r.bio_score) || 0) + (Number(r.bot_score) || 0) + (Number(r.zoo_score) || 0);
+          } else if (key === 'computed_bio') {
+            score = (Number(r.bot_score) || 0) + (Number(r.zoo_score) || 0);
+          } else {
+            score = Number(r[key]) || 0;
           }
+          if (!testMap[testNum]) testMap[testNum] = { total: 0, count: 0, max: score, min: score };
+          testMap[testNum].total += score;
+          testMap[testNum].count += 1;
+          if (score > testMap[testNum].max) testMap[testNum].max = score;
+          if (score < testMap[testNum].min) testMap[testNum].min = score;
+        });
+        avgData[subject] = Object.entries(testMap)
+          .sort((a, b) => Number(a[0]) - Number(b[0]))
+          .map(([testNum, { total, count, max, min }]) => ({
+            test: `Test ${testNum}`,
+            testNum: Number(testNum),
+            avg: count ? Math.round(total / count) : 0,
+            max,
+            min,
+          }));
+      });
+      return avgData;
+    } catch (err) {
+      return {};
+    }
+  }, [rawResults]);
 
-          const hasBotData = results.results.some(r => (Number(r.bot_score) || 0) > 0 || (Number(r.bot_total) || 0) > 0);
-          if (hasBotData) subjectKeys['Botany'] = 'bot_score';
+  // compute overallPerformance and improvementRate from rawResults
+  const { overallPerformance, improvementRate } = useMemo(() => {
+    if (!rawResults || rawResults.length === 0) return { overallPerformance: 'N/A', improvementRate: 'N/A' };
 
-          const hasZooData = results.results.some(r => (Number(r.zoo_score) || 0) > 0 || (Number(r.zoo_total) || 0) > 0);
-          if (hasZooData) subjectKeys['Zoology'] = 'zoo_score';
-          const avgData = {};
-          Object.keys(subjectKeys).forEach(subject => {
-            const key = subjectKeys[subject];
-            const testMap = {};
-            results.results.forEach(r => {
-              const testNum = r.test_num;
-              const score = Number(r[key]) || 0;
-              if (!testMap[testNum]) {
-                testMap[testNum] = { total: 0, count: 0, max: score, min: score };
-              }
-              testMap[testNum].total += score;
-              testMap[testNum].count += 1;
-              if (score > testMap[testNum].max) testMap[testNum].max = score;
-              if (score < testMap[testNum].min) testMap[testNum].min = score;
-            });
-            avgData[subject] = Object.entries(testMap)
-              .sort((a, b) => Number(a[0]) - Number(b[0]))
-              .map(([testNum, { total, count, max, min }]) => ({
-                test: `Test ${testNum}`,
-                testNum: Number(testNum),
-                avg: count ? Math.round(total / count) : 0,
-                max: max,
-                min: min
-              }));
-          });
-          // If Biology wasn't directly present but Botany and Zoology were,
-          // compute Biology by summing Botany + Zoology per test to ensure
-          // the UI/chart can show Biology consistently.
-          setTestWiseAvgMarks(avgData);
-        }
-      } catch (err) {
-        // fallback to dummy data if needed
-        const dummyData = {
-          Overall: [
-            { test: 'Test 1', avg: 540, max: 650, min: 400 },
-            { test: 'Test 2', avg: 620, max: 720, min: 500 },
-            { test: 'Test 3', avg: 480, max: 580, min: 350 },
-            { test: 'Test 4', avg: 700, max: 800, min: 600 }
-          ],
-          Physics: [
-            { test: 'Test 1', avg: 20, max: 35, min: 5 },
-            { test: 'Test 2', avg: 25, max: 40, min: 10 },
-            { test: 'Test 3', avg: 18, max: 30, min: 5 },
-            { test: 'Test 4', avg: 30, max: 45, min: 15 }
-          ],
-          Chemistry: [
-            { test: 'Test 1', avg: 15, max: 30, min: 0 },
-            { test: 'Test 2', avg: 20, max: 35, min: 5 },
-            { test: 'Test 3', avg: 12, max: 25, min: 0 },
-            { test: 'Test 4', avg: 25, max: 40, min: 10 }
-          ],
-          Botany: [
-            { test: 'Test 1', avg: 25, max: 40, min: 10 },
-            { test: 'Test 2', avg: 30, max: 45, min: 15 },
-            { test: 'Test 3', avg: 22, max: 35, min: 10 },
-            { test: 'Test 4', avg: 35, max: 50, min: 20 }
-          ],
-          Zoology: [
-            { test: 'Test 1', avg: 10, max: 25, min: 0 },
-            { test: 'Test 2', avg: 15, max: 30, min: 0 },
-            { test: 'Test 3', avg: 8, max: 20, min: 0 },
-            { test: 'Test 4', avg: 20, max: 35, min: 5 }
-          ]
-        };
-        setTestWiseAvgMarks(dummyData);
-      }
+    const testNums = [...new Set(rawResults.map(r => r.test_num))].sort((a, b) => a - b);
+    const maxTestNum = Math.max(...rawResults.map(r => r.test_num));
+    const lastTestResults = rawResults.filter(r => r.test_num === maxTestNum);
+
+    const computeAvgPercentFromRows = (rows) => {
+      const vals = rows.map(r => {
+        if (r.total_percent !== undefined && r.total_percent !== null) return parseFloat(String(r.total_percent).replace('%', ''));
+        const score = Number(r.total_score) ||
+          ((Number(r.phy_score) || 0) + (Number(r.chem_score) || 0) + (Number(r.bot_score) || 0) + (Number(r.zoo_score) || 0) + (Number(r.bio_score) || 0));
+        if (!isNaN(score) && score > 0) return (score / 720) * 100;
+        if (r.total !== undefined && r.total_max !== undefined) return (Number(r.total) / Number(r.total_max)) * 100;
+        return null;
+      }).filter(v => v !== null && !isNaN(v));
+
+      if (vals.length === 0) return null;
+      return vals.reduce((a, b) => a + b, 0) / vals.length;
     };
-    fetchTestWiseAvg();
-  }, []);
+
+    let overallPerf = 'N/A';
+    const avgLatestPercent = lastTestResults.length > 0 ? computeAvgPercentFromRows(lastTestResults) : null;
+    if (avgLatestPercent !== null) overallPerf = `${Math.round(avgLatestPercent)}%`;
+
+    let improv = 'N/A';
+    if (testNums.length >= 2) {
+      const last = Math.max(...testNums);
+      const prev = testNums[testNums.length - 2];
+      const lastResults = rawResults.filter(r => r.test_num === last);
+      const prevResults = rawResults.filter(r => r.test_num === prev);
+
+      if (lastResults.length > 0 && prevResults.length > 0) {
+        const calculateTestAveragePercentage = (testResults) => {
+          const total = testResults.reduce((sum, r) => {
+            const score = Number(r.total_score) ||
+              ((Number(r.phy_score) || 0) + (Number(r.chem_score) || 0) + (Number(r.bot_score) || 0) + (Number(r.zoo_score) || 0) + (Number(r.bio_score) || 0));
+            return sum + score;
+          }, 0);
+          const average = total / testResults.length;
+          return (average / 720) * 100;
+        };
+
+        const lastAvgPercent = calculateTestAveragePercentage(lastResults);
+        const prevAvgPercent = calculateTestAveragePercentage(prevResults);
+        const diff = lastAvgPercent - prevAvgPercent;
+        const absolutePoints = Math.round(diff);
+        improv = `${absolutePoints}%`;
+      }
+    }
+
+    return { overallPerformance: overallPerf, improvementRate: improv };
+  }, [rawResults]);
 
   // Build subject options for the Select control based on the computed testWiseAvgMarks
   const subjectOptions = useMemo(() => {
@@ -241,79 +242,10 @@ function EDashboard() {
     }
   }, [testWiseAvgMarks, selectedSubject]);
 
-  useEffect(() => {
-    fetchEducatorAllStudentResults().then(results => {
-      if (results && Array.isArray(results.results)) {
-        setRawResults(results.results);
-        // Calculate overall performance for the last test only - AVERAGE SCORE AS PERCENTAGE OF 720
-        if (results.results.length > 0) {
-          const maxTestNum = Math.max(...results.results.map(r => r.test_num));
-          const lastTestResults = results.results.filter(r => r.test_num === maxTestNum);
-
-          if (lastTestResults.length > 0) {
-            // Calculate simple average: sum of all student scores / number of students
-            const totalScoreSum = lastTestResults.reduce((sum, r) => {
-              // Use total_score if available, otherwise sum subject scores
-              const score = Number(r.total_score) ||
-                ((Number(r.phy_score) || 0) +
-                  (Number(r.chem_score) || 0) +
-                  (Number(r.bot_score) || 0) +
-                  (Number(r.zoo_score) || 0) +
-                  (Number(r.bio_score) || 0));
-              return sum + score;
-            }, 0);
-
-            const averageScore = totalScoreSum / lastTestResults.length;
-            // Convert average score to percentage of 720
-            const percentage = Math.round((averageScore / 720) * 100);
-            setOverallPerformance(`${percentage}%`);
-          } else {
-            setOverallPerformance('N/A');
-          }
-        } else {
-          setOverallPerformance('N/A');
-        }
-
-        // Calculate improvement rate as difference between last and previous test averages (as percentages)
-        const testNums = [...new Set(results.results.map(r => r.test_num))].sort((a, b) => a - b);
-        if (testNums.length >= 2) {
-          const lastTestNum = testNums[testNums.length - 1];
-          const prevTestNum = testNums[testNums.length - 2];
-          const lastResults = results.results.filter(r => r.test_num === lastTestNum);
-          const prevResults = results.results.filter(r => r.test_num === prevTestNum);
-
-          if (lastResults.length > 0 && prevResults.length > 0) {
-            const calculateTestAveragePercentage = (testResults) => {
-              const total = testResults.reduce((sum, r) => {
-                const score = Number(r.total_score) ||
-                  ((Number(r.phy_score) || 0) +
-                    (Number(r.chem_score) || 0) +
-                    (Number(r.bot_score) || 0) +
-                    (Number(r.zoo_score) || 0) +
-                    (Number(r.bio_score) || 0));
-                return sum + score;
-              }, 0);
-              const average = total / testResults.length;
-              return (average / 720) * 100; // Return as percentage of 720
-            };
-
-            const lastAvgPercent = calculateTestAveragePercentage(lastResults);
-            const prevAvgPercent = calculateTestAveragePercentage(prevResults);
-            const diff = lastAvgPercent - prevAvgPercent;
-            // Absolute improvement in percentage points (rounded) — store this in `improvementRate`
-            const absolutePoints = Math.round(diff);
-            setImprovementRate(`${absolutePoints}%`);
-          } else {
-            setImprovementRate('N/A');
-          }
-        } else {
-          setImprovementRate('N/A');
-        }
-      }
-    });
-  }, []);
-
-  const { summaryCardsData, keyInsightsData, isLoading, error } = dashboardData;
+  const summaryCardsData = dashboardDataResp?.summaryCardsData || [];
+  const keyInsightsData = dashboardDataResp?.keyInsightsData || {};
+  const isLoading = dashboardLoading || resultsLoading;
+  const error = (dashboardError && (dashboardError.message || dashboardError)) || (resultsError && (resultsError.message || resultsError)) || null;
 
   const attendanceData = useMemo(() => {
     let percentage = 'N/A';

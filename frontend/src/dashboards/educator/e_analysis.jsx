@@ -1,7 +1,7 @@
 import React from 'react';
 import { CheckCircle, AlertCircle, Filter, Target, Zap, Atom, FlaskConical, Microscope, Leaf, PawPrint, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { fetchEducatorSWOT, fetchAvailableSwotTests_Educator } from '../../utils/api';
+import { useAvailableSwotTestsEducator, useEducatorSwot } from '../../hooks/useEducatorData';
 import LoadingPage from '../components/LoadingPage.jsx';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, } from '../../components/ui/select.jsx';
 import { Button } from '../../components/ui/button.jsx';
@@ -14,154 +14,33 @@ import Alert from '../../components/ui/alert.jsx';
 // present in the fetched SWOT data in this order when possible.
 const PREFERRED_SUBJECT_ORDER = ['Physics', 'Chemistry', 'Biology', 'Botany', 'Zoology'];
 
-// Custom hook to fetch and manage SWOT analysis data
-const useSwotData = (fetchSwotData, fetchAvailableTestsData) => {
-  // State for the currently selected subject
-  const [selectedSubject, setSelectedSubject] = useState('Physics');
-  // State for the currently selected test
-  const [selectedTest, setSelectedTest] = useState('');
-  // State to hold the list of available tests
-  const [availableTests, setAvailableTests] = useState([]);
-  // State to store the organized SWOT data
-  const [swotData, setSwotData] = useState({});
-  // State to track the loading status of the data fetch
-  const [loading, setLoading] = useState(true);
+// Helper to organize raw SWOT payload into subject-wise SWOT structure
+const organizeSwotData = (rawData) => {
+  const organized = {};
+  if (!rawData) return organized;
+  for (const metric in rawData) {
+    const subjectMap = rawData[metric];
+    const [category, title, description] = metricToCategoryMap[metric] || [];
+    if (!category) continue;
 
-  // useEffect hook to load the list of available tests on component mount
-  useEffect(() => {
-    const loadAvailableTests = async () => {
-      try {
-        // Fetch the available test numbers (these are zero-based IDs coming from the API)
-        const tests = await fetchAvailableTestsData();
-        // Remove duplicates but DO NOT drop 0 — 0 is a valid test id (maps to display "Overall")
-        const uniqueTests = [...new Set(tests)];
-        // Sort the unique tests: Overall (0) first, then descending order for others
-        uniqueTests.sort((a, b) => {
-          if (a === 0) return -1;
-          if (b === 0) return 1;
-          return b - a;
+    for (const subject in subjectMap) {
+      if (!organized[subject]) {
+        organized[subject] = {
+          Strengths: [],
+          Weaknesses: [],
+          Threats: [],
+        };
+      }
+      if (category === 'Strengths' || category === 'Weaknesses' || category === 'Threats') {
+        organized[subject][category].push({
+          title,
+          description,
+          topics: subjectMap[subject],
         });
-        // Format the test numbers into displayable strings where display = 'Overall' for id 0, or 'Test X' where X = id for id > 0
-        const formatted = uniqueTests.map((num) => num === 0 ? 'Overall' : `Test ${num}`);
-        // Update the availableTests state
-        setAvailableTests(formatted);
-        // Set selectedTest to the first available test if not set
-        if (!selectedTest && formatted.length > 0) {
-          setSelectedTest(formatted[0]);
-        }
-      } catch (error) {
-        console.error('Error loading available tests:', error);
-        // Optionally set an error state here if needed
-      }
-    };
-
-    loadAvailableTests();
-  }, [fetchAvailableTestsData]); // Fetch available tests only once on mount
-
-  // Set selectedTest to first available test if not set
-  useEffect(() => {
-    if (!selectedTest && availableTests.length > 0) {
-      setSelectedTest(availableTests[0]);
-    }
-  }, [availableTests, selectedTest]);
-
-  // useEffect hook to fetch SWOT data whenever the selected test changes
-  useEffect(() => {
-    if (!selectedTest) return;
-
-    const fetchSwot = async () => {
-      setLoading(true);
-      try {
-        // Determine the test number to fetch.
-        // Display labels are 'Overall' for api_id 0, or 'Test X' where X = api_id for api_id > 0
-        let testNum;
-        if (selectedTest === 'Overall') {
-          testNum = 0;
-        } else {
-          const parsed = parseInt(selectedTest.split(' ')[1], 10);
-          testNum = Number.isNaN(parsed) ? null : parsed;
-        }
-        if (testNum === null) {
-          console.error('Invalid selectedTest format, cannot determine test number:', selectedTest);
-          setSwotData({});
-          setLoading(false);
-          return;
-        }
-        // Fetch the SWOT data for the selected test
-        const response = await fetchSwotData(testNum);
-        // Print the full response so developers can inspect every field returned
-        // by the backend (useful for debugging / exploring the API payload).
-        // The API helper `fetchEducatorSWOT` itself also logs response.data, but
-        // logging here shows exactly what the consumer receives.
-        // You can view this output in the browser devtools console.
-        console.log('fetchEducatorSWOT full response (consumer):', response);
-        // If the response is successful and contains SWOT data
-        if (!response?.error && response?.swot) {
-          // Organize the raw SWOT data into a more structured format
-          const formatted = organizeSwotData(response.swot);
-          // Update the swotData state
-          setSwotData(formatted);
-        } else if (response?.error) {
-          console.error('Error fetching SWOT data:', response.error);
-          setSwotData({}); // Clear previous data on error
-          // Optionally set an error state here if needed
-        } else {
-          setSwotData({}); // Clear data if no SWOT data is present
-        }
-      } catch (error) {
-        console.error('Error fetching SWOT data:', error);
-        setSwotData({}); // Clear previous data on error
-        // Optionally set an error state here if needed
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSwot();
-  }, [selectedTest, fetchSwotData]); // Fetch SWOT data when selectedTest changes
-
-  // Function to organize the raw SWOT data into a subject-wise structure
-  const organizeSwotData = (rawData) => {
-    const organized = {};
-    for (const metric in rawData) {
-      const subjectMap = rawData[metric];
-      // Look up the category, title, and description for the current metric
-      const [category, title, description] = metricToCategoryMap[metric] || [];
-      // Skip if the category is not found in the mapping
-      if (!category) continue;
-
-      for (const subject in subjectMap) {
-        // Initialize the subject's SWOT categories if they don't exist
-        if (!organized[subject]) {
-          organized[subject] = {
-            Strengths: [],
-            Weaknesses: [],
-            Threats: [],
-          };
-        }
-        // Only include Strengths, Weaknesses, and Threats; drop Opportunities (Edge Zone)
-        if (category === 'Strengths' || category === 'Weaknesses' || category === 'Threats') {
-          organized[subject][category].push({
-            title,
-            description,
-            topics: subjectMap[subject],
-          });
-        }
       }
     }
-    return organized;
-  };
-
-  // Return the state variables and setter functions for external use
-  return {
-    selectedSubject,
-    setSelectedSubject,
-    selectedTest,
-    setSelectedTest,
-    availableTests,
-    swotData,
-    loading,
-  };
+  }
+  return organized;
 };
 
 // Mapping of API metric keys to SWOT categories, titles, and descriptions
@@ -283,17 +162,40 @@ SwotSection.propTypes = {
  * It fetches and manages SWOT data using the `useSwotData` custom hook.
  */
 const ESWOT = () => {
-  // Utilize the custom hook to manage data fetching and state for SWOT analysis.
-  const {
-    selectedSubject,
-    setSelectedSubject,
-    selectedTest,
-    setSelectedTest,
-    availableTests = [],
-    swotData,
-    loading,
-    error
-  } = useSwotData(fetchEducatorSWOT, fetchAvailableSwotTests_Educator);
+  // Local selection state
+  const [selectedSubject, setSelectedSubject] = useState('Physics');
+  const [selectedTest, setSelectedTest] = useState('');
+
+  // Educator hooks (React Query)
+  const { data: testsData, isLoading: testsLoading, error: testsError } = useAvailableSwotTestsEducator();
+
+  const availableTests = React.useMemo(() => {
+    const nums = testsData || [];
+    const unique = [...new Set(nums)];
+    unique.sort((a, b) => {
+      if (a === 0) return -1;
+      if (b === 0) return 1;
+      return b - a;
+    });
+    return unique.map((n) => (n === 0 ? 'Overall' : `Test ${n}`));
+  }, [testsData]);
+
+  useEffect(() => {
+    if (!selectedTest && availableTests.length > 0) setSelectedTest(availableTests[0]);
+  }, [availableTests, selectedTest]);
+
+  const testNum = React.useMemo(() => {
+    if (!selectedTest) return null;
+    if (selectedTest === 'Overall') return 0;
+    const parsed = parseInt(String(selectedTest).split(' ')[1], 10);
+    return Number.isNaN(parsed) ? null : parsed;
+  }, [selectedTest]);
+
+  const { data: swotResp, isLoading: swotLoading, error: swotError } = useEducatorSwot(testNum);
+  const swotData = React.useMemo(() => organizeSwotData(swotResp?.swot || swotResp || {}), [swotResp]);
+
+  const loading = testsLoading || swotLoading;
+  const error = testsError || swotError;
 
   // Filter out specific weaknesses: "Weakness Over Time" and "Low Retention Topics"
   // And specific strengths: "Strongest Question Types" and "Improvement Over Time"

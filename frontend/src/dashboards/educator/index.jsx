@@ -47,6 +47,4 @@ export const ELayout = () => {
 // Export all educator dashboard components for easy import
 export { default as EDashboard } from './e_dashboard.jsx';
 export { default as ESWOT } from './e_analysis.jsx';
-export { default as EUpload } from './e_upload.jsx';
 export { default as EResults } from './e_studentdetails';
-export { default as EChatbot } from './e_chatbot.jsx';

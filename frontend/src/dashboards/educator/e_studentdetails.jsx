@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { fetchEducatorAllStudentResults, fetcheducatorstudent } from '../../utils/api';
+import { useEducatorResults, useEducatorStudents } from '../../hooks/useEducatorData';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -28,86 +28,18 @@ import { Input } from '../../components/ui/input.jsx';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../../components/ui/dropdown-menu.jsx';
 
 function EResults() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [groupedResults, setGroupedResults] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [modalStudent, setModalStudent] = useState(null);
-  const [studentNameMap, setStudentNameMap] = useState({});
   const [sortModalOpen, setSortModalOpen] = useState(false);
   const [sortField, setSortField] = useState('rank');
   const [sortDirection, setSortDirection] = useState('desc');
   const navigate = useNavigate();
 
-  const fetchResults = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  // Fetch data via React Query hooks
+  const { data: resultsResp, isLoading: resultsLoading, error: resultsError } = useEducatorResults();
+  const { data: studentsResp, isLoading: studentsLoading } = useEducatorStudents();
 
-    try {
-      const results = await fetchEducatorAllStudentResults();
-
-      if (results && !results.error) {
-        if (Array.isArray(results.results)) {
-          const grouped = groupResultsByStudent(results.results);
-          setGroupedResults(grouped);
-        } else {
-          console.error("Unexpected results shape:", results);
-          setError("Unexpected response structure from API.");
-        }
-      } else {
-        console.error("Failed to fetch student results:", results?.error);
-        setError(results?.error || 'An unknown error occurred.');
-        if (results?.error?.includes('Unauthorized')) {
-          navigate('/unauthorized');
-        }
-      }
-    } catch (err) {
-      console.error("Error fetching results:", err);
-      setError('Failed to fetch student results. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }, [navigate]);
-
-  // Fetch student names for mapping
-  useEffect(() => {
-    const fetchNames = async () => {
-      try {
-        const res = await fetcheducatorstudent();
-
-        let students = [];
-        if (!res) students = [];
-        else if (Array.isArray(res)) students = res;
-        else if (Array.isArray(res.students)) students = res.students;
-        else if (Array.isArray(res.data)) students = res.data;
-        else students = [];
-
-        const map = {};
-        students.forEach(s => {
-          const id = s.student_id ?? s.studentId ?? s.id;
-          const name = s.student_name ?? s.name ?? s.full_name ?? '';
-          if (id) map[id] = name && String(name).trim() !== '' ? String(name).trim() : `Student ${id}`;
-        });
-        setStudentNameMap(map);
-      } catch (err) {
-        console.error('Failed to fetch educator students:', err);
-      }
-    };
-    fetchNames();
-  }, []);
-
-  const getStudentName = (student) => {
-    if (!student) return '';
-    const mapped = studentNameMap[student.student_id];
-    if (mapped && String(mapped).trim() !== '') return String(mapped).trim();
-    if (student.student_name && String(student.student_name).trim() !== '') return String(student.student_name).trim();
-    return `Student ${student.student_id}`;
-  };
-
-  useEffect(() => {
-    fetchResults();
-  }, [fetchResults]);
-
+  // Helper function to group results by student
   const groupResultsByStudent = (results) => {
     const grouped = {};
 
@@ -131,6 +63,42 @@ function EResults() {
 
     return Object.values(grouped).sort((a, b) => b.average_score - a.average_score);
   };
+
+  const getStudentName = (student) => {
+    if (!student) return '';
+    const mapped = studentNameMap[student.student_id];
+    if (mapped && String(mapped).trim() !== '') return String(mapped).trim();
+    if (student.student_name && String(student.student_name).trim() !== '') return String(student.student_name).trim();
+    return `Student ${student.student_id}`;
+  };
+
+  // Derive student name map from cached students data
+  const studentNameMap = React.useMemo(() => {
+    let students = [];
+    if (!studentsResp) students = [];
+    else if (Array.isArray(studentsResp)) students = studentsResp;
+    else if (Array.isArray(studentsResp.students)) students = studentsResp.students;
+    else if (Array.isArray(studentsResp.data)) students = studentsResp.data;
+    else students = [];
+
+    const map = {};
+    students.forEach(s => {
+      const id = s.student_id ?? s.studentId ?? s.id;
+      const name = s.student_name ?? s.name ?? s.full_name ?? '';
+      if (id) map[id] = name && String(name).trim() !== '' ? String(name).trim() : `Student ${id}`;
+    });
+    return map;
+  }, [studentsResp]);
+
+  // Derive grouped results from cached results data
+  const groupedResults = React.useMemo(() => {
+    if (!resultsResp) return [];
+    const rawResults = Array.isArray(resultsResp.results) ? resultsResp.results : Array.isArray(resultsResp) ? resultsResp : [];
+    return groupResultsByStudent(rawResults);
+  }, [resultsResp]);
+
+  const loading = resultsLoading || studentsLoading;
+  const error = resultsError ? (resultsError.message || String(resultsError)) : null;
 
   const clearSearch = useCallback(() => {
     setSearchTerm('');
@@ -236,7 +204,7 @@ function EResults() {
             <div className="font-semibold text-sm">Error!</div>
             <div className="text-xs text-rose-800/80 break-words">{error}</div>
           </Alert>
-          <Button onClick={fetchResults} className="w-full sm:w-auto">
+          <Button onClick={() => window.location.reload()} className="w-full sm:w-auto">
             Retry
           </Button>
         </div>
@@ -540,11 +508,6 @@ function EResults() {
             </Button>
           </div>
         </Modal>
-
-        <div className="mt-6 text-sm text-muted-foreground flex items-center gap-2">
-          <BarChart className="w-4 h-4" />
-          <p>Use the Sort button to change how results are ordered</p>
-        </div>
       </Card>
     </div>
   );
