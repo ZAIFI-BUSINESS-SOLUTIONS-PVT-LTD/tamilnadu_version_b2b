@@ -122,6 +122,9 @@ def educator_register(request):
         institution = request.data.get("institution")
         password = request.data.get("password")
         phone_number = request.data.get("phone_number")  # Optional for WhatsApp notifications
+        whatsapp_opt_in = request.data.get("whatsapp_opt_in", "false").lower() == "true"
+        whatsapp_consent_text = request.data.get("whatsapp_consent_text", "")
+        whatsapp_consent_ip = request.data.get("whatsapp_consent_ip", "")
         student_csv = request.FILES.get("file")
 
         # ✅ Validate required fields
@@ -155,6 +158,14 @@ def educator_register(request):
         # ✅ Save phone number if provided (for WhatsApp notifications)
         if phone_number:
             educator.phone_number = phone_number
+        
+        # ✅ Save WhatsApp opt-in consent
+        if whatsapp_opt_in:
+            from django.utils import timezone
+            educator.whatsapp_opt_in = True
+            educator.whatsapp_opt_in_timestamp = timezone.now()
+            educator.whatsapp_consent_ip = whatsapp_consent_ip or request.META.get('REMOTE_ADDR', '')
+            educator.whatsapp_consent_text = whatsapp_consent_text
         
         educator.save()
 

@@ -34,15 +34,27 @@ print("=" * 60)
 # Check configuration
 print("\n1. Checking Configuration...")
 print(f"   WHATSAPP_ENABLED: {WhatsAppConfig.ENABLED}")
-print(f"   WHATSAPP_TOKEN: {'Set' if WhatsAppConfig.TOKEN else 'Not Set'}")
+print(f"   WHATSAPP_TOKEN: {WhatsAppConfig.get_masked_token()}")
 print(f"   WHATSAPP_PHONE_ID: {WhatsAppConfig.PHONE_ID if WhatsAppConfig.PHONE_ID else 'Not Set'}")
+print(f"   WABA_ID: {WhatsAppConfig.WABA_ID if WhatsAppConfig.WABA_ID else 'Not Set (optional)'}")
 print(f"   API_BASE: {WhatsAppConfig.API_BASE}")
 print(f"   Is Configured: {WhatsAppConfig.is_configured()}")
+
+# Validate configuration
+is_valid, errors = WhatsAppConfig.validate_config()
+if not is_valid:
+    print("\n❌ WhatsApp configuration is invalid!")
+    for error in errors:
+        print(f"   • {error}")
+    print("\n   Please fix the errors in your .env file")
+    sys.exit(1)
 
 if not WhatsAppConfig.is_configured():
     print("\n❌ WhatsApp is not properly configured!")
     print("   Please set WHATSAPP_ENABLED=true, WHATSAPP_TOKEN, and WHATSAPP_PHONE_ID in .env")
     sys.exit(1)
+
+print("   ✅ Configuration is valid!")
 
 # Find an educator with phone number
 print("\n2. Finding Educators with Phone Numbers...")

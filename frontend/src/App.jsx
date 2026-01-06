@@ -24,6 +24,7 @@ import {
   ESWOT,
   EResults,
 } from './dashboards/educator';
+import ESettings from './dashboards/educator/e_settings.jsx';
 
 // Import student layout and nested pages
 import {
@@ -42,6 +43,7 @@ import {
   IUpload,
   ITestPerformance
 } from './dashboards/institution';
+import ISettings from './dashboards/institution/i_settings.jsx';
 
 
 function App() {
@@ -73,6 +75,7 @@ function App() {
           <Route path="dashboard" element={<EDashboard />} />
           <Route path="swot" element={<ESWOT />} />
           <Route path="students" element={<EResults />} />
+          <Route path="settings" element={<ESettings />} />
         </Route>
         {/* Student protected pages via layout */}
         <Route path="/student/*" element={<SLayout />}>
@@ -88,6 +91,7 @@ function App() {
           <Route path="students" element={<IStudentDetails />} />
           <Route path="upload" element={<IUpload />} />
           <Route path="test-performance" element={<ITestPerformance />} />
+          <Route path="settings" element={<ISettings />} />
         </Route>
       </Routes>
     </>

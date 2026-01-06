@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path
 from exam.views import auth_views, student_views, admin_views, upload_views, educator_views, institution_views, feedback_views, teacher_views
-from exam.views import password_reset_views
+from exam.views import password_reset_views, whatsapp_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -96,5 +96,11 @@ urlpatterns = [
     path('api/classes/<str:class_id>/teachers/', teacher_views.list_teachers, name='list_teachers'),
     path('api/teachers/<int:teacher_id>/', teacher_views.update_teacher, name='update_teacher'),
     path('api/teachers/<int:teacher_id>/delete/', teacher_views.delete_teacher, name='delete_teacher'),
+
+    # WhatsApp APIs
+    path('api/whatsapp/opt-in/', whatsapp_views.update_whatsapp_opt_in, name='update_whatsapp_opt_in'),
+    path('api/whatsapp/status/', whatsapp_views.get_whatsapp_status, name='get_whatsapp_status'),
+    path('api/whatsapp/activate/', whatsapp_views.activate_whatsapp, name='activate_whatsapp'),
+    path('webhooks/whatsapp/', whatsapp_views.whatsapp_webhook, name='whatsapp_webhook'),
 
 ]
