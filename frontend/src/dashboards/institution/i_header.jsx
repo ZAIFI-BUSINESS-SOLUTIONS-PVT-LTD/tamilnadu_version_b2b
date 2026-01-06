@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlignLeft, Home, UsersRound, FileText, WandSparkles, UploadCloud, ChevronRight, ChevronDown, NotepadText } from 'lucide-react';
+import { AlignLeft, Home, UsersRound, FileText, WandSparkles, UploadCloud, ChevronRight, ChevronDown, NotepadText, Settings } from 'lucide-react';
 import { useInstitution } from './index.jsx';
 import DesktopSidebar from '../components/header/DesktopSidebar.jsx';
 import UserDropdown from '../components/header/UserDropDown.jsx';
@@ -56,6 +56,12 @@ const InstitutionHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
       icon: <NotepadText size={20} />,
       text: 'Test Performance',
       activePattern: /^\/institution\/test-performance/
+    },
+    {
+      to: '/institution/settings',
+      icon: <Settings size={20} />,
+      text: 'Settings',
+      activePattern: /^\/institution\/settings/
     },
   ];
 

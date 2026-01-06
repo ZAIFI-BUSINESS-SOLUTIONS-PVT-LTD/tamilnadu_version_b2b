@@ -11,6 +11,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '.
 import { Button } from '../../components/ui/button.jsx';
 import EStudentListMock from '../components/StudentListMock';
 import LoadingPage from '../components/LoadingPage.jsx';
+import WhatsAppOptInBanner from '../../components/whatsapp/WhatsAppOptInBanner.jsx';
 import { useInstitution } from './index.jsx';
 import { useInstitutionEducatorDashboard, useInstitutionEducatorResults, useAllInstitutionEducatorResults, usePrefetchInstitutionData } from '../../hooks/useInstitutionData';
 
@@ -309,6 +310,9 @@ function IDashboard() {
   return (
     <UITooltipProvider delayDuration={150}>
       <div className="mt-12">
+        {/* WhatsApp Opt-In Banner */}
+        <WhatsAppOptInBanner />
+        
         {/* Institute Overview Section */}
         <div className="mb-8 mt-8">
           <div className="flex items-center mb-6">
