@@ -56,7 +56,7 @@ function InstitutionBootstrap() {
 
   useEffect(() => {
     const host = (typeof window !== 'undefined' && window.location && window.location.host) ? window.location.host : '';
-    const isLocal = host.includes('localhost') || host.startsWith('127.0.0.1') || host === '::1' || host.endsWith('.local') || host === '';
+    const isLocal = host.includes('localhost') || host.startsWith('127.0.0.1') || host.startsWith('13.219.64.187') || host === '::1' || host.endsWith('.local') || host === '';
     const isDevHost = host === 'tamilnadu.inzighted.com' || host.endsWith('.tamilnadu.inzighted.com');
     const isGatewayHost = host === 'web.inzighted.com';
 

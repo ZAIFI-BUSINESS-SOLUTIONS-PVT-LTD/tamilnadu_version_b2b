@@ -8,7 +8,8 @@ import {
   ChevronDown,
   ChevronRight,
   GraduationCap,
-  WandSparkles
+  WandSparkles,
+  Settings
 } from "lucide-react";
 import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
 import { fetcheducatordetail } from '../../utils/api.js';
@@ -86,6 +87,12 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
       icon: <WandSparkles size={20} />,
       text: 'AI Analysis',
       activePattern: /^\/educator\/swot/
+    },
+    {
+      to: '/educator/settings',
+      icon: <Settings size={20} />,
+      text: 'Settings',
+      activePattern: /^\/educator\/settings/
     },
 
     // {

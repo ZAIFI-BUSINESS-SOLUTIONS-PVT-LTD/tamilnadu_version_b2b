@@ -14,6 +14,7 @@ import { Button } from '../../components/ui/button.jsx';
 import EStudentListMock from '../components/StudentListMock';
 import EDashboardMobile from './e_dashboard-mobile.jsx';
 import LoadingPage from '../components/LoadingPage.jsx';
+import WhatsAppOptInBanner from '../../components/whatsapp/WhatsAppOptInBanner.jsx';
 
 // Register Chart.js components and set global font family
 Chart.register(LineElement, PointElement, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Filler);
@@ -302,6 +303,9 @@ function EDashboard() {
 
         {/* Desktop version */}
         <div className="hidden md:block mt-12">
+          {/* WhatsApp Opt-In Banner */}
+          <WhatsAppOptInBanner />
+          
           {/* Section 1: Grid layout */}
           <div className="grid grid-cols-1 gap-4 sm:gap-8 lg:grid-cols-2">
             {/* Left Column */}

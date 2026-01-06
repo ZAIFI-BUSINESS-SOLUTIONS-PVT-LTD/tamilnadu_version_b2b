@@ -20,6 +20,10 @@ const EducatorSignup = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [studentCSV, setStudentCSV] = useState(null);
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [whatsappOptIn, setWhatsappOptIn] = useState(true); // Default checked
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [activationLink, setActivationLink] = useState('');
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -94,6 +98,10 @@ const EducatorSignup = () => {
     formData.append('institution', institutionName);
     formData.append('email', educatorEmail);
     formData.append('password', password);
+    formData.append('phone_number', phoneNumber);
+    formData.append('whatsapp_opt_in', whatsappOptIn);
+    formData.append('whatsapp_consent_text', 'I agree to receive important notifications and updates on WhatsApp.');
+    formData.append('whatsapp_consent_ip', window.location.hostname); // Simple IP placeholder
 
     if (studentCSV) {
       formData.append('file', studentCSV);
@@ -109,12 +117,25 @@ const EducatorSignup = () => {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('first_time_login', 'false');
 
-      navigate('/wait');
+      // Show success modal with WhatsApp activation link if opted in
+      if (whatsappOptIn && phoneNumber) {
+        const whatsappPhone = process.env.REACT_APP_WHATSAPP_BUSINESS_PHONE || '917984113438';
+        const link = `https://wa.me/${whatsappPhone}?text=Start%20WhatsApp%20updates%20for%20educator%20account`;
+        setActivationLink(link);
+        setShowSuccessModal(true);
+      } else {
+        navigate('/wait');
+      }
     } catch (error) {
       setErrorMessage(error.response?.data?.error || 'Something went wrong. Try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCloseModal = () => {
+    setShowSuccessModal(false);
+    navigate('/wait');
   };
 
   if (!isAuthorized) {
@@ -203,6 +224,13 @@ const EducatorSignup = () => {
                 required
               />
               <input
+                type="tel"
+                placeholder="Phone Number (with country code, e.g., +919876543210)"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <input
                 type="password"
                 placeholder="Password"
                 value={password}
@@ -232,6 +260,22 @@ const EducatorSignup = () => {
                   <p className="mt-1 text-sm text-gray-600">📄 {studentCSV.name}</p>
                 )}
               </div>
+              
+              {/* WhatsApp Opt-in Checkbox */}
+              <div className="flex items-start space-x-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <input
+                  type="checkbox"
+                  id="whatsapp-opt-in"
+                  checked={whatsappOptIn}
+                  onChange={(e) => setWhatsappOptIn(e.target.checked)}
+                  className="mt-1 h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                />
+                <label htmlFor="whatsapp-opt-in" className="text-sm text-gray-700">
+                  📱 I agree to receive important notifications and updates on WhatsApp.
+                  <span className="block text-xs text-gray-500 mt-1">You can opt out anytime by replying STOP.</span>
+                </label>
+              </div>
+              
               <motion.div
                 variants={buttonVariants}
                 whileHover="hover"
@@ -254,6 +298,61 @@ const EducatorSignup = () => {
       <div className="absolute bottom-0 w-full p-2 text-center text-white bg-black bg-opacity-40 text-xs z-10">
         © 2025 Learning Platform. All rights reserved.
       </div>
+
+      {/* WhatsApp Activation Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8"
+          >
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+                <svg className="h-10 w-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Registration Successful!</h3>
+              <p className="text-gray-600 mb-6">
+                One more step to receive WhatsApp notifications
+              </p>
+              
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
+                <p className="text-sm text-gray-700 mb-3">
+                  <strong>Enable WhatsApp Updates:</strong>
+                </p>
+                <ol className="text-sm text-gray-600 space-y-1 list-decimal list-inside">
+                  <li>Click the button below to open WhatsApp</li>
+                  <li>Tap "Send" once to activate notifications</li>
+                  <li>You're all set! 🎉</li>
+                </ol>
+              </div>
+
+              <div className="space-y-3">
+                <a
+                  href={activationLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                >
+                  ✅ Enable WhatsApp Updates
+                </a>
+                <button
+                  onClick={handleCloseModal}
+                  className="block w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-6 rounded-lg transition-colors"
+                >
+                  Skip for Now
+                </button>
+              </div>
+              
+              <p className="text-xs text-gray-500 mt-4">
+                You can enable this later from your profile settings
+              </p>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };

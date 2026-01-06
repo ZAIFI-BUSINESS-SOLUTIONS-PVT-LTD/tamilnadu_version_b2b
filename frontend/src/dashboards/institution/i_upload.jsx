@@ -1,5 +1,4 @@
-import React, { useState, lazy, Suspense } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import React, { useState, lazy, Suspense, useEffect } from 'react';
 import { Upload, Plus, Search, X, Loader2, CheckCircle2, XCircle, Clock, MoreHorizontal, Edit2, Save } from 'lucide-react';
 import { useTests } from '../components/hooks/e_upload/e_use_tests';
 import { useFileUpload } from '../components/hooks/e_upload/e_use_file_upload';
@@ -20,7 +19,6 @@ const UploadModal = lazy(() => import('../components/docsupload.jsx'));
 
 const IUpload = () => {
   const { selectedEducatorId, setSelectedEducatorId, educators } = useInstitution();
-  const queryClient = useQueryClient();
   const sortedEducators = React.useMemo(() => {
     if (!Array.isArray(educators)) return [];
     return [...educators].sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
@@ -39,11 +37,7 @@ const IUpload = () => {
   const [editedTestName, setEditedTestName] = useState('');
 
   // Custom hook to fetch and manage uploaded tests data - passing selectedEducatorId
-  const {
-    tests,
-    isLoading: testsLoading,
-    refetch: refetchTests,
-  } = useTests(selectedEducatorId, { enabled: !!selectedEducatorId });
+  const { tests, isLoading: testsLoading, refetch: refetchTests } = useTests(selectedEducatorId, { enabled: !!selectedEducatorId });
 
   // Custom hook to manage file uploads
   const { files, setFiles, isUploading, handleUpload } = useFileUpload();
@@ -51,8 +45,30 @@ const IUpload = () => {
   // State for sorting the table
   const [sortField, setSortField] = useState('test_num');
   const [sortDirection, setSortDirection] = useState('desc');
+  // State to ensure that the initial data loading has completed
+  const [hasInitialLoadCompleted, setHasInitialLoadCompleted] = useState(false);
   // State for search input
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Preload the table component and initial test data on component mount or when educator changes
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setHasInitialLoadCompleted(false);
+        await refetchTests();
+        setHasInitialLoadCompleted(true);
+      } catch (error) {
+        console.error('Failed to load resources', error);
+        setHasInitialLoadCompleted(true);
+      }
+    };
+
+    if (selectedEducatorId) {
+      loadData();
+    } else {
+      setHasInitialLoadCompleted(true); // No educator selected, just show empty state
+    }
+  }, [refetchTests, selectedEducatorId]);
 
   // Handles sorting of the test table
   const handleSort = (field) => {
@@ -145,7 +161,7 @@ const IUpload = () => {
       toast.success("Test name updated successfully");
       setIsEditingTestName(false);
       setSelectedTest({ ...selectedTest, test_name: editedTestName.trim() });
-      await queryClient.invalidateQueries({ queryKey: ['institution', 'tests', selectedEducatorId] });
+      // Reload tests to reflect the change
       await refetchTests();
     } catch (error) {
       toast.error("Failed to update test name");
@@ -160,7 +176,6 @@ const IUpload = () => {
     if (success) {
       setIsModalOpen(false);
       setStep(0);
-      await queryClient.invalidateQueries({ queryKey: ['institution', 'tests', selectedEducatorId] });
       await refetchTests();
       // Open feedback modal after successful upload
       setShowFeedbackModal(true);
@@ -345,7 +360,7 @@ const IUpload = () => {
             </div>
           </div>
 
-          {testsLoading && !tests.length ? (
+          {!hasInitialLoadCompleted ? (
             <div className="relative min-h-[300px] flex items-center justify-center sm:border-b sm:border-border">
               <LoadingPage fixed={false} className="bg-transparent" />
             </div>
@@ -434,7 +449,7 @@ const IUpload = () => {
 
       <div className="sm:hidden mt-6 px-3">
         <div className="card rounded-2xl border border-border bg-card w-full p-4">
-          {testsLoading && !tests.length ? (
+          {!hasInitialLoadCompleted ? (
             <div className="relative min-h-[200px] flex items-center justify-center">
               <LoadingPage fixed={false} className="bg-transparent" />
             </div>
