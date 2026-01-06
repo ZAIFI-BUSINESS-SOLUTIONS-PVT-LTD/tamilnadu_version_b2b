@@ -42,8 +42,21 @@ const UserDropdown = ({
   const ref = useRef(null);
 
   useEffect(() => {
-    const isDarkMode = document.documentElement.classList.contains('dark');
-    setIsDark(isDarkMode);
+    try {
+      const html = document.documentElement;
+      const stored = localStorage.getItem('theme');
+      const prefersDark = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+      if (stored === 'dark' || (!stored && prefersDark)) {
+        html.classList.add('dark');
+        setIsDark(true);
+      } else {
+        html.classList.remove('dark');
+        setIsDark(false);
+      }
+    } catch (e) {
+      // ignore in environments without document/localStorage
+    }
   }, []);
 
   const toggleTheme = () => {
@@ -122,7 +135,7 @@ const UserDropdown = ({
             
             <button
               onClick={toggleTheme}
-              className="flex items-center gap-3 w-full py-2 px-3 hover:bg-muted rounded-lg text-foreground transition-colors focus:outline-none"
+              className="flex items-center gap-3 w-full py-2 px-3 hover:bg-muted rounded-lg text-foreground transition-colors focus:outline-none hidden md:flex"
               role="menuitem"
             >
               {isDark ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}

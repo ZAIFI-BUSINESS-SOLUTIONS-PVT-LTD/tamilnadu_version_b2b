@@ -204,7 +204,7 @@ function SDashboard() {
     },
     {
       title: 'Tests Taken',
-      value: Object.keys(subjectWiseData).length,
+      value: perTestStats.length,
       icon: 'ClipboardText',
       id: 'tests-taken',
       description: 'Total number of tests completed'
@@ -730,7 +730,11 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
   });
 
   const subjectKeys = Object.keys(performanceData || {});
-  const subjects = ['Overall', ...subjectKeys.sort((a, b) => b.localeCompare(a))];
+  const preferredOrder = ['Physics', 'Chemistry', 'Botany', 'Zoology'];
+  const orderedSubjects = [];
+  preferredOrder.forEach(s => { if (subjectKeys.includes(s)) orderedSubjects.push(s); });
+  const remainingSubjects = subjectKeys.filter(s => !preferredOrder.includes(s)).sort((a, b) => a.localeCompare(b));
+  const subjects = ['Overall', ...orderedSubjects, ...remainingSubjects];
 
   const normalizedPerfs = Object.fromEntries(Object.entries(performanceData || {}).map(([k, v]) => [k, normalize(v)]));
 
@@ -1030,8 +1034,8 @@ const SubjectWiseAnalysisChart = ({ selectedTest, setSelectedTest, testData = {}
     if (!isNaN(nb)) return 1;
     return b.localeCompare(a);
   });
-  // If effectiveSelectedTest is not set, default to the latest test in testList
-  const defaultTestKey = effectiveSelectedTest || (testList.length ? testList[testList.length - 1] : '');
+  // If effectiveSelectedTest is not set, default to the most recent test (first item)
+  const defaultTestKey = effectiveSelectedTest || (testList.length ? testList[0] : '');
 
   // Build currentTestData aligned to the provided subjectLabels using the detailed mapping.
   // Prefer the mapping row (which contains per-subject totals and breakdowns) for accurate totals.
