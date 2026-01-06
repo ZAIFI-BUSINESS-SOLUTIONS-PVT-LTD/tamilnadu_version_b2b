@@ -59,9 +59,9 @@ const DropZone = ({ label, file, setFile, icon: Icon, accept, disabled = false, 
             duration: 4000,
           });
         }
-      } catch (error) {
+        } catch (error) {
         toast.error('Error validating file', {
-          icon: <WarningCircle weight="fill" size={20} className="text-rose-600" />,
+          icon: <AlertCircle weight="fill" size={20} className="text-rose-600" />,
         });
       } finally {
         setIsValidating(false);
