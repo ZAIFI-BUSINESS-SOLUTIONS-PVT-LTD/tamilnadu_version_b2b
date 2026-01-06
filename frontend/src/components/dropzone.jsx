@@ -1,5 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   File,
   Upload,
@@ -7,14 +6,15 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  RotateCcw,
   FileText,
   FileSpreadsheet,
   HelpCircle,
+  RotateCw,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { validateFile } from '../utils/validation';
 import { Button } from './ui/button.jsx';
+import { motion } from 'framer-motion';
 
 /**
  * Generic reusable DropZone component for file uploads
@@ -32,6 +32,31 @@ const DropZone = ({ label, file, setFile, icon: Icon, accept, disabled = false, 
   const [dragTimeout, setDragTimeout] = useState(null);
   const fileInputRef = useRef(null);
 
+  const [resolvedMuted, setResolvedMuted] = useState(null);
+  const [resolvedPrimary, setResolvedPrimary] = useState(null);
+
+  useEffect(() => {
+    const resolve = (cssValue) => {
+      try {
+        const el = document.createElement('div');
+        el.style.position = 'absolute';
+        el.style.opacity = '0';
+        el.style.pointerEvents = 'none';
+        el.style.background = cssValue;
+        document.body.appendChild(el);
+        const val = getComputedStyle(el).backgroundColor;
+        document.body.removeChild(el);
+        return val || null;
+      } catch (e) {
+        return null;
+      }
+    };
+
+    // Resolve the CSS variable-based HSL values to actual computed colors
+    setResolvedMuted(resolve('hsl(var(--muted))'));
+    setResolvedPrimary(resolve('hsl(var(--primary) / 0.2)'));
+  }, []);
+
   const getFileIcon = useCallback((filename) => {
     if (!filename) return File;
     if (filename.endsWith('.pdf')) return FileText;
@@ -43,25 +68,27 @@ const DropZone = ({ label, file, setFile, icon: Icon, accept, disabled = false, 
 
   const handleFileValidation = useCallback(
     async (selectedFile) => {
+      
       setIsValidating(true);
       try {
         const validation = validateFile(selectedFile, accept);
+        
         if (validation.valid) {
           setFile(selectedFile);
           onFileValidation?.(selectedFile);
           toast.success('File validated successfully!', {
-            icon: <CheckCircle weight="fill" size={20} className="text-emerald-600" />,
+            icon: <CheckCircle size={20} className="text-emerald-600" />,
             duration: 3000,
           });
         } else {
           toast.error(validation.error, {
-            icon: <XCircle weight="fill" size={20} className="text-rose-600" />,
+            icon: <XCircle size={20} className="text-rose-600" />,
             duration: 4000,
           });
         }
         } catch (error) {
         toast.error('Error validating file', {
-          icon: <AlertCircle weight="fill" size={20} className="text-rose-600" />,
+          icon: <AlertCircle size={20} className="text-rose-600" />,
         });
       } finally {
         setIsValidating(false);
@@ -89,7 +116,7 @@ const DropZone = ({ label, file, setFile, icon: Icon, accept, disabled = false, 
     setIsDragging(false);
     if (disabled) {
       toast.error('File upload is currently disabled', {
-        icon: <XCircle weight="fill" size={20} />,
+        icon: <XCircle size={20} />,
       });
       return;
     }
@@ -121,6 +148,13 @@ const DropZone = ({ label, file, setFile, icon: Icon, accept, disabled = false, 
     if (accept === '.csv') return 'CSV spreadsheets';
     return accept;
   };
+
+  const iconAnimate = (() => {
+    const a = { scale: isDragging ? 1.1 : 1 };
+    const bg = isDragging ? resolvedPrimary : resolvedMuted;
+    if (bg) a.backgroundColor = bg;
+    return a;
+  })();
 
   return (
     <div className="w-full">
@@ -164,7 +198,7 @@ const DropZone = ({ label, file, setFile, icon: Icon, accept, disabled = false, 
               animate={{ scale: 1 }}
               transition={{ type: 'spring', damping: 10, stiffness: 200 }}
             >
-              <FileIcon size={28} weight="fill" className="text-primary" />
+              <FileIcon size={28} className="text-primary" />
             </motion.div>
             <div className="flex items-center justify-center space-x-2 w-full max-w-full mb-1">
               <p className="font-medium text-center break-all line-clamp-1 text-gray-800">{file.name}</p>
@@ -187,7 +221,7 @@ const DropZone = ({ label, file, setFile, icon: Icon, accept, disabled = false, 
                     fileInputRef.current?.click();
                   }}
                 >
-                  <ArrowClockwise size={16} className="mr-1" /> Replace
+                  <RotateCw size={16} className="mr-1" /> Replace
                 </Button>
                 <Button
                   size="sm"
@@ -219,10 +253,7 @@ const DropZone = ({ label, file, setFile, icon: Icon, accept, disabled = false, 
               <>
                 <motion.div
                   className={`p-4 rounded-full ${isDragging ? 'bg-primary/20' : 'bg-muted'}`}
-                  animate={{
-                    scale: isDragging ? 1.1 : 1,
-                    backgroundColor: isDragging ? 'hsl(var(--primary) / 0.2)' : 'hsl(var(--muted))',
-                  }}
+                  animate={iconAnimate}
                   transition={{ duration: 0.2 }}
                 >
                   <Upload
@@ -283,9 +314,13 @@ const DropZone = ({ label, file, setFile, icon: Icon, accept, disabled = false, 
         disabled={disabled || isValidating}
         onChange={(e) => {
           const selectedFile = e.target.files?.[0];
+          
           if (selectedFile) {
             handleFileValidation(selectedFile);
+          } else {
+              
           }
+          // Clear the input value to allow selecting the same file again later
           e.target.value = '';
         }}
         aria-hidden="true"

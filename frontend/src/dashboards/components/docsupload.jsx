@@ -257,7 +257,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
         icon: FileStack,
         file: files.questionPaper,
         setFile: (file) => { console.log('questionPaper selected', file); setFiles({ ...files, questionPaper: file }); },
-        accept: '.pdf',
+        accept: '.pdf,application/pdf',
         actionText: 'Upload Question Paper',
         description: 'Upload your examination question paper in PDF format',
       },
@@ -298,13 +298,15 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
 
   // Current step object
   const currentStep = steps[step];
+  // `activeStep` merges `steps` (which holds ordering) with `fileSteps` (which holds file props)
+  const activeStep = currentStep.type === 'file' ? (fileSteps.find(s => s.key === currentStep.key) || currentStep) : currentStep;
 
   // Whether the current step is the last overall
   const isLastStep = step === steps.length - 1;
 
   // Determine if user can proceed from the current step
   const canProceed = (() => {
-    if (currentStep.type === 'file') return !!currentStep.file;
+    if (currentStep.type === 'file') return !!activeStep.file;
     if (currentStep.key === 'syllabus') return !!pattern && !!testName.trim() && !testNameError; // require pattern and valid test name
     if (currentStep.key === 'counts') return isConfigValid();
     return true;
@@ -328,7 +330,7 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
         title={
           <div className="flex items-center mb-1">
             <span className="mr-2 inline-flex items-center rounded-full border border-border bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">Step {step + 1}/{steps.length}</span>
-            <span className="text-xl font-bold text-foreground">{currentStep.type === 'file' ? currentStep?.actionText : currentStep.label}</span>
+            <span className="text-xl font-bold text-foreground">{currentStep.type === 'file' ? activeStep?.actionText : currentStep.label}</span>
           </div>
         }
         loading={isUploading}
@@ -633,28 +635,28 @@ const UploadModal = ({ step, setStep, files, setFiles, onSubmit, onClose, isUplo
           </div>
         ) : (
           <div className="mb-4 px-4 pt-2">
-            <p className="text-muted-foreground text-sm">{currentStep?.description}</p>
+            <p className="text-muted-foreground text-sm">{activeStep?.description || currentStep?.description}</p>
           </div>
         )}
         {/* Dropzone (for file steps) */}
         {currentStep.type === 'file' && (
           <div className="mb-8">
             <EducatorDropZone
-              label={currentStep?.label}
-              file={currentStep?.file}
-              setFile={currentStep?.setFile}
-              icon={currentStep?.icon}
-              accept={currentStep?.accept}
+              label={activeStep?.label}
+              file={activeStep?.file}
+              setFile={activeStep?.setFile}
+              icon={activeStep?.icon}
+              accept={activeStep?.accept}
               disabled={isUploading}
             />
 
-            {currentStep?.key === 'answerKey' && answerKeyValidation && !answerKeyValidation.valid && (
+            {activeStep?.key === 'answerKey' && answerKeyValidation && !answerKeyValidation.valid && (
               <div className="mt-4 p-3 border border-error rounded bg-error/5 text-error text-sm" style={{ whiteSpace: 'pre-wrap' }}>
                 {formatValidationErrors(answerKeyValidation.errors)}
               </div>
             )}
 
-            {currentStep?.key === 'responseSheets' && responseValidation && (
+            {activeStep?.key === 'responseSheets' && responseValidation && (
               <>
                 {!responseValidation.valid && (
                   <div className="mt-4 p-3 border border-error rounded bg-error/5 text-error text-sm" style={{ whiteSpace: 'pre-wrap' }}>
