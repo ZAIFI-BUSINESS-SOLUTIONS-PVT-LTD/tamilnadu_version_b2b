@@ -4,6 +4,7 @@ import { forgotPassword } from '../utils/api';
 import { motion } from 'framer-motion';
 import { Mail, ArrowLeft } from 'lucide-react';
 import logo from '../assets/images/logo.svg';
+import logoInverted from '../assets/images/logo-inverted.svg';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card.jsx';
 import { Input } from '../components/ui/input.jsx';
 import { Button } from '../components/ui/button.jsx';
