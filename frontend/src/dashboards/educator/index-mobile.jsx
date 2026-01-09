@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home,
@@ -8,7 +8,8 @@ import {
   Target
 } from "lucide-react";
 import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
-import { fetcheducatordetail, fetchAvailableSwotTests_Educator, fetcheducatorstudent } from '../../utils/api.js';
+import { fetcheducatordetail } from '../../utils/api.js';
+import { useEducatorStudents, useAvailableSwotTestsEducator } from '../../hooks/useEducatorData';
 import MobileDock from '../components/header/MobileDock.jsx';
 import TeacherReportModal from './components/e_teacherreport.jsx';
 import StudentReportModal from './components/e_studentreport.jsx';
@@ -27,8 +28,17 @@ export const ELayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showStudentReportModal, setShowStudentReportModal] = useState(false);
   const [showTeacherReportModal, setShowTeacherReportModal] = useState(false);
-  const [students, setStudents] = useState([]);
-  const [availableTests, setAvailableTests] = useState(['Overall']);
+
+  // Fetch students and tests via hooks
+  const { data: studentsResp } = useEducatorStudents();
+  const { data: testsResp } = useAvailableSwotTestsEducator();
+
+  const students = React.useMemo(() => Array.isArray(studentsResp?.students) ? studentsResp.students : [], [studentsResp]);
+  const availableTests = React.useMemo(() => {
+    const nums = Array.isArray(testsResp) ? testsResp : [];
+    const unique = [...new Set(nums)].filter((n) => n !== 0);
+    return ['Overall', ...unique.map((n) => `Test ${n}`)];
+  }, [testsResp]);
 
   const sidebarItems = [
     {
@@ -70,29 +80,7 @@ export const ELayout = () => {
     navigate('/auth');
   };
 
-  useEffect(() => {
-    async function loadStudents() {
-      try {
-        const data = await fetcheducatorstudent();
-        setStudents(Array.isArray(data.students) ? data.students : []);
-      } catch (err) {
-        setStudents([]);
-      }
-    }
-
-    async function loadTests() {
-      try {
-        const tests = await fetchAvailableSwotTests_Educator();
-        const uniqueTests = [...new Set(tests)].filter((num) => num !== 0);
-        setAvailableTests(['Overall', ...uniqueTests.map((num) => `Test ${num}`)]);
-      } catch (err) {
-        setAvailableTests(['Overall']);
-      }
-    }
-
-    loadStudents();
-    loadTests();
-  }, []);
+  // Data now loaded via React Query hooks above
 
   return (
     <div className="flex h-screen bg-gray-50 text-text">
@@ -128,4 +116,3 @@ export const ELayout = () => {
 export { default as EDashboard } from './e_dashboard.jsx';
 export { default as ESWOT } from './e_analysis.jsx';
 export { default as EResults } from './e_studentdetails.jsx';
-export { default as EChatbot } from './e_chatbot.jsx';

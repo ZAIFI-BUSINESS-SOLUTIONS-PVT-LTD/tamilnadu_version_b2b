@@ -28,6 +28,8 @@ class TestMetadata(models.Model):
     
     # Total questions (required)
     total_questions = models.IntegerField()
+    # Optional: human-friendly name provided by educator when uploading the test
+    test_name = models.CharField(max_length=200, null=True, blank=True)
     
     # Metadata
     created_at = models.DateTimeField(default=now)
@@ -38,7 +40,8 @@ class TestMetadata(models.Model):
         db_table = 'exam_test_metadata'
     
     def __str__(self):
-        return f"TestMetadata: {self.class_id} | Test {self.test_num} | {self.pattern}"
+        name_part = f" | {self.test_name}" if self.test_name else ""
+        return f"TestMetadata: {self.class_id} | Test {self.test_num} | {self.pattern}{name_part}"
     
     def get_subject_ranges(self):
         """

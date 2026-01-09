@@ -16,42 +16,50 @@ export const validateFile = (file, accept) => {
     return { valid: false, error: 'No file selected.' };
   }
 
-  // 2. Prepare allowed types from the 'accept' string
-  const allowedTypes = accept
-    .split(',')
-    .map(type => type.trim().toLowerCase())
-    .filter(type => type); // Remove any empty strings from split
+  // Normalize file properties safely
+  const fileType = (file.type || '').toLowerCase();
+  const fileName = (file.name || '').toLowerCase();
+
+  // If no accept is provided, only validate size
+  const maxSizeBytes = 50 * 1024 * 1024; // 50 MB
+  if (!accept) {
+    if (file.size > maxSizeBytes) return { valid: false, error: 'File size should be less than 50MB.' };
+    return { valid: true };
+  }
+
+  // 2. Prepare allowed types from the 'accept' string (or array)
+  const allowedTypes = Array.isArray(accept)
+    ? accept.map(t => String(t).trim().toLowerCase()).filter(Boolean)
+    : String(accept).split(',').map(type => type.trim().toLowerCase()).filter(Boolean);
 
   // 3. Validate file type (MIME type or extension)
   const isFileTypeAllowed = allowedTypes.some(allowedType => {
-    // Case 1: Allowed type is a MIME type (e.g., "application/pdf", "image/jpeg")
+    if (!allowedType) return false;
+
+    // MIME wildcard like image/* or application/*
+    if (allowedType.endsWith('/*') && allowedType.includes('/')) {
+      const mimePrefix = allowedType.slice(0, -1); // 'image/'
+      return fileType.startsWith(mimePrefix);
+    }
+
+    // Exact MIME type
     if (allowedType.includes('/')) {
-      // Handle wildcard MIME types (e.g., "image/*", "application/*")
-      if (allowedType.endsWith('/*')) {
-        const mimeTypePrefix = allowedType.slice(0, -1); // e.g., "image/"
-        return file.type.toLowerCase().startsWith(mimeTypePrefix);
-      }
-      // Handle exact MIME type match
-      return file.type.toLowerCase() === allowedType;
+      return fileType === allowedType;
     }
-    // Case 2: Allowed type is a file extension (e.g., ".pdf", ".jpg")
-    if (allowedType.startsWith('.')) {
-      return file.name.toLowerCase().endsWith(allowedType);
-    }
-    // Fallback: If `accept` contains just "pdf" instead of ".pdf", try matching extension.
-    // This is less robust and assumes consistent input format, but handles potential user input quirks.
-    return file.name.toLowerCase().endsWith(`.${allowedType}`);
+
+    // Extension check (with or without leading dot)
+    const normalizedExt = allowedType.startsWith('.') ? allowedType : `.${allowedType}`;
+    return fileName.endsWith(normalizedExt);
   });
 
   if (!isFileTypeAllowed) {
     return {
       valid: false,
-      error: `Please upload a file with one of the allowed types: ${accept}.`
+      error: `Please upload a file with one of the allowed types: ${allowedTypes.join(', ')}`
     };
   }
 
   // 4. Validate file size
-  const maxSizeBytes = 50 * 1024 * 1024; // 50 MB
   if (file.size > maxSizeBytes) {
     return { valid: false, error: 'File size should be less than 50MB.' };
   }

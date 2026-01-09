@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Line } from 'react-chartjs-2';
 import { Chart, LineElement, PointElement, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Filler } from 'chart.js';
-import { getEducatorDashboardData, fetchEducatorAllStudentResults } from '../../utils/api';
+import { useEducatorDashboard, useEducatorResults } from '../../hooks/useEducatorData';
 import { Users, Calendar, HelpCircle, Sparkles, ChevronDown } from 'lucide-react';
-import Stat from '../components/ui/stat-mobile';
+import Stat from '../../components/stat-mobile';
 import { Card } from '../../components/ui/card.jsx';
 import { Tooltip as UITooltip, TooltipTrigger as UITooltipTrigger, TooltipContent as UITooltipContent, TooltipProvider as UITooltipProvider } from '../../components/ui/tooltip.jsx';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../../components/ui/dropdown-menu.jsx';
@@ -38,44 +38,76 @@ const formatStatValue = (value) => {
 function EDashboard() {
   const [mobileInsightIdx, setMobileInsightIdx] = useState(0);
   const navigate = useNavigate();
-  const [dashboardData, setDashboardData] = useState({
-    summaryCardsData: [],
-    keyInsightsData: {},
-    isLoading: true,
-    error: null,
-  });
+
+  // Educator hooks (React Query)
+  const { data: dashboardDataResp, isLoading: dashboardLoading, error: dashboardError } = useEducatorDashboard();
+  const { data: resultsResp, isLoading: resultsLoading, error: resultsError } = useEducatorResults();
+
+  // Derive keyInsightsData from dashboard response
+  const keyInsightsData = useMemo(() => {
+    return dashboardDataResp?.keyInsightsData || {};
+  }, [dashboardDataResp]);
 
   // For mobile insights dropdown
-  const mobileInsightSections = [
+  const mobileInsightSections = useMemo(() => [
     {
       key: 'quickRecommendations',
       title: 'Quick Recommendations',
-      items: dashboardData.keyInsightsData.quickRecommendations || [],
+      items: keyInsightsData.quickRecommendations || [],
       tagTooltip: 'These are AI-generated quick recommendations for your class.',
     },
     {
       key: 'keyStrengths',
       title: 'Key Strengths',
-      items: dashboardData.keyInsightsData.keyStrengths || [],
+      items: keyInsightsData.keyStrengths || [],
       tagTooltip: 'AI-generated strengths identified for your class.',
     },
     {
       key: 'yetToDecide',
       title: 'Consistency Vulnerability',
-      items: dashboardData.keyInsightsData.yetToDecide || [],
+      items: keyInsightsData.yetToDecide || [],
       tagTooltip: 'Potential vulnerabilities in consistency, identified by AI.',
     },
-  ];
+  ], [keyInsightsData]);
 
-  const [testWiseAvgMarks, setTestWiseAvgMarks] = useState({});
   const [selectedSubject, setSelectedSubject] = useState('Overall');
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [rawResults, setRawResults] = useState([]);
-  const [overallPerformance, setOverallPerformance] = useState('N/A');
-  const [improvementRate, setImprovementRate] = useState('N/A');
   // Local refs/state for mobile-only stat carousel
   const statScrollRef = useRef(null);
   const [statIdx, setStatIdx] = useState(0);
+
+  // Derive raw results from cached results data
+  const rawResults = useMemo(() => {
+    if (!resultsResp) return [];
+    return Array.isArray(resultsResp.results) ? resultsResp.results : Array.isArray(resultsResp) ? resultsResp : [];
+  }, [resultsResp]);
+
+  // Compute testWiseAvgMarks from rawResults
+  const testWiseAvgMarks = useMemo(() => {
+    if (!rawResults || rawResults.length === 0) return {};
+    const grouped = {};
+    rawResults.forEach((result) => {
+      const testNum = result.test_num;
+      if (!grouped[testNum]) grouped[testNum] = { overall: [], phy: [], chem: [], bio: [], bot: [], zoo: [] };
+      if (result.total_score != null) grouped[testNum].overall.push(result.total_score);
+      if (result.phy_score != null) grouped[testNum].phy.push(result.phy_score);
+      if (result.chem_score != null) grouped[testNum].chem.push(result.chem_score);
+      if (result.bio_score != null) grouped[testNum].bio.push(result.bio_score);
+      if (result.bot_score != null) grouped[testNum].bot.push(result.bot_score);
+      if (result.zoo_score != null) grouped[testNum].zoo.push(result.zoo_score);
+    });
+    const series = {};
+    const subjectKeys = { overall: 'Overall', phy: 'Physics', chem: 'Chemistry', bio: 'Biology', bot: 'Botany', zoo: 'Zoology' };
+    for (const key in subjectKeys) {
+      const label = subjectKeys[key];
+      series[label] = Object.keys(grouped).sort((a, b) => Number(a) - Number(b)).map((testNum) => {
+        const scores = grouped[testNum][key];
+        const avg = scores.length > 0 ? Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length) : 0;
+        return { test: `Test ${testNum}`, avg };
+      });
+    }
+    return series;
+  }, [rawResults]);
 
   // Build subject options for the FilterDrawer based on the computed testWiseAvgMarks
   const subjectOptions = useMemo(() => {
@@ -102,212 +134,42 @@ function EDashboard() {
     }
   }, [testWiseAvgMarks, selectedSubject]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const data = await getEducatorDashboardData();
-        if (!data || data.error) {
-          throw new Error(data?.error || 'Failed to fetch data');
-        }
-        setDashboardData({
-          summaryCardsData: data.summaryCardsData || [],
-          keyInsightsData: data.keyInsightsData || {},
-          isLoading: false,
-          error: null,
-        });
-      } catch (error) {
-        setDashboardData((prev) => ({
-          ...prev,
-          isLoading: false,
-          error: error.message,
-        }));
-      }
-    };
-    fetchData();
-  }, []);
+  // Compute overall performance (latest test average)
+  const overallPerformance = useMemo(() => {
+    if (!rawResults || rawResults.length === 0) return 'N/A';
+    const testNums = [...new Set(rawResults.map(r => r.test_num))].sort((a, b) => b - a);
+    if (testNums.length === 0) return 'N/A';
+    const latestTest = testNums[0];
+    const latestResults = rawResults.filter(r => r.test_num === latestTest && r.total_score != null);
+    if (latestResults.length === 0) return 'N/A';
+    const avg = latestResults.reduce((sum, r) => sum + r.total_score, 0) / latestResults.length;
+    return Math.round(avg);
+  }, [rawResults]);
 
-  useEffect(() => {
-    const fetchTestWiseAvg = async () => {
-      try {
-        const results = await fetchEducatorAllStudentResults();
-        if (results && Array.isArray(results.results)) {
-          // Detect which fields are present and support unified Biology handling
-          const hasField = (field) => results.results.some(r => Object.prototype.hasOwnProperty.call(r, field));
-          const subjectKeys = { Overall: 'total_score' };
-          if (hasField('phy_score') || hasField('phy_total')) subjectKeys['Physics'] = 'phy_score';
-          if (hasField('chem_score') || hasField('chem_total')) subjectKeys['Chemistry'] = 'chem_score';
+  // Compute improvement rate
+  const improvementRate = useMemo(() => {
+    if (!rawResults || rawResults.length === 0) return 'N/A';
+    const testNums = [...new Set(rawResults.map(r => r.test_num))].sort((a, b) => a - b);
+    if (testNums.length < 2) return 'N/A';
+    const firstTest = testNums[0];
+    const lastTest = testNums[testNums.length - 1];
+    const firstResults = rawResults.filter(r => r.test_num === firstTest && r.total_score != null);
+    const lastResults = rawResults.filter(r => r.test_num === lastTest && r.total_score != null);
+    if (firstResults.length === 0 || lastResults.length === 0) return 'N/A';
+    const firstAvg = firstResults.reduce((sum, r) => sum + r.total_score, 0) / firstResults.length;
+    const lastAvg = lastResults.reduce((sum, r) => sum + r.total_score, 0) / lastResults.length;
+    const rate = ((lastAvg - firstAvg) / firstAvg) * 100;
+    return rate.toFixed(1) + '%';
+  }, [rawResults]);
 
-          const hasBioData = results.results.some(r => (Number(r.bio_score) || 0) > 0 || (Number(r.bio_total) || 0) > 0);
-          const hasBotZooData = results.results.some(r => (Number(r.bot_score) || 0) > 0 || (Number(r.bot_total) || 0) > 0 || (Number(r.zoo_score) || 0) > 0 || (Number(r.zoo_total) || 0) > 0);
-          if (hasBioData || hasBotZooData) {
-            subjectKeys['Biology'] = 'unified_bio';
-          }
+  // Combined loading/error state
+  const isLoading = dashboardLoading || resultsLoading;
+  const error = dashboardError || resultsError;
 
-          if (hasField('bot_score') || hasField('bot_total')) subjectKeys['Botany'] = 'bot_score';
-          if (hasField('zoo_score') || hasField('zoo_total')) subjectKeys['Zoology'] = 'zoo_score';
+  // Old manual fetch effects removed — data comes from `useEducatorDashboard` and `useEducatorResults` hooks.
 
-          const avgData = {};
-          Object.keys(subjectKeys).forEach(subject => {
-            const key = subjectKeys[subject];
-            const testMap = {};
-            results.results.forEach(r => {
-              const testNum = r.test_num;
-              let score;
-              if (key === 'unified_bio') {
-                score = (Number(r.bio_score) || 0) + (Number(r.bot_score) || 0) + (Number(r.zoo_score) || 0);
-              } else {
-                score = Number(r[key]) || 0;
-              }
-              if (!testMap[testNum]) {
-                testMap[testNum] = { total: 0, count: 0, max: score, min: score };
-              }
-              testMap[testNum].total += score;
-              testMap[testNum].count += 1;
-              if (score > testMap[testNum].max) testMap[testNum].max = score;
-              if (score < testMap[testNum].min) testMap[testNum].min = score;
-            });
-            avgData[subject] = Object.entries(testMap)
-              .sort((a, b) => Number(a[0]) - Number(b[0]))
-              .map(([testNum, { total, count, max, min }]) => ({
-                test: `Test ${testNum}`,
-                avg: count ? Math.round(total / count) : 0,
-                max: max,
-                min: min
-              }));
-          });
-          // If Botany and Zoology both exist, create a merged Biology series
-          // so mobile mirrors desktop behavior (some uploads use "Biology").
-          if (!avgData.Biology && avgData.Botany && avgData.Zoology) {
-            const bot = avgData.Botany || [];
-            const zoo = avgData.Zoology || [];
-            // Build a map of test -> {avg,max,min} for both series
-            const botMap = Object.fromEntries(bot.map(d => [d.test, d]));
-            const zooMap = Object.fromEntries(zoo.map(d => [d.test, d]));
-            const allTests = Array.from(new Set([...bot.map(d => d.test), ...zoo.map(d => d.test)])).sort((a, b) => {
-              const na = parseInt(a.replace(/[^0-9]/g, ''), 10) || 0;
-              const nb = parseInt(b.replace(/[^0-9]/g, ''), 10) || 0;
-              return na - nb;
-            });
-            avgData.Biology = allTests.map(testLabel => {
-              const b = botMap[testLabel];
-              const z = zooMap[testLabel];
-              const avgVals = [];
-              if (b && typeof b.avg === 'number') avgVals.push(b.avg);
-              if (z && typeof z.avg === 'number') avgVals.push(z.avg);
-              const avg = avgVals.length ? Math.round(avgVals.reduce((s, v) => s + v, 0) / avgVals.length) : 0;
-              const maxVals = [b && b.max, z && z.max].filter(v => typeof v === 'number');
-              const minVals = [b && b.min, z && z.min].filter(v => typeof v === 'number');
-              return {
-                test: testLabel,
-                avg: avg,
-                max: maxVals.length ? Math.max(...maxVals) : 0,
-                min: minVals.length ? Math.min(...minVals) : 0,
-              };
-            });
-          }
-
-          setTestWiseAvgMarks(avgData);
-        }
-      } catch (err) {
-        // fallback to dummy data if needed
-        const dummyData = {
-          Overall: [
-            { test: 'Test 1', avg: 540, max: 650, min: 400 },
-            { test: 'Test 2', avg: 620, max: 720, min: 500 },
-            { test: 'Test 3', avg: 480, max: 580, min: 350 },
-            { test: 'Test 4', avg: 700, max: 800, min: 600 }
-          ],
-          Physics: [
-            { test: 'Test 1', avg: 20, max: 35, min: 5 },
-            { test: 'Test 2', avg: 25, max: 40, min: 10 },
-            { test: 'Test 3', avg: 18, max: 30, min: 5 },
-            { test: 'Test 4', avg: 30, max: 45, min: 15 }
-          ],
-          Chemistry: [
-            { test: 'Test 1', avg: 15, max: 30, min: 0 },
-            { test: 'Test 2', avg: 20, max: 35, min: 5 },
-            { test: 'Test 3', avg: 12, max: 25, min: 0 },
-            { test: 'Test 4', avg: 25, max: 40, min: 10 }
-          ],
-          Botany: [
-            { test: 'Test 1', avg: 25, max: 40, min: 10 },
-            { test: 'Test 2', avg: 30, max: 45, min: 15 },
-            { test: 'Test 3', avg: 22, max: 35, min: 10 },
-            { test: 'Test 4', avg: 35, max: 50, min: 20 }
-          ],
-          Zoology: [
-            { test: 'Test 1', avg: 10, max: 25, min: 0 },
-            { test: 'Test 2', avg: 15, max: 30, min: 0 },
-            { test: 'Test 3', avg: 8, max: 20, min: 0 },
-            { test: 'Test 4', avg: 20, max: 35, min: 5 }
-          ]
-        };
-        setTestWiseAvgMarks(dummyData);
-      }
-    };
-    fetchTestWiseAvg();
-  }, []);
-
-  useEffect(() => {
-    fetchEducatorAllStudentResults().then(results => {
-      if (results && Array.isArray(results.results)) {
-        setRawResults(results.results);
-        // Calculate overall performance for the last test only - AVERAGE SCORE AS PERCENTAGE OF 720
-        if (results.results.length > 0) {
-          const maxTestNum = Math.max(...results.results.map(r => r.test_num));
-          const lastTestResults = results.results.filter(r => r.test_num === maxTestNum);
-
-          if (lastTestResults.length > 0) {
-            // Calculate simple average: sum of all student scores / number of students
-            const totalScoreSum = lastTestResults.reduce((sum, r) => {
-              const score = Number(r.total_score) || ((Number(r.phy_score) || 0) + (Number(r.chem_score) || 0) + (Number(r.bot_score) || 0) + (Number(r.zoo_score) || 0) + (Number(r.bio_score) || 0));
-              return sum + score;
-            }, 0);
-
-            const averageScore = totalScoreSum / lastTestResults.length;
-            const percentage = Math.round((averageScore / 720) * 100);
-            setOverallPerformance(`${percentage}%`);
-          } else {
-            setOverallPerformance('N/A');
-          }
-        } else {
-          setOverallPerformance('N/A');
-        }
-
-        // Calculate improvement rate as absolute difference in percentage points between last and previous test averages
-        const testNums = [...new Set(results.results.map(r => r.test_num))].sort((a, b) => a - b);
-        if (testNums.length >= 2) {
-          const lastTestNum = testNums[testNums.length - 1];
-          const prevTestNum = testNums[testNums.length - 2];
-          const lastResults = results.results.filter(r => r.test_num === lastTestNum);
-          const prevResults = results.results.filter(r => r.test_num === prevTestNum);
-
-          if (lastResults.length > 0 && prevResults.length > 0) {
-            const calculateTestAveragePercentage = (testResults) => {
-              const total = testResults.reduce((sum, r) => {
-                const score = Number(r.total_score) || ((Number(r.phy_score) || 0) + (Number(r.chem_score) || 0) + (Number(r.bot_score) || 0) + (Number(r.zoo_score) || 0) + (Number(r.bio_score) || 0));
-                return sum + score;
-              }, 0);
-              const average = total / testResults.length;
-              return (average / 720) * 100;
-            };
-
-            const lastAvgPercent = calculateTestAveragePercentage(lastResults);
-            const prevAvgPercent = calculateTestAveragePercentage(prevResults);
-            const diff = lastAvgPercent - prevAvgPercent;
-            const absolutePoints = Math.round(diff);
-            setImprovementRate(`${absolutePoints}%`);
-          } else {
-            setImprovementRate('N/A');
-          }
-        } else {
-          setImprovementRate('N/A');
-        }
-      }
-    });
-  }, []);
-
-  const { summaryCardsData, keyInsightsData, isLoading, error } = dashboardData;
+  // Old fetchEducatorAllStudentResults removed (now via hook)
+  // Removed manual data fetching - now using React Query hooks
 
   const attendanceData = useMemo(() => {
     let percentage = 'N/A';
@@ -523,7 +385,7 @@ function EDashboard() {
               <div className="flex items-center justify-between gap-4 mb-6">
                 <span className="text-xl font-bold text-primary">Class Performance</span>
                 <button
-                  className="btn btn-sm bg-gray-200 inline-flex items-center gap-2 rounded-xl"
+                  className="inline-flex items-center gap-2 rounded-xl bg-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300"
                   onClick={() => setDrawerOpen(true)}
                   aria-label="Open filters"
                 >

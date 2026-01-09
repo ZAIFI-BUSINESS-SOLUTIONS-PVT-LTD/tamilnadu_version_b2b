@@ -33,8 +33,8 @@ class EducatorAdmin(admin.ModelAdmin):
 
 @admin.register(Manager)
 class ManagerAdmin(admin.ModelAdmin):
-    list_display = ('id','name', 'email')
-    search_fields = ('email', 'name')
+    list_display = ('id','name', 'email', 'phone_number')
+    search_fields = ('email', 'name', 'phone_number')
 
     def save_model(self, request, obj, form, change):
         if 'password' in form.changed_data:  # ✅ If password is changed, hash it

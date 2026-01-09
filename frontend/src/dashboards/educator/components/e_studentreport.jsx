@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from '../../../components/ui/select.jsx';
 import { Button } from '../../../components/ui/button.jsx';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card.jsx';
+import Alert from '../../../components/ui/alert.jsx';
 import { generatePdfReport, generateBulkPdfReportsZip, getEducatorDetails } from '../../../utils/api.js';
 
 export const StudentPDFReportModal = ({ onClose, students = [], availableTests = [] }) => {
@@ -101,11 +102,16 @@ export const StudentPDFReportModal = ({ onClose, students = [], availableTests =
     })),
   ];
   const testOptions = [
-    ...(!availableTests.includes('Overall') ? [{ value: 'Overall', label: 'Overall' }] : []),
-    ...availableTests.map((test) => ({
+    { value: 'Overall', label: 'Overall' },
+    ...availableTests.filter(t => t !== 'Overall').map((test) => ({
       value: test,
       label: test,
-    })),
+    })).sort((a, b) => {
+      const aMatch = a.label.match(/Test (\d+)/);
+      const bMatch = b.label.match(/Test (\d+)/);
+      if (!aMatch || !bMatch) return 0;
+      return parseInt(bMatch[1]) - parseInt(aMatch[1]);
+    }),
   ];
 
   return (
@@ -144,12 +150,13 @@ export const StudentPDFReportModal = ({ onClose, students = [], availableTests =
               <AnimatePresence>
                 {error && (
                   <motion.div
-                    className="alert alert-error"
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                   >
-                    <span>{error}</span>
+                    <Alert variant="destructive" className="shadow-sm text-sm">
+                      {error}
+                    </Alert>
                   </motion.div>
                 )}
               </AnimatePresence>

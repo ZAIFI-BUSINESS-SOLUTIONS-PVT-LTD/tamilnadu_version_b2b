@@ -1,15 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Home,
-  Target,
-  BarChart3,
+  WandSparkles,
+  Blocks,
   FileText,
-  MessageSquare,
   AlignLeft
 } from "lucide-react";
-import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
-import { fetchstudentdetail } from '../../utils/api.js';
+import { useStudentDetails } from '../../hooks/useStudentData';
 import DesktopSidebar from '../components/header/DesktopSidebar.jsx';
 import UserDropdown from '../components/header/UserDropDown.jsx';
 import DownloadReportModal from './components/s_studentreport.jsx';
@@ -29,8 +27,8 @@ import StudentHeaderMobile from './s_header-mobile.jsx';
  * @returns {JSX.Element} The rendered StudentHeader component.
  */
 const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
-  // Fetch student user data using a custom hook
-  const { userData: studentInfo, isLoading } = useUserData(fetchstudentdetail, { name: '', student_id: '' });
+  // Fetch student user data using cached react-query hook
+  const { data: studentInfo = {}, isLoading } = useStudentDetails();
 
   // State for controlling the visibility of the student report download modal
   const [showDownloadModal, setShowDownloadModal] = useState(false);
@@ -55,14 +53,14 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
     },
     {
       to: '/student/swot',
-      icon: <Target size={20} />,
-      text: 'Analysis',
+      icon: <WandSparkles size={20} />,
+      text: 'AI Analysis',
       activePattern: /^\/student\/swot/
     },
     {
       to: '/student/performance',
-      icon: <BarChart3 size={20} />,
-      text: 'Performance',
+      icon: <Blocks size={20} />,
+      text: 'Chapters & Topics',
       activePattern: /^\/student\/performance/
     },
   ];
@@ -128,16 +126,16 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
 
         {/* Desktop Header Bar */}
         <header
-          className="bg-white fixed top-0 right-0 z-30 h-20 flex items-center justify-between transition-all duration-300 px-8 border-b border-gray-200" // Added border-b for consistency
+          className="bg-card fixed top-0 right-0 z-30 h-20 flex items-center justify-between transition-all duration-300 px-8 border-b border-foreground/10"
           style={{
-            left: isSidebarCollapsed ? "5rem" : "16rem", // Dynamically adjusts based on sidebar collapse state
+            left: isSidebarCollapsed ? "5rem" : "16rem",
           }}
         >
           <div className="flex items-center gap-4">
             {/* Toggle Sidebar Collapse Button */}
             <button
               onClick={toggleSidebarCollapse}
-              className="btn btn-sm h-10 w-10 btn-square bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 flex items-center justify-center transition-colors"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:bg-muted transition-colors"
               aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               <AlignLeft size={20} />
@@ -145,16 +143,19 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
 
             {/* Greeting and Current Date */}
             <div className="flex flex-col">
-              <h1 className="text-2xl font-semibold text-gray-800 font-poppins">
-                {getGreeting()}, <span className="text-blue-600">{isLoading ? "Student" : studentInfo.name.split(' ')[0]}</span>
+              <h1 className="text-2xl font-semibold text-foreground font-poppins">
+                {getGreeting()}, <span className="text-blue-600">{studentInfo?.name?.split?.(' ')[0] || 'Student'}</span>
               </h1>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Separator */}
+            <div className="h-8 w-px bg-border mx-1"></div>
+
             {/* User Dropdown for Desktop */}
             <div className="relative">
               <UserDropdown

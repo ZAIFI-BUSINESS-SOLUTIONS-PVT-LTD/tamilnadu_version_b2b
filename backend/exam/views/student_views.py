@@ -2,6 +2,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from exam.models.overview import Overview
 from exam.models.performance import Performance
+from exam.models.checkpoints import Checkpoints
 import json
 from rest_framework.permissions import IsAuthenticated
 from exam.models.student import Student
@@ -11,8 +12,18 @@ from exam.models.educator import Educator
 from exam.models.test_metadata import TestMetadata
 import logging
 import sentry_sdk
+import re
 
 logger = logging.getLogger(__name__)
+
+
+def normalize_subdomain(raw_value):
+    """Normalize an institution value into a DNS-safe subdomain slug."""
+    if not raw_value:
+        return None
+    slug = re.sub(r'[^a-z0-9-]', '-', str(raw_value).strip().lower())
+    slug = re.sub(r'-+', '-', slug).strip('-')
+    return slug or None
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -23,11 +34,16 @@ def get_student_details(request):
         name=student.name
         class_id=student.class_id
         inst = Educator.objects.filter(class_id=class_id).first()
-        if inst:
-            inst_name = inst.name
-        else:
-            inst_name = None
-        return JsonResponse({'name': name, "student_id": student_id, "class_id":class_id, "inst": inst_name}, status=200)
+        inst_name = inst.name if inst else None
+        inst_domain = inst.institution if inst else None
+        inst_subdomain = normalize_subdomain(inst_domain)
+        return JsonResponse({
+            'name': name,
+            'student_id': student_id,
+            'class_id': class_id,
+            'inst': inst_name,
+            'institute_subdomain': inst_subdomain,
+        }, status=200)
 
     except Exception as e:
         logger.exception(f"Error in get_student_details: {str(e)}")
@@ -84,7 +100,7 @@ def get_student_dashboard(request):
         # Include compact test metadata mapping for the student's class
         try:
             metas = TestMetadata.objects.filter(class_id=class_id).order_by('test_num')
-            test_metadata_map = {str(m.test_num): {'pattern': m.pattern, 'subject_order': m.subject_order} for m in metas}
+            test_metadata_map = {str(m.test_num): {'pattern': m.pattern, 'subject_order': m.subject_order, 'test_name': m.test_name} for m in metas}
         except Exception:
             test_metadata_map = {}
 
@@ -182,3 +198,46 @@ def list_available_swot_tests(request):
     student_id = request.user.student_id
     tests = SWOT.objects.filter(user_id=student_id).values_list('test_num', flat=True).distinct()
     return Response({"available_tests": list(tests)})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def get_student_checkpoints(request):
+    """
+    Get combined checkpoints (checklist + action plan) for a specific test.
+    POST body: {"test_num": <test_number>}
+    """
+    try:
+        student_id = request.user.student_id
+        student = Student.objects.filter(student_id=student_id).first()
+
+        if not student:
+            return Response({"error": "Student not found"}, status=404)
+
+        # Get test_num from POST data
+        test_num = request.data.get("test_num")
+        if test_num is None:
+            return Response({"error": "Missing 'test_num' in request body"}, status=400)
+
+        logger.info(f"get_student_checkpoints called for student={student_id} test_num={test_num}")
+
+        # Fetch checkpoints record
+        class_id = student.class_id
+        record = Checkpoints.objects.filter(
+            student_id=student_id,
+            class_id=class_id,
+            test_num=test_num
+        ).first()
+
+        if not record:
+            logger.info(f"No checkpoints found for student={student_id} class={class_id} test_num={test_num}")
+            return Response({"checkpoints": []}, status=200)
+
+        # Return the insights JSON directly
+        return Response({
+            "checkpoints": record.insights if record.insights else []
+        })
+
+    except Exception as e:
+        logger.exception(f"Error in get_student_checkpoints: {str(e)}")
+        return Response({"error": str(e)}, status=500)

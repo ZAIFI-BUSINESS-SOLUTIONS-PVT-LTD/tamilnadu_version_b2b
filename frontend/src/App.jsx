@@ -11,8 +11,8 @@ import ErrorPage from "./auth/ErrorPage";
 import WaitingPage from "./auth/WaitingPage";
 import './App.css';
 import ScrollToTop from './dashboards/components/ScrollToTop';
-import Report from './dashboards/educator/Report.jsx';
-import TeacherReport from './dashboards/educator/TeacherReport.jsx';
+import Report from './dashboards/components/Report.jsx';
+import TeacherReport from './dashboards/components/TeacherReport.jsx';
 import StudentReport from './dashboards/student/StudentReport.jsx';
 import ForgotPassword from './auth/ForgotPassword';
 import ResetPassword from './auth/ResetPassword';
@@ -22,10 +22,9 @@ import {
   ELayout,
   EDashboard,
   ESWOT,
-  EUpload,
   EResults,
-  EChatbot
 } from './dashboards/educator';
+import ESettings from './dashboards/educator/e_settings.jsx';
 
 // Import student layout and nested pages
 import {
@@ -44,6 +43,7 @@ import {
   IUpload,
   ITestPerformance
 } from './dashboards/institution';
+import ISettings from './dashboards/institution/i_settings.jsx';
 
 
 function App() {
@@ -73,10 +73,9 @@ function App() {
         {/* Educator protected pages via layout */}
         <Route path="/educator/*" element={<ELayout />}>
           <Route path="dashboard" element={<EDashboard />} />
-          <Route path="upload" element={<EUpload />} />
           <Route path="swot" element={<ESWOT />} />
           <Route path="students" element={<EResults />} />
-          <Route path="chatbot" element={<EChatbot />} />
+          <Route path="settings" element={<ESettings />} />
         </Route>
         {/* Student protected pages via layout */}
         <Route path="/student/*" element={<SLayout />}>
@@ -92,6 +91,7 @@ function App() {
           <Route path="students" element={<IStudentDetails />} />
           <Route path="upload" element={<IUpload />} />
           <Route path="test-performance" element={<ITestPerformance />} />
+          <Route path="settings" element={<ISettings />} />
         </Route>
       </Routes>
     </>

@@ -1,12 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { Home, Target, User, UploadCloud, FileText } from 'lucide-react';
 
 import { useInstitution } from './index.jsx';
-import {
-  fetchAvailableSwotTests_Educator,
-  fetchInstitutionEducatorStudents,
-} from '../../utils/api.js';
+import { useInstitutionEducatorStudents, useAvailableSwotTestsEducator } from '../../hooks/useInstitutionData.js';
 
 import MobileDock from '../components/header/MobileDock.jsx';
 import TeacherReportModal from './components/i_teacherreport.jsx';
@@ -15,15 +12,25 @@ import InstitutionHeaderMobile from './i_header-mobile.jsx';
 
 // Mobile ILayout component
 export const ILayout = () => {
-  const location = useLocation();
   const navigate = useNavigate();
   const { selectedEducatorId } = useInstitution();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showStudentReportModal, setShowStudentReportModal] = useState(false);
   const [showTeacherReportModal, setShowTeacherReportModal] = useState(false);
-  const [students, setStudents] = useState([]);
-  const [availableTests, setAvailableTests] = useState(['Overall']);
+
+  const { data: studentsData } = useInstitutionEducatorStudents(selectedEducatorId);
+  const { data: availableTestsData } = useAvailableSwotTestsEducator();
+
+  const students = React.useMemo(() => {
+    return Array.isArray(studentsData?.students) ? studentsData.students : [];
+  }, [studentsData]);
+
+  const availableTests = React.useMemo(() => {
+    if (!availableTestsData) return ['Overall'];
+    const uniqueTests = [...new Set(availableTestsData)].filter((num) => num !== 0);
+    return ['Overall', ...uniqueTests.map((num) => `Test ${num}`)];
+  }, [availableTestsData]);
 
   const sidebarItems = [
     {
@@ -71,36 +78,8 @@ export const ILayout = () => {
     navigate('/auth/institution/login');
   };
 
-  useEffect(() => {
-    async function loadStudents() {
-      try {
-        if (!selectedEducatorId) {
-          setStudents([]);
-          return;
-        }
-        const data = await fetchInstitutionEducatorStudents(selectedEducatorId);
-        setStudents(Array.isArray(data?.students) ? data.students : []);
-      } catch (_err) {
-        setStudents([]);
-      }
-    }
-
-    async function loadTests() {
-      try {
-        const tests = await fetchAvailableSwotTests_Educator();
-        const uniqueTests = [...new Set(tests)].filter((num) => num !== 0);
-        setAvailableTests(['Overall', ...uniqueTests.map((num) => `Test ${num}`)]);
-      } catch (_err) {
-        setAvailableTests(['Overall']);
-      }
-    }
-
-    loadStudents();
-    loadTests();
-  }, [selectedEducatorId, location.pathname]);
-
   return (
-    <div className="flex h-screen bg-gray-50 text-text">
+    <div className="flex h-screen bg-background text-foreground">
       {/* Modals */}
       {showStudentReportModal && (
         <StudentReportModal

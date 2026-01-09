@@ -17,6 +17,15 @@ import re
 
 logger = logging.getLogger(__name__)
 
+
+def normalize_subdomain(raw_value):
+    """Normalize an institution value into a DNS-safe subdomain slug."""
+    if not raw_value:
+        return None
+    slug = re.sub(r'[^a-z0-9-]', '-', str(raw_value).strip().lower())
+    slug = re.sub(r'-+', '-', slug).strip('-')
+    return slug or None
+
 UPLOAD_DIR = "uploads/"
 
 # Helper to parse test_num from various formats (e.g., "Test 2" -> 2, "2" -> 2)
@@ -60,7 +69,12 @@ def get_educator_details(request):
         name = educator.name
         class_id = educator.class_id
         inst = educator.institution
-        return JsonResponse({'name': name, "class_id": class_id, "inst": inst}, status=200)
+        return JsonResponse({
+            'name': name,
+            'class_id': class_id,
+            'inst': inst,
+            'institute_subdomain': normalize_subdomain(inst),
+        }, status=200)
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -78,13 +92,14 @@ def get_student_details(request):
         # Get class_id and institution from the educator
         class_id = educator.class_id
         institution = educator.institution
+        institute_subdomain = normalize_subdomain(institution)
 
         # Fetch students in the same class
         students = Student.objects.filter(class_id=class_id).values('student_id', 'name', 'dob')
         
         # Add institution to each student's data
         students_with_inst = [
-            {**student, 'inst': institution}
+            {**student, 'inst': institution, 'institute_subdomain': institute_subdomain}
             for student in students
         ]
 
@@ -107,6 +122,9 @@ def educator_register(request):
         institution = request.data.get("institution")
         password = request.data.get("password")
         phone_number = request.data.get("phone_number")  # Optional for WhatsApp notifications
+        whatsapp_opt_in = request.data.get("whatsapp_opt_in", "false").lower() == "true"
+        whatsapp_consent_text = request.data.get("whatsapp_consent_text", "")
+        whatsapp_consent_ip = request.data.get("whatsapp_consent_ip", "")
         student_csv = request.FILES.get("file")
 
         # ✅ Validate required fields
@@ -140,6 +158,14 @@ def educator_register(request):
         # ✅ Save phone number if provided (for WhatsApp notifications)
         if phone_number:
             educator.phone_number = phone_number
+        
+        # ✅ Save WhatsApp opt-in consent
+        if whatsapp_opt_in:
+            from django.utils import timezone
+            educator.whatsapp_opt_in = True
+            educator.whatsapp_opt_in_timestamp = timezone.now()
+            educator.whatsapp_consent_ip = whatsapp_consent_ip or request.META.get('REMOTE_ADDR', '')
+            educator.whatsapp_consent_text = whatsapp_consent_text
         
         educator.save()
 
@@ -196,8 +222,10 @@ def get_educator_tests(request):
         test_data = []
         for test in tests:
             status_entry = TestProcessingStatus.objects.filter(class_id=class_id, test_num=test.test_num).first()
+            metadata = TestMetadata.objects.filter(class_id=class_id, test_num=test.test_num).first()
             test_data.append({
                 "test_num": test.test_num,
+                "test_name": metadata.test_name if metadata else None,
                 "date": test.date,
                 "status": status_entry.status if status_entry else "PENDING"
             })
@@ -206,6 +234,62 @@ def get_educator_tests(request):
 
     except Exception as e:
         logger.exception(f"Error in get_educator_tests: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def update_educator_test(request, test_num):
+    """Update test metadata (currently only test_name)."""
+    try:
+        educator = None
+        if isinstance(request.user, Educator):
+            educator = request.user
+        elif isinstance(request.user, Manager):
+            educator_id = request.data.get('educator_id')
+            if not educator_id:
+                return JsonResponse({'error': 'Educator ID is required for institution view'}, status=400)
+            educator = Educator.objects.filter(id=educator_id).first()
+            if not educator:
+                return JsonResponse({'error': 'Educator not found'}, status=404)
+            
+            if request.user.institution != educator.institution:
+                return JsonResponse({'error': 'Unauthorized: Educator does not belong to your institution'}, status=403)
+        else:
+            return JsonResponse({'error': 'Unauthorized user type'}, status=403)
+
+        class_id = educator.class_id
+        
+        # Get the test to verify it exists
+        test = Test.objects.filter(class_id=class_id, test_num=test_num).first()
+        if not test:
+            return JsonResponse({'error': 'Test not found'}, status=404)
+
+        # Get or create metadata
+        metadata, created = TestMetadata.objects.get_or_create(
+            class_id=class_id,
+            test_num=test_num,
+            defaults={
+                'pattern': 'PHY_CHEM_BIO',
+                'subject_order': ['Physics', 'Chemistry', 'Biology'],
+                'total_questions': 180,
+            }
+        )
+
+        # Update test_name if provided
+        test_name = request.data.get('test_name')
+        if test_name is not None:
+            metadata.test_name = test_name.strip()
+            metadata.save()
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Test updated successfully',
+            'test_name': metadata.test_name
+        }, status=200)
+
+    except Exception as e:
+        logger.exception(f"Error in update_educator_test: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
 
 
@@ -257,7 +341,7 @@ def get_educator_dashboard(request):
         # Include compact test metadata mapping for the educator's class
         try:
             metas = TestMetadata.objects.filter(class_id=class_id).order_by('test_num')
-            test_metadata_map = {str(m.test_num): {'pattern': m.pattern, 'subject_order': m.subject_order} for m in metas}
+            test_metadata_map = {str(m.test_num): {'pattern': m.pattern, 'subject_order': m.subject_order, 'test_name': m.test_name} for m in metas}
         except Exception:
             test_metadata_map = {}
 

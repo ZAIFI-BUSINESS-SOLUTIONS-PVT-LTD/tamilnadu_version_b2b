@@ -49,9 +49,11 @@ class StudentResult(models.Model):
     test_num = models.IntegerField()
     student_id = models.CharField(max_length=50)
     is_correct = models.BooleanField(default=False)
+    was_attempted = models.BooleanField(default=True)  # False if skipped/unanswered
     subject = models.CharField(max_length=50)
     chapter = models.TextField()
     topic = models.TextField()
+    misconception = models.TextField(null=True, blank=True)  # LLM-inferred student misconception
 
     class Meta:
         unique_together = (

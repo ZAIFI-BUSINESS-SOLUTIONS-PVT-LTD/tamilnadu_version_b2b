@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import bgImage from '../../assets/landingpage-images/bg_001.webp';  // Background image';
 import { adminLogin } from '../../utils/api';  // Import the login function
+import { Button } from '../../components/ui/button.jsx';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -42,12 +43,14 @@ const AdminLogin = () => {
       style={{ backgroundImage: `url(${bgImage})` }}
     >
       {/* Back Button */}
-      <button
+      <Button
         onClick={() => navigate('/auth')}
-        className="btn-primary text-sm self-start ml-4 mt-4 md:top-4 md:left-4 z-20"
+        size="sm"
+        variant="outline"
+        className="self-start ml-4 mt-4 md:top-4 md:left-4 z-20"
       >
         Back
-      </button>
+      </Button>
 
       {/* Auth Card */}
       <div className="flex flex-1 items-center justify-center relative z-10">
@@ -75,9 +78,9 @@ const AdminLogin = () => {
               className="form-text w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
-            <button type="submit" className="btn-primaryoutline w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Logging in...' : 'Login'}
-            </button>
+            </Button>
           </form>
         </div>
       </div>

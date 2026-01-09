@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { generateStudentSelfPdfReport, fetchAvailableSwotTests } from '../../../utils/api';
 import { Button } from '../../../components/ui/button.jsx';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card.jsx';
+import Alert from '../../../components/ui/alert.jsx';
 
 // Modal component for students to download their individual reports
 export const StudentReportModal = ({ onClose }) => {
@@ -39,11 +40,16 @@ export const StudentReportModal = ({ onClose }) => {
 
   // Prepare options for the test selection dropdown
   const testOptions = [
-    ...(!availableTests.includes('Overall') ? [{ value: 'Overall', label: 'Overall' }] : []),
-    ...availableTests.map((test) => ({
+    { value: 'Overall', label: 'Overall' },
+    ...availableTests.filter(t => t !== 'Overall').map((test) => ({
       value: test,
       label: test,
-    })),
+    })).sort((a, b) => {
+      const aMatch = a.label.match(/Test (\d+)/);
+      const bMatch = b.label.match(/Test (\d+)/);
+      if (!aMatch || !bMatch) return 0;
+      return parseInt(bMatch[1]) - parseInt(aMatch[1]);
+    }),
   ];
 
   const handleDownload = async () => {
@@ -115,12 +121,13 @@ export const StudentReportModal = ({ onClose }) => {
               <AnimatePresence>
                 {error && (
                   <motion.div
-                    className="alert alert-error"
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                   >
-                    <span>{error}</span>
+                    <Alert variant="destructive" className="shadow-sm text-sm">
+                      {error}
+                    </Alert>
                   </motion.div>
                 )}
               </AnimatePresence>

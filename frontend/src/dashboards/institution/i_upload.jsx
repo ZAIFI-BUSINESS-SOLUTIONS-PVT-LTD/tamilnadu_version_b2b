@@ -1,8 +1,8 @@
 import React, { useState, lazy, Suspense, useEffect } from 'react';
-import { Upload, Plus, Search, X, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { Upload, Plus, Search, X, Loader2, CheckCircle2, XCircle, Clock, MoreHorizontal, Edit2, Save } from 'lucide-react';
 import { useTests } from '../components/hooks/e_upload/e_use_tests';
 import { useFileUpload } from '../components/hooks/e_upload/e_use_file_upload';
-import Table from '../components/ui/table.jsx';
+import Table from '../../components/table.jsx';
 import { Button } from '../../components/ui/button.jsx';
 import { Input } from '../../components/ui/input.jsx';
 import LoadingPage from '../components/LoadingPage.jsx';
@@ -10,9 +10,12 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '.
 import { toast } from 'react-hot-toast';
 import { useInstitution } from './index.jsx';
 import FeedbackModal from '../components/feedback/FeedbackModal.jsx';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../../components/ui/dropdown-menu.jsx';
+import Modal from '../../components/modal.jsx';
+import { updateTestName } from '../../utils/api.js';
 
 // Reuse the educator upload modal
-const UploadModal = lazy(() => import('../educator/components/e_docsupload.jsx'));
+const UploadModal = lazy(() => import('../components/docsupload.jsx'));
 
 const IUpload = () => {
   const { selectedEducatorId, setSelectedEducatorId, educators } = useInstitution();
@@ -27,9 +30,14 @@ const IUpload = () => {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   // State to manage the current step in the upload modal
   const [step, setStep] = useState(0);
+  // State for selected test to view details
+  const [selectedTest, setSelectedTest] = useState(null);
+  // State for editing test name
+  const [isEditingTestName, setIsEditingTestName] = useState(false);
+  const [editedTestName, setEditedTestName] = useState('');
 
   // Custom hook to fetch and manage uploaded tests data - passing selectedEducatorId
-  const { tests, loadTests } = useTests(selectedEducatorId, { enabled: !!selectedEducatorId });
+  const { tests, isLoading: testsLoading, refetch: refetchTests } = useTests(selectedEducatorId, { enabled: !!selectedEducatorId });
 
   // Custom hook to manage file uploads
   const { files, setFiles, isUploading, handleUpload } = useFileUpload();
@@ -47,7 +55,7 @@ const IUpload = () => {
     const loadData = async () => {
       try {
         setHasInitialLoadCompleted(false);
-        await loadTests();
+        await refetchTests();
         setHasInitialLoadCompleted(true);
       } catch (error) {
         console.error('Failed to load resources', error);
@@ -60,7 +68,7 @@ const IUpload = () => {
     } else {
       setHasInitialLoadCompleted(true); // No educator selected, just show empty state
     }
-  }, [loadTests, selectedEducatorId]);
+  }, [refetchTests, selectedEducatorId]);
 
   // Handles sorting of the test table
   const handleSort = (field) => {
@@ -75,12 +83,13 @@ const IUpload = () => {
   // Filter and sort the tests array
   const filteredTests = tests.filter(test => {
     const testNumMatch = test.test_num?.toString().toLowerCase().includes(searchTerm.toLowerCase());
+    const testNameMatch = test.test_name?.toLowerCase().includes(searchTerm.toLowerCase());
     const statusMatch = test.progress?.toLowerCase().includes(searchTerm.toLowerCase());
     const dateMatch = test.createdAt && new Date(test.createdAt).toLocaleString("en-GB", {
       dateStyle: "medium",
       timeStyle: "short"
     }).toLowerCase().includes(searchTerm.toLowerCase());
-    return testNumMatch || statusMatch || dateMatch;
+    return testNumMatch || testNameMatch || statusMatch || dateMatch;
   });
 
   const sortedTests = [...filteredTests].sort((a, b) => {
@@ -100,6 +109,13 @@ const IUpload = () => {
         ? statusOrder[a.progress] - statusOrder[b.progress]
         : statusOrder[b.progress] - statusOrder[a.progress];
     }
+    if (sortField === 'test_name') {
+      const nameA = (a.test_name || '').toLowerCase();
+      const nameB = (b.test_name || '').toLowerCase();
+      return sortDirection === 'asc'
+        ? nameA.localeCompare(nameB)
+        : nameB.localeCompare(nameA);
+    }
     return sortDirection === 'asc'
       ? a.test_num - b.test_num
       : b.test_num - a.test_num;
@@ -115,6 +131,44 @@ const IUpload = () => {
     setIsModalOpen(true);
   };
 
+  const handleSaveTestName = async () => {
+    if (!editedTestName.trim()) {
+      toast.error("Test name cannot be empty");
+      return;
+    }
+
+    // Check for duplicates (excluding the current test)
+    const isDuplicate = tests.some(
+      test =>
+        test.test_num !== selectedTest.test_num &&
+        test.test_name &&
+        test.test_name.toLowerCase() === editedTestName.trim().toLowerCase()
+    );
+
+    if (isDuplicate) {
+      toast.error("This test name already exists. Please choose a different name.");
+      return;
+    }
+
+    try {
+      const response = await updateTestName(selectedTest.test_num, editedTestName.trim(), selectedEducatorId);
+
+      if (response.error) {
+        toast.error(response.error);
+        return;
+      }
+
+      toast.success("Test name updated successfully");
+      setIsEditingTestName(false);
+      setSelectedTest({ ...selectedTest, test_name: editedTestName.trim() });
+      // Reload tests to reflect the change
+      await refetchTests();
+    } catch (error) {
+      toast.error("Failed to update test name");
+      console.error("Error updating test name:", error);
+    }
+  };
+
   const handleUploadAndClose = async (metadata = null) => {
     console.debug('i_upload - metadata to send with upload:', metadata);
     // Pass selectedEducatorId to handleUpload
@@ -122,7 +176,7 @@ const IUpload = () => {
     if (success) {
       setIsModalOpen(false);
       setStep(0);
-      loadTests();
+      await refetchTests();
       // Open feedback modal after successful upload
       setShowFeedbackModal(true);
     }
@@ -131,34 +185,34 @@ const IUpload = () => {
   const getStatusInfo = (progress) => {
     const statusMap = {
       processing: {
-        icon: <Loader2 size={18} className="animate-spin mr-1.5 text-yellow-500" />,
+        icon: <Loader2 size={18} className="animate-spin mr-1.5 text-yellow-500 dark:text-yellow-200" />,
         text: 'Processing...',
-        colorClass: 'text-yellow-500',
-        bgClass: 'bg-yellow-50'
+        colorClass: 'text-yellow-600 dark:text-yellow-200',
+        bgClass: 'bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200/60 dark:border-yellow-800/60'
       },
       analyzing: {
-        icon: <Search size={18} className="mr-1.5 text-blue-500" />,
+        icon: <Search size={18} className="mr-1.5 text-blue-500 dark:text-blue-200" />,
         text: 'Analyzing',
-        colorClass: 'text-blue-500',
-        bgClass: 'bg-blue-50'
+        colorClass: 'text-blue-600 dark:text-blue-200',
+        bgClass: 'bg-blue-50 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-800/60'
       },
       successful: {
-        icon: <CheckCircle2 size={18} className="mr-1.5 text-green-600" />,
+        icon: <CheckCircle2 size={18} className="mr-1.5 text-green-600 dark:text-green-200" />,
         text: 'Completed',
-        colorClass: 'text-green-600',
-        bgClass: 'bg-green-50'
+        colorClass: 'text-green-600 dark:text-green-200',
+        bgClass: 'bg-green-50 dark:bg-green-950/30 border border-green-200/60 dark:border-green-800/60'
       },
       failed: {
-        icon: <XCircle size={18} className="mr-1.5 text-red-600" />,
+        icon: <XCircle size={18} className="mr-1.5 text-red-600 dark:text-red-200" />,
         text: 'Failed',
-        colorClass: 'text-red-600',
-        bgClass: 'bg-red-50'
+        colorClass: 'text-red-600 dark:text-red-200',
+        bgClass: 'bg-red-50 dark:bg-red-950/30 border border-red-200/60 dark:border-red-800/60'
       },
       default: {
         icon: null,
         text: 'Unknown',
-        colorClass: 'text-gray-500',
-        bgClass: 'bg-gray-50'
+        colorClass: 'text-muted-foreground',
+        bgClass: 'bg-muted border border-border'
       }
     };
     return statusMap[progress] || statusMap.default;
@@ -166,26 +220,49 @@ const IUpload = () => {
 
   const columns = [
     { field: 'test_num', label: 'Test #', sortable: true },
+    { field: 'test_name', label: 'Test Name', sortable: true },
     { field: 'progress', label: 'Status', sortable: true },
     { field: 'createdAt', label: 'Uploaded', sortable: true },
+    { field: 'actions', label: 'Actions', sortable: false, headerClass: 'justify-end' },
   ];
 
   const renderRow = (row, idx) => {
     const status = getStatusInfo(row.progress);
     return (
       <tr key={row.test_id || idx}>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Test {row.test_num}</td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">Test {row.test_num}</td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">{row.test_name || 'Untitled'}</td>
         <td className="px-6 py-4 whitespace-nowrap text-sm">
           <div className={`flex items-center gap-2 ${status.colorClass}`}>
             <span className={`p-1 rounded-full ${status.bgClass}`}>{status.icon}</span>
             <span className="text-xs font-semibold">{status.text}</span>
           </div>
         </td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
           {row.createdAt && new Date(row.createdAt).toLocaleString("en-GB", {
             dateStyle: "medium",
             timeStyle: "short"
           })}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+          <div className="flex items-center gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full" aria-label="More">
+                  <MoreHorizontal className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent sideOffset={6} align="end">
+                <DropdownMenuItem onClick={() => {
+                  setSelectedTest(row);
+                  setEditedTestName(row.test_name || '');
+                  setIsEditingTestName(false);
+                }}>
+                  View more
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </td>
       </tr>
     );
@@ -197,7 +274,7 @@ const IUpload = () => {
         <div className="text-center">
           <div className="flex items-center justify-center mb-4">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-600">Classroom:</span>
+              <span className="text-sm font-medium text-muted-foreground">Classroom:</span>
               <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="Select Educator" />
@@ -212,8 +289,8 @@ const IUpload = () => {
               </Select>
             </div>
           </div>
-          <h3 className="text-lg font-medium text-gray-900">No Educator Selected</h3>
-          <p className="text-gray-500">Please select an educator to manage tests for that classroom.</p>
+          <h3 className="text-lg font-medium text-foreground">No Educator Selected</h3>
+          <p className="text-muted-foreground">Please select an educator to manage tests for that classroom.</p>
         </div>
       </div>
     );
@@ -223,12 +300,12 @@ const IUpload = () => {
     <div className="sm:pt-16 w-full mx-auto px-4 sm:px-6 lg:px-0">
       <div className="hidden lg:flex lg:flex-row lg:items-center lg:justify-between mb-4 pb-4">
         <div className="flex items-center gap-4">
-          <h2 className="text-3xl font-semibold text-gray-800">Upload your tests here</h2>
+          <h2 className="text-3xl font-semibold text-foreground">Upload your tests here</h2>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-400 min-w-max pl-1">Classroom</span>
+          <span className="text-sm text-muted-foreground min-w-max pl-1">Classroom</span>
           <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
-            <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-[220px] lg:w-auto text-start">
+            <SelectTrigger className="m-1 w-[220px] lg:w-auto justify-start truncate text-start bg-card border-border">
               <SelectValue placeholder="Select Classroom" />
             </SelectTrigger>
             <SelectContent side="bottom" align="start">
@@ -249,10 +326,13 @@ const IUpload = () => {
         </div>
 
       </div>
-      <div className="hidden sm:block card rounded-2xl border border-gray-250 bg-white w-full p-8">
+      <div className="hidden sm:block card rounded-2xl border border-border bg-card w-full p-8">
         <div>
-          <div className="flex flex-col sm:flex-row justify-between items-center sm:pb-8 sm:border-b sm:border-gray-200 gap-4">
-            <h2 className="hidden sm:block text-2xl font-bold text-gray-800 w-full sm:w-auto text-left">History</h2>
+          <div className="flex flex-col sm:flex-row justify-between items-center sm:pb-8 gap-4">
+            <h2 className="hidden sm:flex items-center gap-2 text-2xl font-bold text-foreground w-full sm:w-auto text-left">
+              <Clock size={24} className="text-muted-foreground" />
+              History
+            </h2>
             <div className="hidden sm:flex flex-row w-full sm:w-auto gap-4 items-center justify-end">
               <div className="relative flex-1 sm:w-96">
                 <Input
@@ -281,7 +361,7 @@ const IUpload = () => {
           </div>
 
           {!hasInitialLoadCompleted ? (
-            <div className="relative min-h-[300px] flex items-center justify-center sm:border-b sm:border-gray-200">
+            <div className="relative min-h-[300px] flex items-center justify-center sm:border-b sm:border-border">
               <LoadingPage fixed={false} className="bg-transparent" />
             </div>
           ) : tests.length > 0 ? (
@@ -297,12 +377,12 @@ const IUpload = () => {
               />
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center w-full p-16 text-center border-2 border-dashed border-gray-300 rounded-xl bg-gray-50">
+            <div className="flex flex-col items-center justify-center w-full p-16 text-center border-2 border-dashed border-border rounded-xl bg-muted">
               <div className="p-4 bg-primary/10 rounded-full mb-4">
                 <Upload size={40} className="text-primary" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-1">No tests uploaded yet</h3>
-              <p className="text-gray-500 mb-6 max-w-md">Get started by uploading a test file for this educator.</p>
+              <h3 className="text-lg font-medium text-foreground mb-1">No tests uploaded yet</h3>
+              <p className="text-muted-foreground mb-6 max-w-md">Get started by uploading a test file for this educator.</p>
               <Button
                 onClick={handleStartUpload}
                 className="px-6 py-2 rounded-lg transition-all hover:shadow-md"
@@ -368,7 +448,7 @@ const IUpload = () => {
       </div>
 
       <div className="sm:hidden mt-6 px-3">
-        <div className="card rounded-2xl border border-gray-250 bg-white w-full p-4">
+        <div className="card rounded-2xl border border-border bg-card w-full p-4">
           {!hasInitialLoadCompleted ? (
             <div className="relative min-h-[200px] flex items-center justify-center">
               <LoadingPage fixed={false} className="bg-transparent" />
@@ -378,18 +458,37 @@ const IUpload = () => {
               {sortedTests.map((row, idx) => {
                 const status = getStatusInfo(row.progress);
                 return (
-                  <div key={row.test_id || idx} className="flex items-start justify-between gap-4 p-4 border rounded-lg bg-white">
+                  <div key={row.test_id || idx} className="flex items-start justify-between gap-4 p-4 border border-border rounded-lg bg-card">
                     <div className="flex-1">
-                      <div className="text-sm text-gray-500">Test {row.test_num}</div>
-                      <div className="mt-3 flex items-start gap-3">
+                      <div className="text-sm font-medium text-foreground mb-1">{row.test_name || 'Untitled'}</div>
+                      <div className="text-xs text-muted-foreground mb-3">Test {row.test_num}</div>
+                      <div className="flex items-start gap-3">
                         <span className={`p-2 rounded-full ${status.bgClass}`}>{status.icon}</span>
                         <div>
                           <div className={`text-sm font-semibold ${status.colorClass}`}>{status.text}</div>
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="text-xs text-muted-foreground mt-1">
                             {row.createdAt && new Date(row.createdAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
                           </div>
                         </div>
                       </div>
+                    </div>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="rounded-full" aria-label="More">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent sideOffset={6} align="end">
+                          <DropdownMenuItem onClick={() => {
+                            setSelectedTest(row);
+                            setEditedTestName(row.test_name || '');
+                            setIsEditingTestName(false);
+                          }}>
+                            View more
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 );
@@ -428,13 +527,126 @@ const IUpload = () => {
             files={files}
             setFiles={setFiles}
             onSubmit={handleUploadAndClose}
-            onClose={() => setIsModalOpen(false)}
+            onClose={() => { setIsModalOpen(false); setStep(0); }}
             isUploading={isUploading}
+            existingTests={tests}
           />
         </Suspense>
       )}
       {showFeedbackModal && (
         <FeedbackModal onClose={() => setShowFeedbackModal(false)} userType="institution" />
+      )}
+
+      {selectedTest && (
+        <Modal
+          open={!!selectedTest}
+          onClose={() => {
+            setSelectedTest(null);
+            setIsEditingTestName(false);
+            setEditedTestName('');
+          }}
+          title="Test Details"
+          maxWidth="max-w-2xl"
+        >
+          <div className="space-y-6 p-6">
+            {/* Test Name */}
+            <div className="flex items-center justify-between pb-4 border-b border-border">
+              <div className="flex-1">
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">Test Name</label>
+                {isEditingTestName ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="text"
+                      value={editedTestName}
+                      onChange={(e) => setEditedTestName(e.target.value)}
+                      className="flex-1"
+                      placeholder="Enter test name"
+                      autoFocus
+                    />
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={handleSaveTestName}
+                      className="flex items-center gap-1"
+                    >
+                      <Save size={16} />
+                      Save
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setIsEditingTestName(false);
+                        setEditedTestName(selectedTest.test_name || '');
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <p className="text-lg font-semibold text-foreground">{selectedTest.test_name || 'Untitled'}</p>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setIsEditingTestName(true)}
+                      className="h-8 w-8"
+                      title="Edit test name"
+                    >
+                      <Edit2 size={16} />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Test Details Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">Test Number</label>
+                <p className="text-base text-foreground">Test {selectedTest.test_num}</p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">Status</label>
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const status = getStatusInfo(selectedTest.progress);
+                    return (
+                      <>
+                        <span className={`p-1.5 rounded-full ${status.bgClass}`}>{status.icon}</span>
+                        <span className={`text-sm font-semibold ${status.colorClass}`}>{status.text}</span>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">Upload Date</label>
+                <p className="text-base text-foreground">
+                  {selectedTest.createdAt && new Date(selectedTest.createdAt).toLocaleString("en-GB", {
+                    dateStyle: "long",
+                    timeStyle: "short"
+                  })}
+                </p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">Test ID</label>
+                <p className="text-base text-foreground font-mono">{selectedTest.test_id || 'N/A'}</p>
+              </div>
+            </div>
+
+            {/* Additional information can be added here */}
+            {selectedTest.pattern && (
+              <div className="pt-4 border-t border-border">
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">Syllabus Pattern</label>
+                <p className="text-base text-foreground">{selectedTest.pattern}</p>
+              </div>
+            )}
+          </div>
+        </Modal>
       )}
     </div>
   );

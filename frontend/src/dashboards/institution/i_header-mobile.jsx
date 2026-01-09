@@ -6,8 +6,7 @@ import FeedbackModal from '../components/feedback/FeedbackModal.jsx';
 import Logo from '../../assets/images/logo.svg';
 import { useInstitution } from './index.jsx';
 import FilterDrawer from '../../components/ui/filter-drawer.jsx';
-import { Button } from '../../components/ui/button.jsx';
-import { ChevronDown } from 'lucide-react';
+import { useInstitutionEducators } from '../../hooks/useInstitutionData.js';
 
 /**
  * InstitutionHeaderMobile
@@ -56,8 +55,14 @@ const InstitutionHeaderMobile = () => {
 
 // Mobile select component for choosing educator/classroom
 const MobileEducatorSelect = () => {
-    const { educators, selectedEducatorId, setSelectedEducatorId } = useInstitution();
+    const { selectedEducatorId, setSelectedEducatorId } = useInstitution();
+    const { data: educatorsData } = useInstitutionEducators();
     const [open, setOpen] = useState(false);
+
+    const educators = useMemo(() => {
+        if (!educatorsData || educatorsData.error) return [];
+        return Array.isArray(educatorsData) ? educatorsData : (educatorsData.educators || []);
+    }, [educatorsData]);
 
     const sorted = useMemo(() => {
         if (!Array.isArray(educators)) return [];
@@ -82,7 +87,7 @@ const MobileEducatorSelect = () => {
     return (
         <>
             <button
-                className="btn btn-sm bg-gray-200 inline-flex items-center gap-2 rounded-xl"
+                className="inline-flex items-center gap-2 rounded-xl bg-muted px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/80"
                 onClick={() => setOpen(true)}
                 aria-label="Open filters"
             >

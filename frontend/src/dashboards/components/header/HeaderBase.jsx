@@ -33,7 +33,7 @@ const HeaderBase = ({ children, isSidebarCollapsed, isMobile }) => {
 
   return (
     <div
-      className={`fixed top-0 ${leftSpacing} right-0 z-[60] h-16 px-4 flex items-center bg-white border-b border-gray-200 transition-all duration-300 ${isMobile ? 'md:hidden' : 'hidden md:flex'}`}
+      className={`fixed top-0 ${leftSpacing} right-0 z-[60] h-16 px-4 flex items-center bg-card border-b border-border transition-all duration-300 ${isMobile ? 'md:hidden' : 'hidden md:flex'}`}
       role="banner" // Indicates that this is a prominent header section of the document.
     >
       {children}

@@ -13,6 +13,7 @@ from .response import StudentResponse
 from .analysis import QuestionAnalysis
 
 from .result import Result, StudentResult
+from .checkpoints import Checkpoints
 
 
 
@@ -23,3 +24,4 @@ from .feedback import Feedback
 from .notification_log import NotificationLog
 
 from .gemini_api import Gemini_ApiCallLog, Gemini_ApiKeyModelMinuteStats, Gemini_ApiKeyModelDayStats
+from .institution import Institution

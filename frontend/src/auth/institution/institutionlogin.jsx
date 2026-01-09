@@ -3,15 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { institutionLogin } from '../../utils/api';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Eye, EyeOff, Lock, Mail, Sparkles } from 'lucide-react';
-import educatorLoginImg from '../../assets/auth images/educatorlogin.svg';
+import instituteLoginImg from '../../assets/auth images/institutelogin.svg';
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
-} from '../../components/ui/card.jsx';
-import logo from '../../assets/images/logo.svg';
+} from '../../components/ui/card.jsx';import { Input } from '../../components/ui/input.jsx';
+import { Button } from '../../components/ui/button.jsx';import logo from '../../assets/images/logo.svg';
+import logoInverted from '../../assets/images/logo-inverted.svg';
 
 const InstitutionLogin = () => {
   const navigate = useNavigate();
@@ -50,7 +51,7 @@ const InstitutionLogin = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
+    <div className="min-h-screen flex items-center justify-center bg-background p-6">
       <motion.div
         className="w-full max-w-md"
         initial={{ opacity: 0, y: 10 }}
@@ -58,14 +59,15 @@ const InstitutionLogin = () => {
         transition={{ duration: 0.28, ease: 'easeOut' }}
       >
         <motion.div className="flex flex-col items-center mb-4">
-          <img src={logo} alt="Inzighted" className="w-24 h-auto" />
-          <p className="text-sm text-slate-600 mt-2">An AI Powered Learning Journey</p>
+          <img src={logo} alt="Inzighted" className="w-24 h-auto dark:hidden" />
+          <img src={logoInverted} alt="Inzighted" className="w-24 h-auto hidden dark:block" />
+          <p className="text-sm text-muted-foreground mt-2">An AI Powered Learning Journey</p>
         </motion.div>
         <Card className="overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-5 relative">
+          <div className="bg-primary p-5 relative">
             <motion.button
               onClick={() => navigate('/auth')}
-              className="absolute top-4 left-4 text-white hover:bg-white/10 p-2 rounded-full transition-colors"
+              className="absolute top-4 left-4 text-primary-foreground hover:bg-white/10 p-2 rounded-full transition-colors"
               aria-label="Go back"
               whileTap={{ scale: 0.95 }}
             >
@@ -75,16 +77,16 @@ const InstitutionLogin = () => {
             <CardHeader className="p-0">
               <motion.div className="flex flex-col items-center text-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.06 }}>
                 <div className="flex items-center mb-2">
-                  <CardTitle className="text-white text-lg">Institution Portal</CardTitle>
+                  <CardTitle className="text-primary-foreground text-lg">Institution Portal</CardTitle>
                 </div>
-                <CardDescription className="text-blue-100 text-sm">Sign in to manage your institution</CardDescription>
+                <CardDescription className="text-primary-foreground/80 text-sm">Sign in to manage your institution</CardDescription>
               </motion.div>
             </CardHeader>
           </div>
 
           <CardContent className="p-6">
             <motion.div className="flex justify-center mb-4" initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.12 }}>
-              <img src={educatorLoginImg} alt="Institution Login" className="h-28 object-contain" />
+              <img src={instituteLoginImg} alt="Institution Login" className="h-28 object-contain" />
             </motion.div>
 
             {error && (
@@ -102,46 +104,40 @@ const InstitutionLogin = () => {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">
+                <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1">
                   Institution Email
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail size={16} className="text-gray-400" />
+                    <Mail size={16} className="text-muted-foreground" />
                   </div>
-                  <input
+                  <Input
                     id="email"
                     type="email"
                     placeholder="your@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-2.5 border border-slate-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm bg-white"
+                    className="pl-10"
                     required
                   />
                 </div>
               </div>
 
-                <div className="flex justify-end">
-                  <button type="button" onClick={() => navigate('/auth/forgot-password?role=manager')} className="text-sm text-blue-600 hover:underline">
-                    Forgot password?
-                  </button>
-                </div>
-
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1">
+                <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1">
                   Password
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock size={16} className="text-gray-400" />
+                    <Lock size={16} className="text-muted-foreground" />
                   </div>
-                  <input
+                  <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="block w-full pl-10 pr-10 py-2.5 border border-slate-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm bg-white"
+                    className="pl-10 pr-10"
                     required
                   />
                   <motion.button
@@ -153,23 +149,23 @@ const InstitutionLogin = () => {
                     whileTap={{ scale: 0.95 }}
                   >
                     {showPassword ? (
-                      <EyeOff size={18} className="text-gray-500 hover:text-blue-600 transition-colors" />
+                      <EyeOff size={18} className="text-muted-foreground hover:text-primary transition-colors" />
                     ) : (
-                      <Eye size={18} className="text-gray-500 hover:text-blue-600 transition-colors" />
+                      <Eye size={18} className="text-muted-foreground hover:text-primary transition-colors" />
                     )}
                   </motion.button>
                 </div>
+                <div className="flex justify-end mt-2">
+                  <Button type="button" variant="link" onClick={() => navigate('/auth/forgot-password?role=manager')} className="h-auto p-0 text-sm">
+                    Forgot password?
+                  </Button>
+                </div>
               </div>
 
-              <motion.button
-                type="submit"
-                className="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500 transition-colors text-sm font-medium"
-                whileTap={{ scale: 0.98 }}
-                disabled={isLoading}
-              >
+              <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
                   <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
@@ -181,18 +177,15 @@ const InstitutionLogin = () => {
                     Access Dashboard
                   </>
                 )}
-              </motion.button>
+              </Button>
             </form>
 
 
           </CardContent>
-          <div className="bg-slate-50 px-6 py-3 text-center border-t border-slate-100">
-            <p className="text-xs text-gray-500">Need help? <a href="/contact" className="text-blue-600 hover:underline">Contact support</a></p>
+          <div className="bg-muted px-6 py-3 text-center border-t border-border">
+            <p className="text-xs text-muted-foreground">Need help? <a href="https://inzighted.com/contact" className="text-primary hover:underline">Contact support</a></p>
           </div>
         </Card>
-        <motion.div className="mt-4 text-center text-xs text-slate-500">
-          By continuing, you agree to our <a href="#" className="underline">Terms</a> and <a href="#" className="underline">Privacy</a>.
-        </motion.div>
       </motion.div>
     </div>
   );

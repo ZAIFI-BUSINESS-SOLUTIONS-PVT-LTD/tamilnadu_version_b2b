@@ -1,161 +1,134 @@
 import React, { useState, useEffect } from 'react';
-import { getStudentDashboardData } from '../../utils/api.js';
+import useStudentDashboard, { usePrefetchStudentData } from '../../hooks/useStudentData.js';
 import { X, BarChart2, TrendingUp, Archive, Clipboard, HelpCircle, CheckCircle, AlertTriangle, Clock, Sparkles } from 'lucide-react';
 import { Line, Doughnut } from 'react-chartjs-2';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, BarElement, ArcElement } from 'chart.js';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '../../components/ui/select.jsx';
-import Stat from '../components/ui/stat.jsx';
-import Carousel from '../components/ui/carousel.jsx';
+import Stat from '../../components/stat.jsx';
+import Carousel from '../../components/carousel.jsx';
 import { Card } from '../../components/ui/card.jsx';
+import Alert from '../../components/ui/alert.jsx';
 import SDashboardMobile from './s_dashboard_mobile.jsx';
 import PageLoader from '../components/LoadingPage';
 import ActionPlanCard from './components/ActionPlanCard.jsx';
 import ChecklistCard from './components/ChecklistCard.jsx';
 import StudyTipsCard from './components/StudyTipsCard.jsx';
+import { Tooltip as UITooltip, TooltipTrigger as UITooltipTrigger, TooltipContent as UITooltipContent, TooltipProvider as UITooltipProvider } from '../../components/ui/tooltip.jsx';
+
+// Shared chart height class used by both charts to keep heights equal
+const CHART_HEIGHT_CLASS = 'h-56 sm:h-80';
 
 function SDashboard() {
-  // State to hold the student dashboard data and loading/error status
-  const [dashboardData, setDashboardData] = useState({
-    keyInsightsData: {},
-    subjectWiseData: {},
-    subjectWiseDataMapping: [],
-    performanceTrendDataMapping: {},
-    actionPlan: [],
-    checklist: [],
-    lastTestImprovement: 0,
-    lastTestPercentage: 0,
-    isLoading: true,
-    error: null,
+  // Use React Query hook for cached loading of student dashboard
+  const { data: remoteData, isLoading: queryLoading, error: queryError } = useStudentDashboard();
+  
+  // Prefetch other page data in background
+  const { prefetchAll } = usePrefetchStudentData();
+
+  // Keep selected test local state for chart controls
+  const [selectedTest, setSelectedTest] = useState('');
+
+  // Derive normalized subjectWiseData and other aggregates from remoteData (same logic as previous manual fetch)
+  const subjectWiseDataMapping = Array.isArray(remoteData?.subjectWiseDataMapping) ? remoteData.subjectWiseDataMapping : [];
+  const globalSubjects = getSubjectsFromMapping(subjectWiseDataMapping || []);
+  const subjectWiseData = {};
+  subjectWiseDataMapping.forEach((row) => {
+    const testName = row.Test || 'Unknown Test';
+    subjectWiseData[testName] = (globalSubjects || []).map(s => {
+      if (typeof row[s] !== 'undefined' && row[s] !== null) return Number(row[s]) || 0;
+      const c = Number(row[`${s}__correct`] || 0);
+      const i = Number(row[`${s}__incorrect`] || 0);
+      const u = Number(row[`${s}__unattempted`] || row[`${s}__skipped`] || 0);
+      return c + i + u;
+    });
+  });
+  // Compute per-test totals and percentages from the detailed mapping
+  const computedPerTestStats = (subjectWiseDataMapping || []).map(row => {
+    const testName = row.Test || 'Unknown Test';
+    const details = buildSubjectDetailsFromRow(row, getSubjectsFromMapping([row]));
+    const present = Array.isArray(details) ? details.filter(d => {
+      const c = Number(d?.correct || 0);
+      const i = Number(d?.incorrect || 0);
+      const u = Number(d?.unattended ?? d?.skipped ?? d?.unattempted ?? 0);
+      return (c + i + u) > 0;
+    }) : [];
+
+    const subjectsToUse = (present.length ? present : (Array.isArray(details) ? details : []));
+    let totalQuestions = 0;
+    let totalScore = 0;
+    subjectsToUse.forEach(d => {
+      const c = Number(d?.correct || 0);
+      const i = Number(d?.incorrect || 0);
+      const u = Number(d?.unattended ?? d?.skipped ?? d?.unattempted ?? 0);
+      const q = c + i + u;
+      totalQuestions += q;
+      totalScore += (c * 4) + (i * -1) + (u * 0);
+    });
+
+    const percentage = totalQuestions > 0 ? (totalScore / (totalQuestions * 4)) * 100 : 0;
+    return { testName, totalScore, totalQuestions, percentage };
   });
 
+  const extractTestNum = (s) => {
+    const m = String(s || '').match(/(\d+)/);
+    return m ? parseInt(m[1], 10) : NaN;
+  };
+
+  const computedSortedPerTestStats = [...computedPerTestStats].sort((a, b) => {
+    const na = extractTestNum(a.testName);
+    const nb = extractTestNum(b.testName);
+    if (!isNaN(na) && !isNaN(nb)) return na - nb;
+    if (!isNaN(na)) return 1;
+    if (!isNaN(nb)) return -1;
+    return String(a.testName || '').localeCompare(String(b.testName || ''));
+  });
+  const testKeys = computedSortedPerTestStats.map(p => p.testName);
+  let computedLastTestPercentage = 0;
+  let computedLastTestImprovement = 0;
+  if (computedSortedPerTestStats.length > 0) {
+    const last = computedSortedPerTestStats[computedSortedPerTestStats.length - 1];
+    computedLastTestPercentage = Number(last.percentage || 0);
+    if (computedSortedPerTestStats.length > 1) {
+      const prev = computedSortedPerTestStats[computedSortedPerTestStats.length - 2];
+      const prevPct = Number(prev.percentage || 0);
+      computedLastTestImprovement = prevPct > 0 ? ((computedLastTestPercentage - prevPct) / prevPct) * 100 : 0;
+    }
+  }
+
+  // Compose dashboardData to preserve expected shape used throughout the component
+  const dashboardData = {
+    keyInsightsData: remoteData?.keyInsightsData || {},
+    subjectWiseData,
+    subjectWiseDataMapping,
+    performanceTrendDataMapping: remoteData?.performanceTrendDataMapping || {},
+    actionPlan: remoteData?.actionPlan || [],
+    checklist: remoteData?.checklist || [],
+    studyTips: remoteData?.studyTips || [],
+    perTestStats: computedSortedPerTestStats,
+    lastTestImprovement: computedLastTestImprovement,
+    lastTestPercentage: computedLastTestPercentage,
+    isLoading: queryLoading,
+    error: queryError?.message || queryError || null,
+  };
+
+  // Ensure default selected test is set when data arrives
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch student dashboard data from the API
-        const data = await getStudentDashboardData();
-
-        // Print all the data available in getStudentDashboardData to the console
-        console.log('Raw data from getStudentDashboardData:', data);
-
-        // Handle potential errors from the API
-        if (!data || data.error) {
-          throw new Error(data?.error || 'Failed to fetch data');
-        }
-
-        // Keep raw mappings for charts that need details
-        const subjectWiseDataMapping = Array.isArray(data.subjectWiseDataMapping) ? data.subjectWiseDataMapping : [];
-
-        // Build a normalized subjectWiseData object keyed by test name where each value is
-        // an array of subject totals ordered by the global subjects discovered in the mapping.
-        const globalSubjects = getSubjectsFromMapping(subjectWiseDataMapping || []);
-        let subjectWiseData = {};
-        subjectWiseDataMapping.forEach((row) => {
-          const testName = row.Test || 'Unknown Test';
-          subjectWiseData[testName] = (globalSubjects || []).map(s => {
-            if (typeof row[s] !== 'undefined' && row[s] !== null) return Number(row[s]) || 0;
-            const c = Number(row[`${s}__correct`] || 0);
-            const i = Number(row[`${s}__incorrect`] || 0);
-            const u = Number(row[`${s}__unattempted`] || row[`${s}__skipped`] || 0);
-            return c + i + u;
-          });
-        });
-
-        // Compute per-test totals and percentages from the detailed mapping (handles variable subject sets)
-        const perTestStats = (subjectWiseDataMapping || []).map(row => {
-          const testName = row.Test || 'Unknown Test';
-          const details = buildSubjectDetailsFromRow(row, getSubjectsFromMapping([row]));
-          const present = Array.isArray(details) ? details.filter(d => {
-            const c = Number(d?.correct || 0);
-            const i = Number(d?.incorrect || 0);
-            const u = Number(d?.unattended ?? d?.skipped ?? d?.unattempted ?? 0);
-            return (c + i + u) > 0;
-          }) : [];
-
-          // Compute total questions and total score using scoring: +4 for correct, -1 for incorrect, 0 for unattempted
-          const subjectsToUse = (present.length ? present : (Array.isArray(details) ? details : []));
-          let totalQuestions = 0;
-          let totalScore = 0;
-          subjectsToUse.forEach(d => {
-            const c = Number(d?.correct || 0);
-            const i = Number(d?.incorrect || 0);
-            const u = Number(d?.unattended ?? d?.skipped ?? d?.unattempted ?? 0);
-            const q = c + i + u;
-            totalQuestions += q;
-            totalScore += (c * 4) + (i * -1) + (u * 0);
-          });
-
-          const percentage = totalQuestions > 0 ? (totalScore / (totalQuestions * 4)) * 100 : 0;
-          return { testName, totalScore, totalQuestions, percentage };
-        });
-
-        // numeric-aware ordering: ensure tests like Test10 come after Test9
-        const extractTestNum = (s) => {
-          const m = String(s || '').match(/(\d+)/);
-          return m ? parseInt(m[1], 10) : NaN;
-        };
-
-        const sortedPerTestStats = [...perTestStats].sort((a, b) => {
-          const na = extractTestNum(a.testName);
-          const nb = extractTestNum(b.testName);
-          if (!isNaN(na) && !isNaN(nb)) return na - nb; // numeric ascending
-          if (!isNaN(na)) return 1; // numeric after non-numeric
-          if (!isNaN(nb)) return -1;
-          return String(a.testName || '').localeCompare(String(b.testName || ''));
-        });
-
-        const testKeys = sortedPerTestStats.map(p => p.testName);
-        let lastTestPercentage = 0;
-        let lastTestImprovement = 0;
-
-        if (sortedPerTestStats.length > 0) {
-          const last = sortedPerTestStats[sortedPerTestStats.length - 1];
-          lastTestPercentage = Number(last.percentage || 0);
-          if (sortedPerTestStats.length > 1) {
-            const prev = sortedPerTestStats[sortedPerTestStats.length - 2];
-            const prevPct = Number(prev.percentage || 0);
-            lastTestImprovement = prevPct > 0 ? ((lastTestPercentage - prevPct) / prevPct) * 100 : 0;
-          }
-        }
-
-        // Update the dashboard data state with the fetched and transformed data
-        setDashboardData({
-          keyInsightsData: data.keyInsightsData || {},
-          subjectWiseData,
-          subjectWiseDataMapping,
-          performanceTrendDataMapping: data.performanceTrendDataMapping || {},
-          actionPlan: data.actionPlan || [],
-          checklist: data.checklist || [],
-          studyTips: data.studyTips || [],
-          perTestStats: sortedPerTestStats,
-          lastTestImprovement,
-          lastTestPercentage,
-          isLoading: false,
-          error: null,
-        });
-
-        // Set default selections
-        if (testKeys.length > 0) {
-          setSelectedTest(testKeys[testKeys.length - 1]);
-        }
-      } catch (error) {
-        // Update the dashboard data state with the error message
-        setDashboardData((prev) => ({
-          ...prev,
-          isLoading: false,
-          error: error.message,
-        }));
-      }
-    };
-
-    // Call the fetchData function when the component mounts
-    fetchData();
-  }, []); // Empty dependency array ensures this effect runs only once
+    if (!selectedTest && testKeys.length > 0) {
+      setSelectedTest(testKeys[testKeys.length - 1]);
+    }
+  }, [testKeys, selectedTest]);
+  
+  // Prefetch all other page data in background after dashboard loads
+  useEffect(() => {
+    if (remoteData && !queryLoading) {
+      prefetchAll();
+    }
+  }, [remoteData, queryLoading, prefetchAll]);
 
   // Destructure data, loading state, and error from the dashboardData state.
   const {
     keyInsightsData,
-    subjectWiseData,
     actionPlan,
     lastTestImprovement,
     lastTestPercentage,
@@ -172,29 +145,30 @@ function SDashboard() {
     error
   });
 
-  // State to manage the currently selected subject for the Performance Trend Chart.
-  // Initialized as an empty string, default will be set when rendering the chart.
-  // State to manage the currently selected test for the Subject-Wise Analysis Chart.
-  // Initialized as an empty string, default will be set when rendering the chart.
-  const [selectedTest, setSelectedTest] = useState('');
-
   // --- Conditional Rendering for Loading and Error States ---
 
-  // Display a loading indicator while dashboard data is being fetched.
+  // Display a loading overlay while dashboard data is being fetched (match i_dashboard behaviour).
   if (isLoading) {
-    return <PageLoader />;
+    return (
+      <div className="relative min-h-screen">
+        <PageLoader fixed={false} className="bg-white/80 dark:bg-gray-900/80 z-10" />
+      </div>
+    );
   }
 
   // Display an error message if data fetching failed.
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-96 p-4 bg-base-100 rounded-lg shadow-md">
-        <div className="alert alert-error max-w-md shadow-lg">
-          <AlertTriangle className="stroke-current shrink-0 h-6 w-6" />
-          <div>
-            <h3 className="font-bold">Error loading dashboard!</h3>
-            <div className="text-xs">{error}</div>
-          </div>
+      <div className="flex flex-col items-center justify-center h-96 p-4 bg-white dark:bg-slate-900 rounded-lg shadow-md">
+        <div className="max-w-md w-full">
+          <Alert
+            variant="destructive"
+            icon={<AlertTriangle className="h-5 w-5 text-rose-600" aria-hidden />}
+            className="shadow-sm"
+          >
+            <div className="font-semibold text-sm text-rose-700 dark:text-rose-300">Error loading dashboard!</div>
+            <div className="text-xs text-rose-800/80 dark:text-rose-200/80 break-words">{error}</div>
+          </Alert>
         </div>
       </div>
     );
@@ -230,7 +204,7 @@ function SDashboard() {
     },
     {
       title: 'Tests Taken',
-      value: Object.keys(subjectWiseData).length,
+      value: perTestStats.length,
       icon: 'ClipboardText',
       id: 'tests-taken',
       description: 'Total number of tests completed'
@@ -265,7 +239,7 @@ function SDashboard() {
   const derivedSubjects = getSubjectsFromMapping(_mapping || []) || SUBJECTS;
 
   return (
-    <>
+    <UITooltipProvider delayDuration={150}>
       {/* Mobile version */}
       <div className="block md:hidden">
         <SDashboardMobile />
@@ -275,54 +249,78 @@ function SDashboard() {
       <div className="hidden md:block">
         <div className="space-y-6 sm:space-y-8 pt-6 sm:pt-12 mx-none sm:mx-4 lg:m-4">
           {/* Row 1: Left column = Summary cards (top) + Carousel (bottom). Right column = PerformanceTrendChart */}
-          <div className="grid grid-cols-1 gap-4 sm:gap-8 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:gap-8 lg:grid-cols-2 items-stretch">
             {/* Left stacked column: Summary on top, Carousel below */}
-            <div className="flex flex-col gap-3 sm:gap-8">
+            <div className="flex flex-col gap-3 sm:gap-8 h-full">
               <div className="hidden sm:grid sm:grid-cols-3 gap-3 sm:gap-6">
                 {summaryCards.length ? (
                   summaryCards.map((card, idx) => {
                     const { icon: iconName = 'Default', title = 'Untitled Stat', value, id, description } = card;
-                    const iconMap = {
-                      ChartLine: <BarChart2 />,
-                      ClipboardText: <Clipboard />,
-                      TrendUp: <TrendingUp />,
-                      Archive: <Archive />,
-                      Default: <HelpCircle />
+                    const iconComponent = ICON_MAPPING[iconName] || ICON_MAPPING.Default;
+                    const iconStyles = {
+                      ChartLine: { iconBg: 'bg-blue-50 dark:bg-blue-950/30', iconClass: 'text-blue-600 dark:text-blue-400' },
+                      TrendUp: { iconBg: 'bg-emerald-50 dark:bg-emerald-950/30', iconClass: 'text-emerald-600 dark:text-emerald-400' },
+                      ClipboardText: { iconBg: 'bg-violet-50 dark:bg-violet-950/30', iconClass: 'text-violet-600 dark:text-violet-400' },
+                      Archive: { iconBg: 'bg-amber-50 dark:bg-amber-950/30', iconClass: 'text-amber-600 dark:text-amber-400' },
+                      Default: { iconBg: 'bg-muted', iconClass: 'text-muted-foreground' }
                     };
+                    const { iconBg, iconClass } = iconStyles[iconName] || iconStyles.Default;
 
-                    // same badge generation as before
+                    // theme-aligned badges using tooltip wrapper (matches educator/institution dashboards)
                     const badgeForThis = (() => {
+                      const renderIcon = (type) => {
+                        if (type === 'up') return (<svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 12V4M8 4l-3 3M8 4l3 3" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>);
+                        if (type === 'down') return (<svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 4v8M8 12l3-3M8 12l-3-3" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>);
+                        return (<svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 8h8M8 8H0" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" /></svg>);
+                      };
+
                       if (title === 'Recent Test Performance') {
-                        const isPositive = lastTestImprovement > 0;
-                        const isNegative = lastTestImprovement < 0;
+                        const rate = Number(lastTestImprovement || 0);
+                        const isPositive = rate > 0;
+                        const isNegative = rate < 0;
+                        const cls = isPositive
+                          ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-200 border border-green-200/60 dark:border-green-800/60'
+                          : isNegative
+                            ? 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-200 border border-red-200/60 dark:border-red-800/60'
+                            : 'bg-muted text-muted-foreground border border-border font-semibold';
+
                         return (
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${isPositive ? 'bg-green-50 text-green-700' : isNegative ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-700'}`}>
-                            {isPositive ? '+' : ''}{lastTestImprovement.toFixed(1)}%
-                            {isPositive ? (
-                              <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 12V4M8 4l-3 3M8 4l3 3" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                            ) : isNegative ? (
-                              <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 4v8M8 12l3-3M8 12l-3-3" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                            ) : (
-                              <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 8h8M8 8H0" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" /></svg>
-                            )}
-                          </span>
+                          <UITooltip>
+                            <UITooltipTrigger asChild>
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${cls}`}>
+                                {isPositive ? renderIcon('up') : isNegative ? renderIcon('down') : renderIcon('neutral')}
+                                {isPositive ? `+${rate.toFixed(1)}%` : `${rate.toFixed(1)}%`}
+                              </span>
+                            </UITooltipTrigger>
+                            <UITooltipContent side="top">
+                              {isPositive ? 'Improved compared to previous test.' : isNegative ? 'Dropped compared to previous test.' : 'No change compared to previous test.'}
+                            </UITooltipContent>
+                          </UITooltip>
                         );
                       }
 
                       if (title === 'Average Percentage') {
-                        const isPositive = averageMarkImprovement > 0;
-                        const isNegative = averageMarkImprovement < 0;
+                        const rate = Number(averageMarkImprovement || 0);
+                        const isPositive = rate > 0;
+                        const isNegative = rate < 0;
+                        const cls = isPositive
+                          ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-200 border border-green-200/60 dark:border-green-800/60'
+                          : isNegative
+                            ? 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-200 border border-red-200/60 dark:border-red-800/60'
+                            : 'bg-muted text-muted-foreground border border-border font-semibold';
+
                         return (
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${isPositive ? 'bg-green-50 text-green-700' : isNegative ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-700'}`}>
-                            {isPositive ? '+' : ''}{averageMarkImprovement.toFixed(1)}%
-                            {isPositive ? (
-                              <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 12V4M8 4l-3 3M8 4l3 3" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                            ) : isNegative ? (
-                              <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 4v8M8 12l3-3M8 12l-3-3" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                            ) : (
-                              <svg width="14" height="14" fill="none" viewBox="0 0 16 16"><path d="M8 8h8M8 8H0" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" /></svg>
-                            )}
-                          </span>
+                          <UITooltip>
+                            <UITooltipTrigger asChild>
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold ml-1 sm:ml-2 ${cls}`}>
+                                {isPositive ? renderIcon('up') : isNegative ? renderIcon('down') : renderIcon('neutral')}
+                                {isPositive ? `+${rate.toFixed(1)}%` : `${rate.toFixed(1)}%`}
+                              </span>
+                            </UITooltipTrigger>
+                            <UITooltipContent side="top">
+                              {isPositive ? 'Average percentage increased compared to prior tests.' : isNegative ? 'Average percentage decreased compared to prior tests.' : 'No significant change in average percentage.'}
+                            </UITooltipContent>
+                          </UITooltip>
                         );
                       }
 
@@ -332,7 +330,9 @@ function SDashboard() {
                     return (
                       <Stat
                         key={id || `stat-${idx}`}
-                        icon={iconMap[iconName] || iconMap.Default}
+                        icon={iconComponent}
+                        iconBg={iconBg}
+                        iconClass={iconClass}
                         label={title}
                         value={formatStatValue(value)}
                         info={description}
@@ -343,59 +343,63 @@ function SDashboard() {
                   })
                 ) : (
                   <div>
-                    <div role="alert" className="alert alert-info shadow-lg my-4">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                      </svg>
-                      <span>No Summary Data Available.</span>
-                    </div>
+                    <Alert variant="info" className="shadow-sm my-4">
+                      <div className="flex items-start gap-2 text-sm text-sky-900">
+                        <span className="font-medium">No Summary Data Available.</span>
+                      </div>
+                    </Alert>
                   </div>
                 )}
               </div>
 
               {/* Desktop: keep Carousel (visible on sm and up) */}
               <div className="hidden sm:block w-full">
-                <Carousel
-                  sections={[
-                    {
-                      key: 'keyStrengths',
-                      title: 'Steady Zone',
-                      items: keyInsightsData?.keyStrengths || [],
-                      icon: <CheckCircle size={18} className="text-green-500" />,
-                      tag: (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-                          <Sparkles size={12} />
-                          AI Generated
-                        </span>
-                      ),
-                      tagTooltip: 'AI-generated strengths identified for the student.'
-                    },
+                <div className='h-full'>
+                  <Carousel
+                    height={290}
+                    className="!p-4 md:!p-6 lg:!p-8 !gap-4 md:!gap-6"
+                    sections={[
+                      {
+                        key: 'keyStrengths',
+                        title: 'Steady Zone',
+                        items: keyInsightsData?.keyStrengths || [],
+                        icon: <CheckCircle size={18} className="text-green-500" />,
+                        tag: (
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 dark:bg-primary-950/20 dark:border-primary-800/40 dark:text-primary-300 flex items-center gap-1">
+                            <Sparkles size={12} />
+                            AI Generated
+                          </span>
+                        ),
+                        tagTooltip: 'AI-generated strengths identified for the student.'
+                      },
 
-                    {
-                      key: 'yetToDecide',
-                      title: 'Focus Zone',
-                      items: keyInsightsData?.yetToDecide || [],
-                      icon: <Clock size={18} className="text-purple-500" />,
-                      tag: (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 flex items-center gap-1">
-                          <Sparkles size={12} />
-                          AI Generated
-                        </span>
-                      ),
-                      tagTooltip: 'Potential vulnerabilities in consistency, identified by AI.'
-                    }
-                  ]}
-                  emptyMessage="No insights available"
-                />
+                      {
+                        key: 'yetToDecide',
+                        title: 'Focus Zone',
+                        items: keyInsightsData?.yetToDecide || [],
+                        icon: <Clock size={18} className="text-purple-500" />,
+                        tag: (
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/30 dark:bg-primary-950/20 dark:border-primary-800/40 dark:text-primary-300 flex items-center gap-1">
+                            <Sparkles size={12} />
+                            AI Generated
+                          </span>
+                        ),
+                        tagTooltip: 'Potential vulnerabilities in consistency, identified by AI.'
+                      }
+                    ]}
+                    emptyMessage="No insights available"
+                  />
+                </div>
               </div>
 
               {/* Action Plan / Checklist / Study Tips are now shown as a carousel in the right column */}
             </div>
 
             {/* Right column: single carousel for guidance cards */}
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 h-full ">
               <Carousel
-                height={520}
+                height={500}
+                className="h-full !p-4 md:!p-6 lg:!p-8 !gap-4 md:!gap-6"
                 sections={[
                   {
                     key: 'actionPlan',
@@ -427,6 +431,7 @@ function SDashboard() {
               <PerformanceTrendChart
                 subjectWiseData={subjectWiseData}
                 subjectWiseDataMapping={dashboardData.subjectWiseDataMapping}
+                chartHeight={CHART_HEIGHT_CLASS}
               />
             </div>
             <div>
@@ -436,12 +441,13 @@ function SDashboard() {
                 selectedTest={selectedTest}
                 setSelectedTest={setSelectedTest}
                 subjectLabels={subjectsForSelectedTest}
+                chartHeight={CHART_HEIGHT_CLASS}
               />
             </div>
           </div>
         </div>
       </div>
-    </>
+    </UITooltipProvider>
   );
 }
 
@@ -461,6 +467,13 @@ ChartJS.register(
   Legend,
   BarElement
 );
+
+// Keep chart fonts consistent with the app theme
+try {
+  Chart.defaults.font.family = 'Tenorite, sans-serif';
+} catch (e) {
+  // ignore if Chart not available as global `Chart` in this build
+}
 
 /** DonutChart component: shows correct/incorrect/unattended counts for a selected test and subject */
 // Helper: normalize a mapping row into an array of subjectDetails with { name, correct, incorrect, unattended, total }
@@ -622,32 +635,31 @@ const DonutChart = ({ subjectWiseDataMapping = [], selectedTest, setSelectedTest
 
 /** SummaryCards (inlined from SummaryCard.jsx) */
 const ICON_MAPPING = {
-  ChartLine: <BarChart2 aria-hidden="true" />,
-  ClipboardText: <Clipboard aria-hidden="true" />,
-  TrendUp: <TrendingUp aria-hidden="true" />,
-  Archive: <Archive aria-hidden="true" />,
-  Default: <HelpCircle aria-hidden="true" />
+  ChartLine: <BarChart2 aria-hidden="true" className="text-foreground" />,
+  ClipboardText: <Clipboard aria-hidden="true" className="text-foreground" />,
+  TrendUp: <TrendingUp aria-hidden="true" className="text-foreground" />,
+  Archive: <Archive aria-hidden="true" className="text-foreground" />,
+  Default: <HelpCircle aria-hidden="true" className="text-foreground" />
 };
 
 const formatStatValue = (value) => {
-  if (value === null || value === undefined || String(value).trim() === '') return 'N/A';
+  if (value === null || value === undefined || String(value).trim() === '') {
+    return 'N/A';
+  }
   const valueStr = String(value);
   const isPercentage = valueStr.includes('%');
-  const numericString = valueStr.replace(/[^0-9.-]+/g, '');
+  const numericString = valueStr.replace(/[^0-9.-]+/g, "");
   const rawValue = parseFloat(numericString);
   if (!isNaN(rawValue)) {
-    // Check if this is likely a percentage value (between 0-100 with decimals)
-    const isLikelyPercentage = rawValue >= 0 && rawValue <= 100 && valueStr.includes('.');
-    const wasIntendedAsInteger = Number.isInteger(rawValue) && !valueStr.includes('.');
-    const formattedValue = wasIntendedAsInteger ? rawValue : rawValue.toFixed(1);
-    return isPercentage || isLikelyPercentage ? `${formattedValue}%` : formattedValue;
+    const formattedValue = isPercentage ? rawValue.toFixed(1) : (Number.isInteger(rawValue) ? rawValue : rawValue.toFixed(1));
+    return isPercentage ? `${formattedValue}%` : formattedValue;
   }
   return valueStr;
 };
 
 
 /** PerformanceTrendChart (inlined from s_performancetrend.jsx) */
-const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWiseData = {}, subjectWiseDataMapping = [], title = 'Performance Trend' }) => {
+const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWiseData = {}, subjectWiseDataMapping = [], title = 'Performance Trend', chartHeight = CHART_HEIGHT_CLASS }) => {
   // if parent doesn't control selectedSubject, manage it locally
   const [localSelectedSubject, setLocalSelectedSubject] = React.useState('Overall');
   const effectiveSelectedSubject = selectedSubject ?? localSelectedSubject;
@@ -718,7 +730,11 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
   });
 
   const subjectKeys = Object.keys(performanceData || {});
-  const subjects = ['Overall', ...subjectKeys.sort((a, b) => b.localeCompare(a))];
+  const preferredOrder = ['Physics', 'Chemistry', 'Botany', 'Zoology'];
+  const orderedSubjects = [];
+  preferredOrder.forEach(s => { if (subjectKeys.includes(s)) orderedSubjects.push(s); });
+  const remainingSubjects = subjectKeys.filter(s => !preferredOrder.includes(s)).sort((a, b) => a.localeCompare(b));
+  const subjects = ['Overall', ...orderedSubjects, ...remainingSubjects];
 
   const normalizedPerfs = Object.fromEntries(Object.entries(performanceData || {}).map(([k, v]) => [k, normalize(v)]));
 
@@ -875,6 +891,14 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
     ]
   };
 
+  const isDark = (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')) || (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+  const tooltipColors = isDark
+    ? { backgroundColor: '#0b1220', titleColor: '#ffffff', bodyColor: '#e5e7eb', borderColor: '#1f2937' }
+    : { backgroundColor: '#ffffffff', titleColor: '#374151', bodyColor: '#374151', borderColor: '#d1d5db' };
+
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.18)';
+
   const options = {
     responsive: true,
     maintainAspectRatio: false,
@@ -882,10 +906,7 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
       legend: { display: false },
       tooltip: {
         enabled: true,
-        backgroundColor: '#ffffffff',
-        titleColor: '#374151',
-        bodyColor: '#374151',
-        borderColor: '#d1d5db',
+        ...tooltipColors,
         borderWidth: 1,
         padding: 12,
         cornerRadius: 8,
@@ -895,7 +916,6 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
         mode: 'index',
         intersect: false,
         callbacks: {
-          // show label as provided (handles Test names)
           title: (items) => items && items[0] ? items[0].label : undefined
         }
       },
@@ -911,7 +931,7 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
     scales: {
       x: {
         title: { display: false },
-        ticks: { color: '#6b7280', font: { family: 'Tenorite, sans-serif', size: 13 } },
+        ticks: { color: isDark ? '#cbd5e1' : '#6b7280', font: { family: 'Tenorite, sans-serif', size: 13 } },
         border: { width: 0 },
         grid: { display: false }
       },
@@ -926,8 +946,8 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
           return base;
         })(),
         border: { width: 0 },
-        ticks: { color: '#6b7280', font: { family: 'Tenorite, sans-serif', size: 13 }, stepSize: 100 },
-        grid: { color: '#f3f4f6' }
+        ticks: { color: isDark ? '#cbd5e1' : '#6b7280', font: { family: 'Tenorite, sans-serif', size: 13 }, stepSize: 100 },
+        grid: { color: gridColor, drawBorder: false, lineWidth: 1 }
       }
     },
     layout: { padding: { top: 16, bottom: 8, left: 8, right: 8 } },
@@ -937,14 +957,14 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
   // subjects already defined above
 
   return (
-    <Card className="rounded-2xl border border-gray-250 bg-gray-100 flex flex-col items-start justify-start sm:p-0 p-2">
+    <Card className="rounded-2xl border border-border bg-muted flex flex-col items-start justify-start sm:p-0 p-2">
       {/* Title & Chart Container */}
-      <div className="w-full flex flex-col bg-white p-3 sm:p-6 rounded-2xl">
+      <div className="w-full flex flex-col bg-card border border-border p-3 sm:p-6 rounded-2xl">
         {/* Title Container: stack on mobile, row on sm+ */}
         <div className="w-full flex flex-col sm:flex-row justify-between items-start mb-0.5 sm:mb-1">
           <div className="flex flex-col items-start justify-start gap-0">
-            <span className="text-lg sm:text-lg font-bold text-primary">{title}</span>
-            <p className="text-gray-500 text-xs sm:text-sm mb-3 sm:mb-6">Average marks across all students</p>
+            <span className="text-base sm:text-xl font-semibold text-foreground whitespace-nowrap">{title}</span>
+            <p className="text-muted-foreground text-xs sm:text-sm mb-3 sm:mb-6">Average marks across all students</p>
           </div>
 
           {subjects.length > 0 && (
@@ -954,7 +974,7 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
                 <div className="flex justify-end">
                   <div className="w-fit text-start">
                     <Select onValueChange={(val) => effectiveSetSelectedSubject(val)} value={effectiveSelectedSubject}>
-                      <SelectTrigger className="btn btn-sm justify-between w-full max-w-full truncate text-start">
+                      <SelectTrigger className="w-full max-w-full justify-between truncate text-start bg-card border border-border text-foreground">
                         <SelectValue placeholder="Select Subject" />
                       </SelectTrigger>
                       <SelectContent side="bottom" align="start">
@@ -971,7 +991,7 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
               <div className="block sm:hidden w-full my-2">
                 <div className="w-full">
                   <Select onValueChange={(val) => effectiveSetSelectedSubject(val)} value={effectiveSelectedSubject}>
-                    <SelectTrigger className="btn btn-sm justify-between w-full text-start">
+                    <SelectTrigger className="w-full justify-between text-start bg-card border border-border text-foreground">
                       <SelectValue placeholder="Select Subject" />
                     </SelectTrigger>
                     <SelectContent side="bottom" align="end">
@@ -987,7 +1007,7 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
         </div>
 
         {/* Area Chart Container */}
-        <div className="flex flex-col items-center justify-center w-full bg-white h-56 sm:h-80 border border-gray-200 rounded-lg">
+        <div className={`flex flex-col items-center justify-center w-full bg-card ${chartHeight} border border-border rounded-lg`}>
           <Line data={chartData} options={options} width={260} height={140} />
         </div>
       </div>
@@ -996,7 +1016,7 @@ const PerformanceTrendChart = ({ selectedSubject, setSelectedSubject, subjectWis
 };
 
 /** SubjectWiseAnalysisChart (inlined from s_subjectwiseanalysis.jsx) */
-const SubjectWiseAnalysisChart = ({ selectedTest, setSelectedTest, testData = {}, subjectWiseDataMapping = [], subjectLabels = ['Physics', 'Chemistry', 'Botany', 'Zoology'], title = 'Subject-wise Analysis' }) => {
+const SubjectWiseAnalysisChart = ({ selectedTest, setSelectedTest, testData = {}, subjectWiseDataMapping = [], subjectLabels = ['Physics', 'Chemistry', 'Botany', 'Zoology'], title = 'Subject-wise Analysis', chartHeight = CHART_HEIGHT_CLASS }) => {
   // local selection when parent doesn't control it
   const [localSelectedTest, setLocalSelectedTest] = React.useState('');
   const effectiveSelectedTest = selectedTest ?? localSelectedTest;
@@ -1014,8 +1034,8 @@ const SubjectWiseAnalysisChart = ({ selectedTest, setSelectedTest, testData = {}
     if (!isNaN(nb)) return 1;
     return b.localeCompare(a);
   });
-  // If effectiveSelectedTest is not set, default to the latest test in testList
-  const defaultTestKey = effectiveSelectedTest || (testList.length ? testList[testList.length - 1] : '');
+  // If effectiveSelectedTest is not set, default to the most recent test (first item)
+  const defaultTestKey = effectiveSelectedTest || (testList.length ? testList[0] : '');
 
   // Build currentTestData aligned to the provided subjectLabels using the detailed mapping.
   // Prefer the mapping row (which contains per-subject totals and breakdowns) for accurate totals.
@@ -1073,12 +1093,12 @@ const SubjectWiseAnalysisChart = ({ selectedTest, setSelectedTest, testData = {}
   };
 
   return (
-    <Card className="rounded-2xl border border-gray-250 bg-gray-100 flex flex-col items-start justify-start sm:p-0 p-2">
-      <div className="w-full flex flex-col bg-white p-3 sm:p-6 rounded-2xl">
+    <Card className="rounded-2xl border border-border bg-muted flex flex-col items-start justify-start sm:p-0 p-2">
+      <div className="w-full flex flex-col bg-card border border-border p-3 sm:p-6 rounded-2xl">
         <div className="w-full flex flex-col sm:flex-row justify-between items-start mb-0.5 sm:mb-1">
           <div className="flex flex-col items-start justify-start gap-0">
-            <h3 className="text-primary text-lg font-semibold">{title}</h3>
-            <p className="text-gray-500 text-xs sm:text-sm mb-3 sm:mb-6">Breakdown of marks across subjects for the selected test</p>
+            <h3 className="text-foreground text-lg sm:text-xl font-semibold">{title}</h3>
+            <p className="text-muted-foreground text-xs sm:text-sm mb-3 sm:mb-6">Breakdown of marks across subjects for the selected test</p>
           </div>
 
           {testList.length > 0 && (
@@ -1088,7 +1108,7 @@ const SubjectWiseAnalysisChart = ({ selectedTest, setSelectedTest, testData = {}
                 <div className="flex justify-end">
                   <div className="w-fit">
                     <Select onValueChange={(val) => effectiveSetSelectedTest(val)} value={effectiveSelectedTest}>
-                      <SelectTrigger className="btn btn-sm justify-between w-full max-w-full truncate text-start">
+                      <SelectTrigger className="w-full max-w-full justify-between truncate text-start bg-card border border-border text-foreground">
                         <SelectValue placeholder="Select Test" />
                       </SelectTrigger>
                       <SelectContent side="bottom" align="start">
@@ -1105,7 +1125,7 @@ const SubjectWiseAnalysisChart = ({ selectedTest, setSelectedTest, testData = {}
               <div className="block sm:hidden w-full mb-2">
                 <div className="w-full">
                   <Select onValueChange={(val) => effectiveSetSelectedTest(val)} value={effectiveSelectedTest}>
-                    <SelectTrigger className="btn btn-sm justify-between w-full text-start">
+                    <SelectTrigger className="w-full justify-between text-start bg-card border border-border text-foreground">
                       <SelectValue placeholder="Select Test" />
                     </SelectTrigger>
                     <SelectContent side="bottom" align="end">
@@ -1121,7 +1141,7 @@ const SubjectWiseAnalysisChart = ({ selectedTest, setSelectedTest, testData = {}
         </div>
 
 
-        <div className="w-full border border-bg-primary rounded-lg p-2 bg-white h-56 sm:h-80">
+        <div className={`w-full border border-border rounded-lg p-2 bg-card ${chartHeight}`}>
           {currentTestData.length ? (
             // use a small plugin to draw values above bars using beforeDatasetsDraw hook
             <Bar
@@ -1178,7 +1198,7 @@ const MobileInsightsSelect = ({ keyInsightsData = {} }) => {
   return (
     <div>
       <Select onValueChange={(val) => setSelected(val)} value={selected}>
-        <SelectTrigger className="btn btn-sm justify-between w-full text-start">
+        <SelectTrigger className="w-full justify-between text-start bg-white border-gray-200">
           <SelectValue placeholder="Select insights" />
         </SelectTrigger>
         <SelectContent side="bottom" align="end">
@@ -1190,7 +1210,7 @@ const MobileInsightsSelect = ({ keyInsightsData = {} }) => {
 
       <div className="mt-3">
         {items.length ? (
-          <ul className="list-disc list-inside space-y-2 text-sm text-gray-700 bg-gray-100 p-3 rounded-lg">
+          <ul className="list-disc list-inside space-y-2 text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
             {items.map((it, i) => (
               <li key={`${selected}-${i}`}>{it}</li>
             ))}

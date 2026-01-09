@@ -158,7 +158,7 @@ def _internal_student_dashboard_update(student_id, class_id, test_num, db_name):
         'swot_test': None
     }
     
-    # Generate overview data with Neo4j retry
+    # Generate overview data (PostgreSQL)
     @neo4j_retry(max_attempts=3)
     def fetch_overview():
         return Generate_overview_data(db_name, student_id, class_id, test_num)
@@ -201,12 +201,32 @@ def _internal_student_dashboard_update(student_id, class_id, test_num, db_name):
         Save_Overview_Metric(student_id, class_id, "ST", study_tips)
         logger.info(f"✅ Study tips saved for {student_id} with {len(study_tips)} tips")
     
+    # Generate and save checkpoints (combined checklist + action plan) if feature enabled
+    from django.conf import settings
+    if getattr(settings, 'ENABLE_CHECKPOINTS', False) and test_num:
+        try:
+            from exam.services.checkpoint_task import populate_checkpoints_testwise
+            populate_checkpoints_testwise.delay(student_id, class_id, test_num)
+            logger.info(f"🔍 Triggered checkpoints generation for student {student_id}, test {test_num}")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to trigger checkpoints generation for {student_id}: {e}")
+    
+    # Generate and save cumulative checkpoints (all tests) if feature enabled
+    # This happens AFTER test-wise checkpoints and analyzes patterns across all tests
+    if getattr(settings, 'ENABLE_CUMULATIVE_CHECKPOINTS', False):
+        try:
+            from exam.services.checkpoint_task import populate_checkpoints_cumulative
+            populate_checkpoints_cumulative.delay(student_id, class_id)
+            logger.info(f"🔍 Triggered cumulative checkpoints generation for student {student_id} (test_num=0)")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to trigger cumulative checkpoints generation for {student_id}: {e}")
+    
     result['overview'] = {'metrics': metrics, 'insights': insights, 'PT': PT, 'SA': SA, 'AP': action_plan, 'CL': checklist, 'ST': study_tips}
 
-    # Generate and populate performance data with Neo4j retry
+    # Generate and populate performance data (PostgreSQL)
     @neo4j_retry(max_attempts=3)
     def fetch_performance():
-        return generate_perfomance_data(db_name)
+        return generate_perfomance_data(student_id, class_id)
     
     performance_graph, performance_insights = fetch_performance()
     
@@ -217,10 +237,10 @@ def _internal_student_dashboard_update(student_id, class_id, test_num, db_name):
     Populate_performance(student_id, class_id, performance_insights, performance_graph)
     result['performance'] = {'graph': performance_graph, 'insights': performance_insights}
 
-    # Generate and save cumulative SWOT with Neo4j retry
+    # Generate and save cumulative SWOT (PostgreSQL)
     @neo4j_retry(max_attempts=3)
     def fetch_cumulative_swot():
-        return generate_all_test_swot_with_AI(db_name)
+        return generate_all_test_swot_with_AI(student_id, class_id)
     
     overall_swot = fetch_cumulative_swot()
     overall_swot = ensure_dict(overall_swot, default={})
@@ -233,11 +253,11 @@ def _internal_student_dashboard_update(student_id, class_id, test_num, db_name):
         status_obj.save()
     logger.info(f"✅ Cumulative SWOT saved for {student_id} test {test_num}")
 
-    # Generate and save test-wise SWOT if test_num provided
+    # Generate and save test-wise SWOT if test_num provided (PostgreSQL)
     if test_num:
         @neo4j_retry(max_attempts=3)
         def fetch_test_swot():
-            return generate_swot_data_with_AI(db_name, test_num)
+            return generate_swot_data_with_AI(student_id, class_id, test_num)
         
         test_wise_swot = fetch_test_swot()
         test_wise_swot = ensure_dict(test_wise_swot, default={})

@@ -3,17 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import {
   AlignLeft,
   Home,
-  User,
+  UsersRound,
   FileText,
   ChevronDown,
   ChevronRight,
   GraduationCap,
-  Target,
-  MessageCircle,
-  List
+  WandSparkles,
+  Settings
 } from "lucide-react";
 import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
-import { fetcheducatordetail, fetchAvailableSwotTests_Educator, fetcheducatorstudent } from '../../utils/api.js';
+import { fetcheducatordetail } from '../../utils/api.js';
+import { useEducatorStudents, useAvailableSwotTestsEducator } from '../../hooks/useEducatorData';
 import UserDropdown from '../components/header/UserDropDown.jsx';
 import DesktopSidebar from '../components/header/DesktopSidebar.jsx';
 import TeacherReportModal from './components/e_teacherreport.jsx';
@@ -48,9 +48,16 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
   // States for managing notifications
   // notifications removed from header UI
 
-  // State for student list and test list for the report modal
-  const [students, setStudents] = useState([]);
-  const [availableTests, setAvailableTests] = useState(['Overall']);
+  // student list and test list (derived from cached hooks)
+  const { data: studentsResp } = useEducatorStudents();
+  const students = React.useMemo(() => Array.isArray(studentsResp?.students) ? studentsResp.students : [], [studentsResp]);
+
+  const { data: testsResp } = useAvailableSwotTestsEducator();
+  const availableTests = React.useMemo(() => {
+    const nums = Array.isArray(testsResp) ? testsResp : [];
+    const unique = [...new Set(nums)].filter((n) => n !== 0);
+    return ['Overall', ...unique.map((n) => `Test ${n}`)];
+  }, [testsResp]);
 
   // React Router hooks for navigation
   const navigate = useNavigate();
@@ -70,17 +77,24 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
       activePattern: /^\/educator\/dashboard/
     },
     {
-      to: '/educator/swot',
-      icon: <Target size={20} />,
-      text: 'Analysis',
-      activePattern: /^\/educator\/swot/
-    },
-    {
       to: '/educator/students',
-      icon: <User size={20} />,
+      icon: <UsersRound size={20} />,
       text: 'Students',
       activePattern: /^\/educator\/students/
     },
+    {
+      to: '/educator/swot',
+      icon: <WandSparkles size={20} />,
+      text: 'AI Analysis',
+      activePattern: /^\/educator\/swot/
+    },
+    {
+      to: '/educator/settings',
+      icon: <Settings size={20} />,
+      text: 'Settings',
+      activePattern: /^\/educator\/settings/
+    },
+
     // {
     //   to: '/educator/chatbot',
     //   icon: <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="4" stroke="currentColor" strokeWidth="2"/><circle cx="8.5" cy="12" r="1.5" fill="currentColor"/><circle cx="15.5" cy="12" r="1.5" fill="currentColor"/></svg>,
@@ -96,7 +110,7 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
    */
   const reportItems = [
     {
-      icon: <User size={20} />,
+      icon: <UsersRound size={20} />,
       text: 'Student Report',
       onClick: () => setShowStudentReportModal(true)
     },
@@ -153,31 +167,7 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
     return "Good evening";
   };
 
-  useEffect(() => {
-    // Fetch students for dropdown
-    async function loadStudents() {
-      try {
-        // Use fetcheducatorstudent instead of fetchEducatorStudents
-        const data = await fetcheducatorstudent();
-        // The API returns an object with a 'students' array
-        setStudents(Array.isArray(data.students) ? data.students : []);
-      } catch (err) {
-        setStudents([]);
-      }
-    }
-    // Fetch available tests for dropdown
-    async function loadTests() {
-      try {
-        const tests = await fetchAvailableSwotTests_Educator();
-        const uniqueTests = [...new Set(tests)].filter((num) => num !== 0);
-        setAvailableTests(['Overall', ...uniqueTests.map((num) => `Test ${num}`)]);
-      } catch (err) {
-        setAvailableTests(['Overall']);
-      }
-    }
-    loadStudents();
-    loadTests();
-  }, []);
+  // data is loaded via React Query hooks; no manual effects required
 
   return (
     <>
@@ -209,7 +199,7 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
 
         {/* Desktop Header Bar */}
         <header
-          className="bg-white fixed top-0 right-0 z-30 h-20 flex items-center justify-between transition-all duration-300 px-8 border-b border-gray-200"
+          className="bg-card fixed top-0 right-0 z-30 h-20 flex items-center justify-between transition-all duration-300 px-8 border-b border-foreground/10"
           style={{
             left: isSidebarCollapsed ? "5rem" : "16rem",
           }}
@@ -218,7 +208,7 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
             {/* Toggle Sidebar Collapse Button */}
             <button
               onClick={toggleSidebarCollapse}
-              className="btn btn-sm h-10 w-10 btn-square bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 flex items-center justify-center transition-colors"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:bg-muted transition-colors"
               aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               <AlignLeft size={20} />
@@ -226,10 +216,10 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
 
             {/* Greeting and Current Date */}
             <div className="flex flex-col">
-              <h1 className="text-2xl font-semibold text-gray-800 font-poppins">
+              <h1 className="text-2xl font-semibold text-foreground font-poppins">
                 {getGreeting()}, <span className="text-blue-600">{isLoading ? "Educator" : (educatorInfo?.name?.split?.(' ')[0] ?? 'Educator')}</span>
               </h1>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
             </div>
@@ -237,7 +227,7 @@ const EducatorHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
 
           <div className="flex items-center gap-4">
             {/* Separator */}
-            <div className="h-8 w-px bg-gray-200 mx-1"></div>
+            <div className="h-8 w-px bg-border mx-1"></div>
 
             {/* User Dropdown for Desktop */}
             <div className="relative">

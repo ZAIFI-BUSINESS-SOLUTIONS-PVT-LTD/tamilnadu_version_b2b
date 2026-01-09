@@ -156,14 +156,29 @@ const QuestionBreakdownCard = ({
 
   const hasData = correct || incorrect || skipped;
 
+  // Track dark mode and react to changes on the document element.
+  const [themeIsDark, setThemeIsDark] = React.useState(
+    typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
+  );
+
+  React.useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    const root = document.documentElement;
+    const obs = new MutationObserver(() => {
+      setThemeIsDark(root.classList.contains('dark'));
+    });
+    obs.observe(root, { attributes: true, attributeFilter: ['class'] });
+    return () => obs.disconnect();
+  }, []);
+
   const data = {
     labels: ['Correct', 'Incorrect', 'Skipped'],
     datasets: [{ data: [correct, incorrect, skipped], backgroundColor: ['#10B981', '#f97316', '#9CA3AF'] }]
   };
 
-  const options = { maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false } } };
+  const options = { maintainAspectRatio: false, cutout: '70%', backgroundColor: 'transparent', plugins: { legend: { display: false } } };
 
-  const centerTextPlugin = {
+  const centerTextPlugin = (isDark = false) => ({
     id: 'centerText',
     afterDraw: (chart) => {
       try {
@@ -177,11 +192,13 @@ const QuestionBreakdownCard = ({
         ctx.save();
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#111827';
+        // Light: #111827, Dark: #FFFFFF
+        ctx.fillStyle = isDark ? '#FFFFFF' : '#111827';
         ctx.font = '600 18px ui-sans-serif, system-ui';
         ctx.fillText(String(total), x, y - 6);
 
-        ctx.fillStyle = '#6B7280';
+        // Light: #6B7280, Dark: #D1D5DB
+        ctx.fillStyle = isDark ? '#D1D5DB' : '#6B7280';
         ctx.font = '400 12px ui-sans-serif, system-ui';
         ctx.fillText('Questions', x, y + 12);
         ctx.restore();
@@ -189,18 +206,18 @@ const QuestionBreakdownCard = ({
         // ignore draw errors
       }
     }
-  };
+  });
 
   const effectiveSelectedTest = selectedTest || defaultTest || '';
   const effectiveSelectedSubject = selectedSubject || 'Overall';
 
   return (
-    <Card className="h-full rounded-2xl border border-gray-250 bg-gray-100 flex flex-col items-start justify-start sm:p-0 p-2">
-      <div className="w-full flex flex-col h-full bg-white p-3 sm:p-6 rounded-2xl">
+    <Card className="rounded-2xl border border-border bg-card flex flex-col items-start justify-start sm:p-0 p-2">
+      <div className="w-full flex flex-col p-3 sm:p-6 rounded-2xl">
         <div className="w-full flex flex-col sm:flex-row justify-between items-start mb-0.5 sm:mb-1">
           <div className="flex flex-col items-start justify-start gap-0">
-            <h3 className="text-primary text-lg font-semibold">{title}</h3>
-            <p className="text-gray-500 text-xs sm:text-sm mb-3 sm:mb-6">{subtitle}</p>
+            <h3 className="text-foreground text-lg font-semibold">{title}</h3>
+            <p className="text-muted-foreground text-xs sm:text-sm mb-3 sm:mb-6">{subtitle}</p>
           </div>
 
           {showSelectors ? (
@@ -214,7 +231,7 @@ const QuestionBreakdownCard = ({
                     }}
                     value={effectiveSelectedTest}
                   >
-                    <SelectTrigger className="btn btn-sm justify-between w-full max-w-full truncate text-start">
+                    <SelectTrigger className="w-full max-w-full justify-between truncate text-start bg-card border-border">
                       <SelectValue placeholder="Select Test" />
                     </SelectTrigger>
                     <SelectContent side="bottom" align="start">
@@ -229,7 +246,7 @@ const QuestionBreakdownCard = ({
                     onValueChange={(val) => setSelectedSubject && setSelectedSubject(val)}
                     value={effectiveSelectedSubject}
                   >
-                    <SelectTrigger className="btn btn-sm justify-between w-full max-w-full truncate text-start">
+                    <SelectTrigger className="w-full max-w-full justify-between truncate text-start bg-card border-border">
                       <SelectValue placeholder="Select Subject" />
                     </SelectTrigger>
                     <SelectContent side="bottom" align="start">
@@ -244,33 +261,39 @@ const QuestionBreakdownCard = ({
           ) : null}
         </div>
 
-        <div className="w-full border border-bg-primary rounded-lg p-2 bg-white flex-1 min-h-[160px] sm:min-h-[220px] flex items-center justify-center">
-          <div className="h-48 w-48 sm:h-56 sm:w-56">
-            {hasData ? (
-              <Doughnut data={data} options={options} plugins={[centerTextPlugin]} />
-            ) : (
-              <p className="text-xs text-gray-500 text-center">No question breakdown</p>
-            )}
-          </div>
-        </div>
+        <div className="w-full border border-border rounded-lg p-2 bg-card min-h-[180px] sm:min-h-[220px]">
+          <div className="flex flex-col sm:flex-row items-stretch gap-3">
+            <div className="flex items-center justify-center w-full sm:w-2/3">
+              <div className="h-44 w-44 sm:h-52 sm:w-52">
+                {hasData ? (
+                  <Doughnut key={`${selectedTest}-${selectedSubject}-${themeIsDark ? 'dark' : 'light'}`} data={data} options={options} plugins={[centerTextPlugin(themeIsDark)]} />
+                ) : (
+                  <p className="text-xs text-muted-foreground text-center">No question breakdown</p>
+                )}
+              </div>
+            </div>
 
-        <div className="w-full mt-3 grid grid-cols-3 gap-2">
-          <div className="p-2">
-            <div className="p-3 bg-white rounded-lg border border-green-600 text-center">
-              <div className="text-xs text-gray-500">Correct Answers</div>
-              <div className="mt-1 text-lg font-semibold text-green-600">{correct}</div>
-            </div>
-          </div>
-          <div className="p-2">
-            <div className="p-3 bg-white rounded-lg border border-orange-500 text-center">
-              <div className="text-xs text-gray-500">Incorrect Answers</div>
-              <div className="mt-1 text-lg font-semibold text-orange-500">{incorrect}</div>
-            </div>
-          </div>
-          <div className="p-2">
-            <div className="p-3 bg-white rounded-lg border border-gray-600 text-center">
-              <div className="text-xs text-gray-500">Skipped Questions</div>
-              <div className="mt-1 text-lg font-semibold text-gray-600">{skipped}</div>
+            <div className="w-full sm:w-1/3 flex flex-col justify-between gap-2">
+              <div className="p-1">
+                <div className="p-2 bg-card rounded-lg border border-green-600 text-center h-full flex flex-col justify-center">
+                  <div className="text-xs text-muted-foreground">Correct Answers</div>
+                  <div className="mt-0.5 sm:mt-1 text-base sm:text-lg font-semibold text-green-600">{correct}</div>
+                </div>
+              </div>
+
+              <div className="p-1">
+                <div className="p-2 bg-card rounded-lg border border-orange-500 text-center h-full flex flex-col justify-center">
+                  <div className="text-xs text-muted-foreground">Incorrect Answers</div>
+                  <div className="mt-0.5 sm:mt-1 text-base sm:text-lg font-semibold text-orange-500">{incorrect}</div>
+                </div>
+              </div>
+
+              <div className="p-1">
+                <div className="p-2 bg-card rounded-lg border border-gray-600 text-center dark:border-gray-400 h-full flex flex-col justify-center">
+                  <div className="text-xs text-muted-foreground">Skipped Questions</div>
+                  <div className="mt-0.5 sm:mt-1 text-base sm:text-lg font-semibold text-gray-600 dark:text-gray-400">{skipped}</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

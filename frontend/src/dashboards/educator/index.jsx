@@ -15,7 +15,7 @@ export const ELayout = () => {
     <>
       {/* Desktop Layout */}
       <div className="hidden md:block">
-        <div className="flex h-screen bg-gray-50 text-text">
+        <div className="flex h-screen bg-background text-foreground">
           <EHeader
             isSidebarCollapsed={isSidebarCollapsed}
             toggleSidebarCollapse={toggleSidebarCollapse}
@@ -47,6 +47,4 @@ export const ELayout = () => {
 // Export all educator dashboard components for easy import
 export { default as EDashboard } from './e_dashboard.jsx';
 export { default as ESWOT } from './e_analysis.jsx';
-export { default as EUpload } from './e_upload.jsx';
 export { default as EResults } from './e_studentdetails';
-export { default as EChatbot } from './e_chatbot.jsx';

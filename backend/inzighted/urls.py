@@ -1,10 +1,13 @@
 from django.contrib import admin
 from django.urls import path
 from exam.views import auth_views, student_views, admin_views, upload_views, educator_views, institution_views, feedback_views, teacher_views
-from exam.views import password_reset_views
+from exam.views import password_reset_views, whatsapp_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+
+    # Public institution lookup for domain-based white-labeling
+    path('institution-by-domain', institution_views.institution_by_domain, name='institution_by_domain'),
 
     # Auth Endpoints
     #path('api/login/', auth_views.login_user, name='login'),
@@ -35,6 +38,9 @@ urlpatterns = [
 
     path('api/student/swot/', student_views.get_student_swot, name='student_dashboard'),
     path('api/student/swot/tests/', student_views.list_available_swot_tests, name='student_test'),
+    
+    # Checkpoints API (combined checklist + action plan)
+    path('api/student/checkpoints/', student_views.get_student_checkpoints, name='student_checkpoints'),
 
     path('api/educator/swot/', educator_views.get_educator_swot, name='educator_swot'),
     path('api/educator/swot/tests/', educator_views.list_available_swot_tests, name='educator_test'),
@@ -46,6 +52,7 @@ urlpatterns = [
 
     #educator tests
     path("api/educator/tests/", educator_views.get_educator_tests, name="get_educator_tests"),
+    path("api/educator/tests/<int:test_num>/", educator_views.update_educator_test, name="update_educator_test"),
 
     # Educator student details
     path("api/educator/students/", educator_views.get_student_details, name="get_student_details"),
@@ -92,5 +99,11 @@ urlpatterns = [
     path('api/classes/<str:class_id>/teachers/', teacher_views.list_teachers, name='list_teachers'),
     path('api/teachers/<int:teacher_id>/', teacher_views.update_teacher, name='update_teacher'),
     path('api/teachers/<int:teacher_id>/delete/', teacher_views.delete_teacher, name='delete_teacher'),
+
+    # WhatsApp APIs
+    path('api/whatsapp/opt-in/', whatsapp_views.update_whatsapp_opt_in, name='update_whatsapp_opt_in'),
+    path('api/whatsapp/status/', whatsapp_views.get_whatsapp_status, name='get_whatsapp_status'),
+    path('api/whatsapp/activate/', whatsapp_views.activate_whatsapp, name='activate_whatsapp'),
+    path('webhooks/whatsapp/', whatsapp_views.whatsapp_webhook, name='whatsapp_webhook'),
 
 ]

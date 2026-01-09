@@ -1,166 +1,46 @@
 import React from 'react';
 import { CheckCircle, AlertCircle, Filter, Target, Zap, Atom, FlaskConical, Microscope, Leaf, PawPrint, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { fetchEducatorSWOT, fetchAvailableSwotTests_Educator } from '../../utils/api';
+import { useAvailableSwotTestsEducator, useEducatorSwot } from '../../hooks/useEducatorData';
 import LoadingPage from '../components/LoadingPage.jsx';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, } from '../../components/ui/select.jsx';
 import { Button } from '../../components/ui/button.jsx';
 import PropTypes from 'prop-types';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card.jsx';
 import { useState, useEffect } from 'react';
+import Alert from '../../components/ui/alert.jsx';
 
 // Preferred ordering for subjects. The dropdown will show subjects
 // present in the fetched SWOT data in this order when possible.
 const PREFERRED_SUBJECT_ORDER = ['Physics', 'Chemistry', 'Biology', 'Botany', 'Zoology'];
 
-// Custom hook to fetch and manage SWOT analysis data
-const useSwotData = (fetchSwotData, fetchAvailableTestsData) => {
-  // State for the currently selected subject
-  const [selectedSubject, setSelectedSubject] = useState('Physics');
-  // State for the currently selected test
-  const [selectedTest, setSelectedTest] = useState('');
-  // State to hold the list of available tests
-  const [availableTests, setAvailableTests] = useState([]);
-  // State to store the organized SWOT data
-  const [swotData, setSwotData] = useState({});
-  // State to track the loading status of the data fetch
-  const [loading, setLoading] = useState(true);
+// Helper to organize raw SWOT payload into subject-wise SWOT structure
+const organizeSwotData = (rawData) => {
+  const organized = {};
+  if (!rawData) return organized;
+  for (const metric in rawData) {
+    const subjectMap = rawData[metric];
+    const [category, title, description] = metricToCategoryMap[metric] || [];
+    if (!category) continue;
 
-  // useEffect hook to load the list of available tests on component mount
-  useEffect(() => {
-    const loadAvailableTests = async () => {
-      try {
-        // Fetch the available test numbers (these are zero-based IDs coming from the API)
-        const tests = await fetchAvailableTestsData();
-        // Remove duplicates but DO NOT drop 0 — 0 is a valid test id (maps to display "Overall")
-        const uniqueTests = [...new Set(tests)];
-        // Sort the unique tests: Overall (0) first, then descending order for others
-        uniqueTests.sort((a, b) => {
-          if (a === 0) return -1;
-          if (b === 0) return 1;
-          return b - a;
+    for (const subject in subjectMap) {
+      if (!organized[subject]) {
+        organized[subject] = {
+          Strengths: [],
+          Weaknesses: [],
+          Threats: [],
+        };
+      }
+      if (category === 'Strengths' || category === 'Weaknesses' || category === 'Threats') {
+        organized[subject][category].push({
+          title,
+          description,
+          topics: subjectMap[subject],
         });
-        // Format the test numbers into displayable strings where display = 'Overall' for id 0, or 'Test X' where X = id for id > 0
-        const formatted = uniqueTests.map((num) => num === 0 ? 'Overall' : `Test ${num}`);
-        // Update the availableTests state
-        setAvailableTests(formatted);
-        // Set selectedTest to the first available test if not set
-        if (!selectedTest && formatted.length > 0) {
-          setSelectedTest(formatted[0]);
-        }
-      } catch (error) {
-        console.error('Error loading available tests:', error);
-        // Optionally set an error state here if needed
-      }
-    };
-
-    loadAvailableTests();
-  }, [fetchAvailableTestsData]); // Fetch available tests only once on mount
-
-  // Set selectedTest to first available test if not set
-  useEffect(() => {
-    if (!selectedTest && availableTests.length > 0) {
-      setSelectedTest(availableTests[0]);
-    }
-  }, [availableTests, selectedTest]);
-
-  // useEffect hook to fetch SWOT data whenever the selected test changes
-  useEffect(() => {
-    if (!selectedTest) return;
-
-    const fetchSwot = async () => {
-      setLoading(true);
-      try {
-        // Determine the test number to fetch.
-        // Display labels are 'Overall' for api_id 0, or 'Test X' where X = api_id for api_id > 0
-        let testNum;
-        if (selectedTest === 'Overall') {
-          testNum = 0;
-        } else {
-          const parsed = parseInt(selectedTest.split(' ')[1], 10);
-          testNum = Number.isNaN(parsed) ? null : parsed;
-        }
-        if (testNum === null) {
-          console.error('Invalid selectedTest format, cannot determine test number:', selectedTest);
-          setSwotData({});
-          setLoading(false);
-          return;
-        }
-        // Fetch the SWOT data for the selected test
-        const response = await fetchSwotData(testNum);
-        // Print the full response so developers can inspect every field returned
-        // by the backend (useful for debugging / exploring the API payload).
-        // The API helper `fetchEducatorSWOT` itself also logs response.data, but
-        // logging here shows exactly what the consumer receives.
-        // You can view this output in the browser devtools console.
-        console.log('fetchEducatorSWOT full response (consumer):', response);
-        // If the response is successful and contains SWOT data
-        if (!response?.error && response?.swot) {
-          // Organize the raw SWOT data into a more structured format
-          const formatted = organizeSwotData(response.swot);
-          // Update the swotData state
-          setSwotData(formatted);
-        } else if (response?.error) {
-          console.error('Error fetching SWOT data:', response.error);
-          setSwotData({}); // Clear previous data on error
-          // Optionally set an error state here if needed
-        } else {
-          setSwotData({}); // Clear data if no SWOT data is present
-        }
-      } catch (error) {
-        console.error('Error fetching SWOT data:', error);
-        setSwotData({}); // Clear previous data on error
-        // Optionally set an error state here if needed
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSwot();
-  }, [selectedTest, fetchSwotData]); // Fetch SWOT data when selectedTest changes
-
-  // Function to organize the raw SWOT data into a subject-wise structure
-  const organizeSwotData = (rawData) => {
-    const organized = {};
-    for (const metric in rawData) {
-      const subjectMap = rawData[metric];
-      // Look up the category, title, and description for the current metric
-      const [category, title, description] = metricToCategoryMap[metric] || [];
-      // Skip if the category is not found in the mapping
-      if (!category) continue;
-
-      for (const subject in subjectMap) {
-        // Initialize the subject's SWOT categories if they don't exist
-        if (!organized[subject]) {
-          organized[subject] = {
-            Strengths: [],
-            Weaknesses: [],
-            Threats: [],
-          };
-        }
-        // Only include Strengths, Weaknesses, and Threats; drop Opportunities (Edge Zone)
-        if (category === 'Strengths' || category === 'Weaknesses' || category === 'Threats') {
-          organized[subject][category].push({
-            title,
-            description,
-            topics: subjectMap[subject],
-          });
-        }
       }
     }
-    return organized;
-  };
-
-  // Return the state variables and setter functions for external use
-  return {
-    selectedSubject,
-    setSelectedSubject,
-    selectedTest,
-    setSelectedTest,
-    availableTests,
-    swotData,
-    loading,
-  };
+  }
+  return organized;
 };
 
 // Mapping of API metric keys to SWOT categories, titles, and descriptions
@@ -194,66 +74,60 @@ const metricToCategoryMap = {
  * Expected structure: `{ [subjectName]: { Strengths: [], Weaknesses: [], ... } }`.
  * @param {string} props.selectedSubject - The name of the subject for which to display SWOT data.
  */
-const SwotSection = ({ label, displayLabel, icon, color, border, data, selectedSubject }) => {
+const SwotSection = ({ label, displayLabel, color, data, selectedSubject }) => {
   const displayText = displayLabel || label;
-  // Safely access the data for the selected subject and the current label.
-  // Fallback to an empty array if the path doesn't exist to prevent errors.
   const itemsToRender = data?.[selectedSubject]?.[label] || [];
 
-  // Small subtitle mapping for each zone (used under the title in mobile view)
   const zoneSubtitleMap = {
     'Focus Zone': 'Areas to improve',
     'Steady Zone': 'Strong areas',
   };
 
-  // Gradient/background map for each zone
-  const zoneBgMap = {
-    'Focus Zone': 'bg-gradient-to-br from-pink-100 via-pink-50 to-pink-50',
-    'Steady Zone': 'bg-gradient-to-br from-green-100 via-green-50 to-green-50',
-  };
-
   const subtitle = zoneSubtitleMap[displayText] || '';
-  const outerBg = zoneBgMap[displayText] || 'bg-base-100';
 
   return (
-    // Make card a column flex container and full height so siblings in the desktop grid can match heights
-    // Add a thin border whose color is provided via the `border` prop so the border is slightly
-    // darker than the background gradient.
-    <Card className={`${outerBg} rounded-2xl overflow-hidden h-full flex flex-col border ${border}`}>
-      <CardHeader className="px-4 py-2">
+    <Card className="bg-card h-full flex flex-col border-none rounded-2xl">
+      <CardHeader className="p-0 pb-2">
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center">
             <div>
               <CardTitle className={`${color} font-semibold items-center mb-0 text-lg`}>{displayText}</CardTitle>
-              {subtitle && <div className="text-sm text-gray-700">{subtitle}</div>}
+              {subtitle && <div className="text-sm text-muted-foreground">{subtitle}</div>}
             </div>
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="px-4 pb-4 pt-0 flex-1">
-        {/* Inner white rounded box that holds the items (matches design in screenshot) */}
-        <div className="bg-white p-4 rounded-lg flex flex-col h-full">
-          <div className="space-y-4 flex-1 overflow-auto">
+      <CardContent className="p-0 flex-1 border border-border rounded-2xl bg-muted/60">
+        <div className="flex flex-col h-full">
+          <div className="flex-1 overflow-auto">
             {itemsToRender.length > 0 ? (
-              itemsToRender.map((item, idx) => (
-                <div key={item.id || `${displayText}-${selectedSubject}-${item.title || ''}-${idx}`} className={`p-3 rounded-lg`}>
-                  {item.topics && item.topics.length > 0 && (
-                    <ul className="list-disc list-inside text-sm md:text-base text-gray-700 space-y-2">
-                      {item.topics.map((topic, i) => (
-                        <li
-                          key={`${item.id || item.title || ''}-topic-${topic}-${i}`}
-                          className="py-1 leading-relaxed break-words whitespace-pre-wrap"
-                        >
-                          {topic}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              ))
+              <div className="divide-y divide-border/70">
+                {itemsToRender.map((item, idx) => (
+                  <div
+                    key={item.id || `${displayText}-${selectedSubject}-${item.title || ''}-${idx}`}
+                    className="px-4 py-3 border-t border-border/70 first:border-t-0"
+                  >
+                    {item.topics && item.topics.length > 0 ? (
+                      <div className="divide-y divide-border/70">
+                        {item.topics.map((topic, i) => (
+                          <div
+                            key={`${item.id || item.title || ''}-topic-${topic}-${i}`}
+                            className="flex items-start gap-2 py-2 text-sm md:text-base text-foreground"
+                          >
+                            <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary/70" aria-hidden="true" />
+                            <span className="leading-relaxed break-words whitespace-pre-wrap">{topic}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">No data available for this category.</p>
+                    )}
+                  </div>
+                ))}
+              </div>
             ) : (
-              <p className="text-sm text-gray-500 italic">No data available for this category.</p>
+              <p className="px-4 py-3 text-sm text-muted-foreground italic">No data available for this category.</p>
             )}
           </div>
         </div>
@@ -266,9 +140,7 @@ const SwotSection = ({ label, displayLabel, icon, color, border, data, selectedS
 SwotSection.propTypes = {
   label: PropTypes.string.isRequired,
   displayLabel: PropTypes.string, // Optional display label, defaults to label
-  icon: PropTypes.element.isRequired, // Expects a React element (e.g., <Icon />)
   color: PropTypes.string.isRequired, // Tailwind CSS class for text color
-  border: PropTypes.string.isRequired, // Tailwind CSS class for border color
   selectedSubject: PropTypes.string.isRequired,
   data: PropTypes.objectOf( // data is an object where keys are subject names
     PropTypes.objectOf( // each subject value is an object where keys are SWOT labels (Strengths, Weaknesses, etc.)
@@ -290,17 +162,40 @@ SwotSection.propTypes = {
  * It fetches and manages SWOT data using the `useSwotData` custom hook.
  */
 const ESWOT = () => {
-  // Utilize the custom hook to manage data fetching and state for SWOT analysis.
-  const {
-    selectedSubject,
-    setSelectedSubject,
-    selectedTest,
-    setSelectedTest,
-    availableTests = [],
-    swotData,
-    loading,
-    error
-  } = useSwotData(fetchEducatorSWOT, fetchAvailableSwotTests_Educator);
+  // Local selection state
+  const [selectedSubject, setSelectedSubject] = useState('Physics');
+  const [selectedTest, setSelectedTest] = useState('');
+
+  // Educator hooks (React Query)
+  const { data: testsData, isLoading: testsLoading, error: testsError } = useAvailableSwotTestsEducator();
+
+  const availableTests = React.useMemo(() => {
+    const nums = testsData || [];
+    const unique = [...new Set(nums)];
+    unique.sort((a, b) => {
+      if (a === 0) return -1;
+      if (b === 0) return 1;
+      return b - a;
+    });
+    return unique.map((n) => (n === 0 ? 'Overall' : `Test ${n}`));
+  }, [testsData]);
+
+  useEffect(() => {
+    if (!selectedTest && availableTests.length > 0) setSelectedTest(availableTests[0]);
+  }, [availableTests, selectedTest]);
+
+  const testNum = React.useMemo(() => {
+    if (!selectedTest) return null;
+    if (selectedTest === 'Overall') return 0;
+    const parsed = parseInt(String(selectedTest).split(' ')[1], 10);
+    return Number.isNaN(parsed) ? null : parsed;
+  }, [selectedTest]);
+
+  const { data: swotResp, isLoading: swotLoading, error: swotError } = useEducatorSwot(testNum);
+  const swotData = React.useMemo(() => organizeSwotData(swotResp?.swot || swotResp || {}), [swotResp]);
+
+  const loading = testsLoading || swotLoading;
+  const error = testsError || swotError;
 
   // Filter out specific weaknesses: "Weakness Over Time" and "Low Retention Topics"
   // And specific strengths: "Strongest Question Types" and "Improvement Over Time"
@@ -329,18 +224,12 @@ const ESWOT = () => {
     {
       label: 'Weaknesses',
       displayLabel: 'Focus Zone',
-      icon: <Target className="mr-2" />,
-      color: 'text-red-600',
-      // slightly darker than the pink/red background
-      border: 'border-red-200'
+      color: 'text-red-600'
     },
     {
       label: 'Strengths',
       displayLabel: 'Steady Zone',
-      icon: <CheckCircle className="mr-2" />,
-      color: 'text-green-600',
-      // slightly darker than the green background
-      border: 'border-green-200'
+      color: 'text-green-600'
     }
   ];
 
@@ -409,13 +298,14 @@ const ESWOT = () => {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-screen p-4">
-        <div className="alert alert-error max-w-md shadow-lg">
-          <AlertCircle className="stroke-current shrink-0 h-6 w-6" />
-          <div>
-            <h3 className="font-bold">Error</h3>
-            <div className="text-xs">{String(error)}</div>
-          </div>
-        </div>
+        <Alert
+          variant="destructive"
+          className="max-w-md shadow-md"
+          icon={<AlertCircle className="h-6 w-6 text-rose-600" aria-hidden />}
+        >
+          <p className="text-base font-semibold">Error</p>
+          <p className="text-sm text-rose-700">{String(error)}</p>
+        </Alert>
       </div>
     );
   }
@@ -423,55 +313,58 @@ const ESWOT = () => {
   // --- Main Component Render (after loading and error checks) ---
   return (
     <div className="md:mt-12 lg:px-4 lg:space-y-6">
-      {/* Selector Section */}
-      <div className="hidden lg:flex lg:flex-row items-start lg:items-center space-y-2 lg:space-y-0 lg:space-x-4 mb-4 pb-4 bg-white lg:pt-4 px-4 pt-2 rounded-xl shadow-xl">
-        <Filter className="text-gray-400 w-5 h-5" />
-        {/* Desktop: keep original Select dropdowns */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-400 min-w-max pl-1">Test</span>
-          <Select value={selectedTest} onValueChange={(v) => setSelectedTest && setSelectedTest(v)}>
-            <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full lg:w-auto text-start">
-              <SelectValue placeholder="Select Test" />
-            </SelectTrigger>
-            <SelectContent side="bottom" align="end">
-              {testOptions.map(opt => (
-                <SelectItem key={String(opt.value)} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <div className="hidden lg:flex lg:flex-row lg:items-start lg:justify-between gap-6">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-3xl font-semibold text-foreground">Test Wise Analysis</h2>
+          <p className="text-sm text-muted-foreground">Review strengths and focus areas by subject and test.</p>
+        </div>
+        <div className="flex items-start gap-4 flex-wrap justify-end">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground min-w-max pl-1">Test</span>
+            <Select value={selectedTest} onValueChange={(v) => setSelectedTest && setSelectedTest(v)}>
+              <SelectTrigger className="m-1 w-full lg:w-auto justify-start truncate text-start bg-card border-border">
+                <SelectValue placeholder="Select Test" />
+              </SelectTrigger>
+              <SelectContent side="bottom" align="end" className="max-h-60">
+                {testOptions.map(opt => (
+                  <SelectItem key={String(opt.value)} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <span className="text-sm text-gray-400 min-w-max pl-1">Subject</span>
-          <Select value={selectedSubject} onValueChange={(v) => setSelectedSubject && setSelectedSubject(v)}>
-            <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full lg:w-auto text-start">
-              <SelectValue placeholder="Select Subject" />
-            </SelectTrigger>
-            <SelectContent side="bottom" align="end">
-              {subjectOptions.map(opt => (
-                <SelectItem key={String(opt.value)} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <span className="text-sm text-muted-foreground min-w-max pl-1">Subject</span>
+            <Select value={selectedSubject} onValueChange={(v) => setSelectedSubject && setSelectedSubject(v)}>
+              <SelectTrigger className="m-1 w-full lg:w-auto justify-start truncate text-start bg-card border-border">
+                <SelectValue placeholder="Select Subject" />
+              </SelectTrigger>
+              <SelectContent side="bottom" align="end" className="max-h-60">
+                {subjectOptions.map(opt => (
+                  <SelectItem key={String(opt.value)} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
       {/* Mobile: compact tabbed UI modeled after student mobile (subject tabs, zone tabs, topic list) */}
       <div className="lg:hidden">
         <div>
-          <div className="flex w-full bg-white px-3 border-b justify-between items-center">
+          <div className="flex w-full bg-card px-3 border-b border-border justify-between items-center">
             <div className="text-left py-4">
-              <h1 className="text-2xl font-bold text-gray-800">Test wise analysis</h1>
+              <h1 className="text-2xl font-bold text-foreground">Test wise analysis</h1>
             </div>
             <div className="py-4">
               <Select value={selectedTest} onValueChange={(v) => setSelectedTest && setSelectedTest(v)}>
-                <SelectTrigger className="btn btn-sm justify-start rounded-lg text-sm w-auto">
+                <SelectTrigger className="justify-start rounded-lg text-sm w-auto bg-card border-border">
                   <SelectValue placeholder="Select Test" />
                   <ChevronDown size={16} className="ml-1" />
                 </SelectTrigger>
-                <SelectContent side="bottom" align="end">
+                <SelectContent side="bottom" align="end" className="max-h-60">
                   {testOptions.map(opt => (
                     <SelectItem key={String(opt.value)} value={opt.value}>
                       {opt.label}
@@ -483,7 +376,7 @@ const ESWOT = () => {
           </div>
 
           {/* Subject Tabs */}
-          <div className="flex bg-white border-b relative pb-1 overflow-x-auto">
+          <div className="flex bg-card border-b border-border relative pb-1 overflow-x-auto">
             {orderedSubjects.map((subject, idx) => {
               const shortName = subject === 'Physics'
                 ? 'Phy'
@@ -529,7 +422,7 @@ const ESWOT = () => {
                 <button
                   key={subject}
                   onClick={() => setSelectedSubject(subject)}
-                  className={`flex-1 pt-2 px-1 text-center text-sm font-medium flex flex-col items-center justify-center gap-1 transition-all duration-200 ${isSelected ? 'text-gray-800' : 'text-gray-600 hover:text-gray-800'}`}
+                  className={`flex-1 pt-2 px-1 text-center text-sm font-medium flex flex-col items-center justify-center gap-1 transition-all duration-200 ${isSelected ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                   <div className={`${isSelected ? activeBg : baseBg} rounded-lg p-2 mb-1 transform ${isSelected ? 'scale-105 shadow-md' : 'scale-100'}`}>
                     {icon}
@@ -580,11 +473,11 @@ const ESWOT = () => {
                           role="tab"
                           className={`flex-1 py-2 px-2 text-sm font-semibold rounded-xl transition-all duration-300 ease-out transform scale-[1.02] ${isActive
                             ? activeClasses
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-white/50 active:scale-95'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 active:scale-95'
                             }`}
                         >
                           <div className="text-center">
-                            <div className={`font-semibold text-sm ${isActive ? '' : 'text-gray-600'}`}>
+                            <div className={`font-semibold text-sm ${isActive ? '' : 'text-muted-foreground'}`}>
                               {tab.label}
                             </div>
                           </div>
@@ -602,12 +495,12 @@ const ESWOT = () => {
 
                       if (allTopics.length > 0) {
                         return (
-                          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                          <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
                             <ul className="divide-y divide-gray-100/80">
                               {allTopics.map((topic, i) => (
                                 <li
                                   key={`${activeLabel}-${selectedSubject}-${i}`}
-                                  className="py-1 px-4 text-gray-700 hover:bg-gray-50/50 transition-colors duration-200 group"
+                                  className="py-1 px-4 text-foreground hover:bg-muted/70 transition-colors duration-200 group"
                                 >
                                   <div className="flex items-start space-x-2">
                                     <div className="flex-shrink-0 w-1.5 h-1.5 bg-primary rounded-full mt-2 transform transition-transform duration-300" />
@@ -623,14 +516,14 @@ const ESWOT = () => {
                       }
 
                       return (
-                        <div className="text-center py-8 bg-white/50 rounded-2xl border-2 border-dashed border-gray-200/70">
-                          <div className="w-10 h-10 mx-auto mb-3 bg-gray-100/70 rounded-full flex items-center justify-center">
-                            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="text-center py-8 bg-muted/50 rounded-2xl border-2 border-dashed border-border/80">
+                          <div className="w-10 h-10 mx-auto mb-3 bg-muted rounded-full flex items-center justify-center">
+                            <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                             </svg>
                           </div>
-                          <p className="text-gray-500 text-sm font-medium">No insights available</p>
-                          <p className="text-gray-400 text-xs mt-1">Check back later for updates</p>
+                          <p className="text-muted-foreground text-sm font-medium">No insights available</p>
+                          <p className="text-muted-foreground text-xs mt-1">Check back later for updates</p>
                         </div>
                       );
                     })()}
@@ -643,15 +536,13 @@ const ESWOT = () => {
       </div>
 
       {/* Desktop/large screens: stacked vertical layout to make it look more filled */}
-      <div className="hidden lg:flex flex-col space-y-6">
-        {sections.map(({ label, displayLabel, icon, color, border }) => (
+      <div className="hidden lg:flex flex-col space-y-6 bg-card rounded-2xl p-6 border border-border">
+        {sections.map(({ label, displayLabel, color }) => (
           <SwotSection
             key={displayLabel}
             label={label}
             displayLabel={displayLabel}
-            icon={icon}
             color={color}
-            border={border}
             data={filteredSwotData}
             selectedSubject={selectedSubject}
           />

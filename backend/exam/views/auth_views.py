@@ -4,11 +4,21 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework_simplejwt.tokens import RefreshToken
 from exam.models import Educator, Student, Manager
+import re
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.hashers import check_password
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def normalize_subdomain(raw_value):
+    """Normalize a raw institution value into a DNS-safe subdomain slug."""
+    if not raw_value:
+        return None
+    slug = re.sub(r'[^a-z0-9-]', '-', str(raw_value).strip().lower())
+    slug = re.sub(r'-+', '-', slug).strip('-')
+    return slug or None
 
 # Function to generate JWT tokens
 def get_tokens_for_user(user, role):
@@ -39,7 +49,11 @@ def admin_login(request):
             tokens = get_tokens_for_user(manager, "manager")
             logger.info("✅ Manager Login Successful")
             #print("✅ Manager Login Successful")
-            return Response({'token': tokens['access'], 'role': 'manager'}, status=200)
+            return Response({
+                'token': tokens['access'],
+                'role': 'manager',
+                'institute_subdomain': normalize_subdomain(manager.institution),
+            }, status=200)
         logger.warning("❌ Manager Login Failed: Invalid credentials")
         #print("❌ Manager Login Failed: Invalid credentials")
         return Response({'error': 'Invalid credentials'}, status=401)
@@ -68,7 +82,8 @@ def educator_login(request):
             return Response({
                 'token': tokens['access'],
                 'csv_status': educator.csv_status,
-                'role': 'educator'
+                'role': 'educator',
+                'institute_subdomain': normalize_subdomain(educator.institution),
             }, status=200)
 
         logger.warning("❌ Educator Login Failed: Invalid credentials")
@@ -95,7 +110,13 @@ def student_login(request):
             tokens = get_tokens_for_user(student, "student")
             logger.info("✅ Student Login Successful")
             #print("✅ Student Login Successful")
-            return Response({'token': tokens['access'], 'role': 'student'}, status=200)
+            # Best-effort institution resolution via associated educator class
+            educator = Educator.objects.filter(class_id=student.class_id).first()
+            return Response({
+                'token': tokens['access'],
+                'role': 'student',
+                'institute_subdomain': normalize_subdomain(educator.institution) if educator else None,
+            }, status=200)
         logger.warning("❌ Student Login Failed: Invalid credentials")
         #print("❌ Student Login Failed: Invalid credentials")
         return Response({'error': 'Invalid credentials'}, status=401)
@@ -126,7 +147,8 @@ def institution_login(request):
             return Response({
                 'token': tokens['access'],
                 'role': 'manager',
-                'institution': manager.institution
+                'institution': manager.institution,
+                'institute_subdomain': normalize_subdomain(manager.institution),
             }, status=200)
         
         logger.warning("❌ Institution Login Failed: Invalid credentials")

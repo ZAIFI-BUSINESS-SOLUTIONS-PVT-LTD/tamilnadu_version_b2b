@@ -117,6 +117,7 @@ Instructions:
 - Each insight must be exactly **two concise sentences**: direct, specific, and actionable.  
 - Avoid complex academic language or technical jargon.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
@@ -131,6 +132,7 @@ Instructions:
 - Rank insights by their impact on overall performance.  
 - Keep language student-friendly and actionable.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output: 
@@ -145,6 +147,7 @@ Instructions:
 - Rank insights based on performance impact.  
 - Keep feedback concise, supportive, and practical.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
@@ -159,6 +162,7 @@ Instructions:
 - Rank insights by urgency and impact.  
 - Keep tone constructive and clear.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
@@ -173,6 +177,7 @@ Instructions:
 - Use “potential” to encourage correction and growth.  
 - Rank by impact on exam readiness.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
@@ -186,6 +191,7 @@ Instructions:
 - Highlight potential for improvement with better revision methods.  
 - Rank insights by their performance impact.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
@@ -199,6 +205,7 @@ Instructions:
 - Use “potential” to highlight the upside of extra effort.  
 - Rank insights by score improvement potential.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
@@ -212,6 +219,7 @@ Instructions:
 - Rank by impact and ease of improvement.  
 - Keep tone encouraging and focused on future gain.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
@@ -225,6 +233,7 @@ Instructions:
 - Suggest next steps to fully capitalize on this learning speed.  
 - Rank insights based on immediate performance gain.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output: 
@@ -238,9 +247,8 @@ Instructions:
 - Use “potential” to indicate that closing this gap will raise performance.  
 - Rank by recurrence and impact.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
-
-
 
 Output:  
 Return exactly two bullet-point insights. Each should reflect a ranked, high-impact takeaway from the data with a brief explanation or recommendation.''',
@@ -253,6 +261,7 @@ Instructions:
 - Highlight potential score loss if not corrected.  
 - Rank by exam weight and impact.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
@@ -266,6 +275,7 @@ Instructions:
 - Use “potential” if stabilizing this area can unlock more marks.  
 - Rank by variability and performance impact.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
@@ -286,6 +296,7 @@ Instructions:
 - Each insight must be exactly **two concise sentences**: direct, specific, and actionable.  
 - Avoid complex academic language or technical jargon. Be clear, supportive, and student-friendly.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
@@ -300,6 +311,7 @@ Instructions:
 - Rank insights by their impact on overall performance.  
 - Keep language student-friendly and actionable.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output: 
@@ -314,6 +326,7 @@ Instructions:
 - Rank insights based on performance impact.  
 - Keep feedback concise, supportive, and practical.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
@@ -328,6 +341,7 @@ Instructions:
 - Rank insights by urgency and impact.  
 - Keep tone constructive and clear.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
@@ -342,6 +356,7 @@ Instructions:
 - Use “potential” to encourage correction and growth.  
 - Rank by impact on exam readiness.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
@@ -355,6 +370,7 @@ Instructions:
 - Highlight potential for improvement with better revision methods.  
 - Rank insights by their performance impact.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
@@ -368,6 +384,7 @@ Instructions:
 - Use “potential” to highlight the upside of extra effort.  
 - Rank insights by score improvement potential.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 
@@ -381,6 +398,7 @@ Instructions:
 - Rank by impact and ease of improvement.  
 - Keep tone encouraging and focused on future gain.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
@@ -394,6 +412,7 @@ Instructions:
 - Suggest next steps to fully capitalize on this learning speed.  
 - Rank insights based on immediate performance gain.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output: 
@@ -407,6 +426,7 @@ Instructions:
 - Use “potential” to indicate that closing this gap will raise performance.  
 - Rank by recurrence and impact.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
@@ -420,6 +440,7 @@ Instructions:
 - Highlight potential score loss if not corrected.  
 - Rank by exam weight and impact.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
@@ -433,6 +454,7 @@ Instructions:
 - Use “potential” if stabilizing this area can unlock more marks.  
 - Rank by variability and performance impact.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 Output:  
@@ -472,6 +494,7 @@ Rules:
 - Never return null for any value.
 - Make sure you generate for all the chapters(A-Z).
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
+- Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Respond only in English. Do NOT use Hindi, Hinglish, or Romanized Hindi.
 
 """
@@ -483,7 +506,7 @@ overview_prompts = {
 
 **Instruction**: Analyze the data holistically across all subjects.- It is crucial that you Use highly simple, very easy-to-understand English.  Identify key strengths based on accuracy, conceptual clarity, and question type patterns. Prioritize insights that reflect valuable academic traits(max 10 words each line). Use simple, easy-to-understand English.
 
-**Output**: Return exactly 3 short insights summarizing the student’s strongest learning attributes across subjects.
+**Output**: Return exactly 3 short insights summarizing the student’s strongest learning attributes across subjects.Each insights should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 
 **Tone**: Clear, motivational, and insight-rich. Keep each line concise and meaningful.
 """,
@@ -493,7 +516,7 @@ overview_prompts = {
 
 **Instruction**: Analyze the data across all subjects to identify chapters where the student is showing improvement. Focus on chapters with moderate performance where correct answers indicate growing understanding, effort, or reduced misconceptions(max 10 words each line). Use simple, easy-to-understand English.
 
-**Output**: Return exactly 3 short and specific insight lines. Each insight should reflect where the student is improving and can accelerate further with focus.
+**Output**: Return exactly 3 short and specific insight lines. Each insight should reflect where the student is improving and can accelerate further with focus. Each insights should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 
 **Tone**: Constructive, forward-looking, and precise.
 """,
@@ -503,7 +526,7 @@ overview_prompts = {
 
 **Instruction**: Be Highly motivational. Identify chapters where the student has partial mastery and is most likely to benefit from focused revision. Prioritize chapters where accuracy is moderate, and responses show learning momentum(max 10 words each line). Use simple, easy-to-understand English.
 
-**Output**: List 3 chapters as insight line wherein it should be a direct study recommendations. Choose chapters with clear scope for rapid improvement.
+**Output**: List 3 chapters as insight line wherein it should be a direct study recommendations. Choose chapters with clear scope for rapid improvement. Each insights should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 
 **Tone**: Direct, actionable, and concise.
 """,
@@ -513,7 +536,7 @@ overview_prompts = {
 
 **Instruction**: Identify areas where student performance varies significantly. Highlight chapters where accuracy fluctuates or conceptual gaps are evident(max 10 words each line). Use simple, easy-to-understand English.
 
-**Output**: Give 3 insights on student consistency, weakness patterns, or unstable performance areas.
+**Output**: Give 3 insights on student consistency, weakness patterns, or unstable performance areas. Each insights should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 
 **Tone**: Analytical and supportive.
 """
@@ -552,6 +575,7 @@ action_plan_prompt = """
 - Must be actionable and student-friendly
 - Use simple, easy-to-understand Indian-English
 - Avoid complex academic language or technical jargon
+- Each action should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Be motivational yet honest about areas needing work
 - Each action should reference the specific topic/subject it relates to
 
@@ -636,7 +660,8 @@ checklist_prompt = """
 - Each checkpoint must be **10–15 words** maximum
 - Must clearly identify WHAT went wrong (not how to fix it)
 - Must be diagnostic and factual, not prescriptive
-- Use simple, easy-to-understand Indian-English
+- Use simple, easy-to-understand Indian-English.
+- Each checkpoint should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Avoid solution-oriented language (no "should do", "need to practice")
 - Be direct and clear about the mistake or gap
 - Each checkpoint should reference the specific topic/subject where the problem occurred
@@ -735,6 +760,7 @@ Each topic includes:
 - Must be practical and immediately actionable
 - Focus on study methods and habits, NOT specific content to learn
 - Use simple, easy-to-understand Indian-English
+- Each tip should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
 - Be specific to their performance patterns
 - Motivational yet realistic
 - Examples: time management, revision techniques, practice strategies, learning methods

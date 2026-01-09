@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from '../../../components/ui/select.jsx';
 import { Button } from '../../../components/ui/button.jsx';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card.jsx';
+import Alert from '../../../components/ui/alert.jsx';
 import { generatePdfReport, generateBulkPdfReportsZip, fetchInstitutionEducators, fetchInstitutionEducatorStudents, fetchAvailableSwotTests_InstitutionEducator } from '../../../utils/api.js';
 
 export const StudentPDFReportModal = ({ onClose, students = [], availableTests = [] }) => {
@@ -133,11 +134,16 @@ export const StudentPDFReportModal = ({ onClose, students = [], availableTests =
     })),
   ];
   const testOptions = [
-    ...(!localTests.includes('Overall') ? [{ value: 'Overall', label: 'Overall' }] : []),
-    ...localTests.map((test) => ({
+    { value: 'Overall', label: 'Overall' },
+    ...localTests.filter(t => t !== 'Overall').map((test) => ({
       value: test,
       label: test,
-    })),
+    })).sort((a, b) => {
+      const aMatch = a.label.match(/Test (\d+)/);
+      const bMatch = b.label.match(/Test (\d+)/);
+      if (!aMatch || !bMatch) return 0;
+      return parseInt(bMatch[1]) - parseInt(aMatch[1]);
+    }),
   ];
 
   const educatorOptions = educators.map((e) => ({ value: String(e.id ?? e.educator_id), label: e.name || e.email || `Educator ${e.id ?? e.educator_id}` }));
@@ -151,7 +157,7 @@ export const StudentPDFReportModal = ({ onClose, students = [], availableTests =
         exit={{ opacity: 0 }}
       >
         <motion.div
-          className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg sm:max-w-2xl p-0 sm:p-0 mx-2 sm:mx-0"
+          className="relative bg-card rounded-2xl shadow-2xl w-full max-w-lg sm:max-w-2xl p-0 sm:p-0 mx-2 sm:mx-0"
           initial={{ scale: 0.8, y: 20, opacity: 0.8 }}
           animate={{ scale: 1, y: 0, opacity: 1 }}
           exit={{ scale: 0.8, y: 20, opacity: 0 }}
@@ -160,7 +166,7 @@ export const StudentPDFReportModal = ({ onClose, students = [], availableTests =
           <Card className="border-0 shadow-none">
             <CardHeader className="pb-3 pt-2 pl-4 pr-2 sm:pb-3 sm:pt-4 sm:pl-6 sm:pr-4">
               <div className="flex flex-row justify-between items-center mb-4 gap-2">
-                <CardTitle className="text-lg sm:text-xl font-semibold text-gray-800 text-left">Download Student Report</CardTitle>
+                <CardTitle className="text-lg sm:text-xl font-semibold text-foreground text-left">Download Student Report</CardTitle>
                 <Button
                   onClick={onClose}
                   variant="ghost"
@@ -178,12 +184,13 @@ export const StudentPDFReportModal = ({ onClose, students = [], availableTests =
               <AnimatePresence>
                 {error && (
                   <motion.div
-                    className="alert alert-error"
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                   >
-                    <span>{error}</span>
+                    <Alert variant="destructive" className="shadow-sm text-sm">
+                      {error}
+                    </Alert>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -191,7 +198,7 @@ export const StudentPDFReportModal = ({ onClose, students = [], availableTests =
               {/* Student & Test Selection - responsive grid to prevent overflow */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
                 <div className="flex flex-col gap-2">
-                  <span className="text-sm text-gray-500">Educator:</span>
+                  <span className="text-sm text-muted-foreground">Educator:</span>
                   <Select value={selectedEducatorId} onValueChange={setSelectedEducatorId}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Choose Educator" />
@@ -207,7 +214,7 @@ export const StudentPDFReportModal = ({ onClose, students = [], availableTests =
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <span className="text-sm text-gray-500">Student:</span>
+                  <span className="text-sm text-muted-foreground">Student:</span>
                   <Select value={selectedStudent} onValueChange={setSelectedStudent}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Choose Student" />
@@ -223,7 +230,7 @@ export const StudentPDFReportModal = ({ onClose, students = [], availableTests =
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <span className="text-sm text-gray-500">Test:</span>
+                  <span className="text-sm text-muted-foreground">Test:</span>
                   <Select value={selectedTest} onValueChange={setSelectedTest}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Choose Test" />

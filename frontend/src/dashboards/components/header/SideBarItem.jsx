@@ -48,7 +48,7 @@ const SidebarItem = ({
           const activeState = activePattern ? isActiveRoute() : isActive;
 
           return clsx( // Using clsx for cleaner conditional class application
-            "flex items-center rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500",
+            "flex items-center rounded-lg transition-all duration-200 focus:outline-none focus:ring-0",
             {
               // Classes for when the sidebar is open vs. collapsed
               'px-4 py-3 text-left': isSidebarOpen,
@@ -56,8 +56,8 @@ const SidebarItem = ({
             },
             {
               // Classes for active vs. inactive states
-              "bg-gradient-to-r from-blue-50 to-blue-100 text-blue-600 font-medium shadow-md": activeState,
-              "text-gray-700 hover:bg-blue-50 hover:shadow-sm": !activeState,
+              "bg-primary/10 text-primary font-medium": activeState,
+              "text-foreground hover:bg-muted hover:text-primary": !activeState,
             }
           );
         }}
@@ -65,7 +65,7 @@ const SidebarItem = ({
         {/* Icon Container: Animates margin based on sidebar state */}
         <div
           className={clsx(
-            "flex items-center justify-center transition-colors duration-200 group-hover:text-blue-600",
+            "flex items-center justify-center transition-colors duration-200 group-hover:text-primary",
             {
               'mr-3': isSidebarOpen, // Add margin when sidebar is open
             }

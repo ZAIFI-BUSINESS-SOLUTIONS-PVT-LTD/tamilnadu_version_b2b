@@ -15,7 +15,7 @@ const SelectTrigger = React.forwardRef(({ className, children, ...props }, ref) 
     ref={ref}
     className={cn(
       // Left-align content, truncate long labels in the button, and keep chevron visible by preventing it from shrinking.
-      "flex h-9 w-full items-center justify-start gap-2 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap",
+      "flex h-9 w-full items-center justify-start gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm shadow-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap",
       className
     )}
     {...props}>
@@ -60,7 +60,7 @@ const SelectContent = React.forwardRef(({ className, children, position = "poppe
       className={cn(
         // Avoid forcing a minimum width so the dropdown can size to trigger or screen on small devices.
         // Also cap max width to viewport to prevent content from overflowing offscreen.
-        "relative z-50 w-auto max-w-[calc(100vw-1rem)] max-h-[--radix-select-content-available-height] overflow-y-auto overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-select-content-transform-origin]",
+        "relative z-50 w-auto max-w-[calc(100vw-1rem)] max-h-[--radix-select-content-available-height] overflow-y-auto overflow-x-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-select-content-transform-origin]",
         position === "popper" &&
         "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
         className
@@ -99,7 +99,7 @@ const SelectItem = React.forwardRef(({ className, children, ...props }, ref) => 
     className={cn(
       // Allow item text to wrap and break long words instead of causing horizontal overflow.
       // Use data-state checked to apply a distinct background and text color for the selected item.
-      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-3 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[state=checked]:bg-gray-500 data-[state=checked]:text-white data-[state=checked]:font-semibold data-[disabled]:pointer-events-none data-[disabled]:opacity-50 whitespace-normal break-words",
+          "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-3 text-sm outline-none focus:bg-muted focus:text-foreground data-[state=checked]:bg-primary/10 data-[state=checked]:text-primary data-[state=checked]:font-semibold data-[disabled]:pointer-events-none data-[disabled]:opacity-50 whitespace-normal break-words",
       className
     )}
     {...props}>

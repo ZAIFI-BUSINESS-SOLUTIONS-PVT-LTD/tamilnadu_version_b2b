@@ -2,125 +2,43 @@ import React from 'react';
 import { CheckCircle, AlertCircle, Filter, Target, Atom, FlaskConical, Microscope, Leaf, PawPrint, User, ChevronDown, Mail, Phone } from 'lucide-react';
 // eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
-import { fetchInstitutionEducatorSWOT, fetchAvailableSwotTests_InstitutionEducator, getTeachersByClass } from '../../utils/api';
+import { getTeachersByClass } from '../../utils/api';
 import LoadingPage from '../components/LoadingPage.jsx';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, } from '../../components/ui/select.jsx';
+import Alert from '../../components/ui/alert.jsx';
 import { Button } from '../../components/ui/button.jsx';
 import PropTypes from 'prop-types';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card.jsx';
 import { useState, useEffect } from 'react';
 import { useInstitution } from './index.jsx';
+import { useAvailableSwotTestsInstitution, useInstitutionEducatorSwot } from '../../hooks/useInstitutionData.js';
 
 const PREFERRED_SUBJECT_ORDER = ['Physics', 'Chemistry', 'Biology', 'Botany', 'Zoology'];
 
-const useSwotData = (fetchSwotData, fetchAvailableTestsData, selectedEducatorId) => {
-  const [selectedSubject, setSelectedSubject] = useState('Physics');
-  const [selectedTest, setSelectedTest] = useState('');
-  const [availableTests, setAvailableTests] = useState([]);
-  const [swotData, setSwotData] = useState({});
-  const [loading, setLoading] = useState(true);
+const organizeSwotData = (rawData) => {
+  const organized = {};
+  for (const metric in rawData) {
+    const subjectMap = rawData[metric];
+    const [category, title, description] = metricToCategoryMap[metric] || [];
+    if (!category) continue;
 
-  useEffect(() => {
-    if (!selectedEducatorId) return;
-    const loadAvailableTests = async () => {
-      try {
-        const tests = await fetchAvailableTestsData(selectedEducatorId);
-        const uniqueTests = [...new Set(tests)];
-        uniqueTests.sort((a, b) => {
-          if (a === 0) return -1;
-          if (b === 0) return 1;
-          return b - a;
-        });
-        const formatted = uniqueTests.map((num) => num === 0 ? 'Overall' : `Test ${num}`);
-        setAvailableTests(formatted);
-        if (!selectedTest && formatted.length > 0) {
-          setSelectedTest(formatted[0]);
-        }
-      } catch (error) {
-        console.error('Error loading available tests:', error);
+    for (const subject in subjectMap) {
+      if (!organized[subject]) {
+        organized[subject] = {
+          Strengths: [],
+          Weaknesses: [],
+          Opportunities: [],
+          Threats: [],
+        };
       }
-    };
-
-    loadAvailableTests();
-  }, [fetchAvailableTestsData, selectedEducatorId, selectedTest]);
-
-  useEffect(() => {
-    if (!selectedTest && availableTests.length > 0) {
-      setSelectedTest(availableTests[0]);
+      organized[subject][category].push({
+        title,
+        description,
+        topics: subjectMap[subject],
+      });
     }
-  }, [availableTests, selectedTest]);
-
-  useEffect(() => {
-    if (!selectedTest || !selectedEducatorId) return;
-
-    const fetchSwot = async () => {
-      setLoading(true);
-      try {
-        let testNum;
-        if (selectedTest === 'Overall') {
-          testNum = 0;
-        } else {
-          const parsed = parseInt(selectedTest.split(' ')[1], 10);
-          testNum = Number.isNaN(parsed) ? null : parsed;
-        }
-        if (testNum === null) {
-          setSwotData({});
-          setLoading(false);
-          return;
-        }
-        const response = await fetchSwotData(selectedEducatorId, testNum);
-        if (!response?.error && response?.swot) {
-          const formatted = organizeSwotData(response.swot);
-          setSwotData(formatted);
-        } else {
-          setSwotData({});
-        }
-      } catch (error) {
-        console.error('Error fetching SWOT data:', error);
-        setSwotData({});
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSwot();
-  }, [selectedTest, fetchSwotData, selectedEducatorId]);
-
-  const organizeSwotData = (rawData) => {
-    const organized = {};
-    for (const metric in rawData) {
-      const subjectMap = rawData[metric];
-      const [category, title, description] = metricToCategoryMap[metric] || [];
-      if (!category) continue;
-
-      for (const subject in subjectMap) {
-        if (!organized[subject]) {
-          organized[subject] = {
-            Strengths: [],
-            Weaknesses: [],
-            Opportunities: [],
-            Threats: [],
-          };
-        }
-        organized[subject][category].push({
-          title,
-          description,
-          topics: subjectMap[subject],
-        });
-      }
-    }
-    return organized;
-  };
-
-  return {
-    selectedSubject,
-    setSelectedSubject,
-    selectedTest,
-    setSelectedTest,
-    availableTests,
-    swotData,
-    loading,
-  };
+  }
+  return organized;
 };
 
 const metricToCategoryMap = {
@@ -150,34 +68,34 @@ const SwotSection = ({ label, displayLabel, color, data, selectedSubject }) => {
   const subtitle = zoneSubtitleMap[displayText] || '';
 
   return (
-    <Card className="bg-white h-full flex flex-col border-none rounded-none">
+    <Card className="bg-card h-full flex flex-col border-none rounded-2xl">
       <CardHeader className="p-0 pb-2">
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center">
             <div>
               <CardTitle className={`${color} font-semibold items-center mb-0 text-lg`}>{displayText}</CardTitle>
-              {subtitle && <div className="text-sm text-gray-700">{subtitle}</div>}
+              {subtitle && <div className="text-sm text-muted-foreground">{subtitle}</div>}
             </div>
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="p-0 flex-1 border border-yellow-200 rounded-2xl bg-yellow-100/20">
+      <CardContent className="p-0 flex-1 border border-border rounded-2xl bg-muted/60">
         <div className="flex flex-col h-full">
           <div className="flex-1 overflow-auto">
             {itemsToRender.length > 0 ? (
-              <div className="divide-y divide-yellow-200">
+              <div className="divide-y divide-border/70">
                 {itemsToRender.map((item, idx) => (
                   <div
                     key={item.id || `${displayText}-${selectedSubject}-${item.title || ''}-${idx}`}
-                    className="px-4 py-3 border-t border-yellow-200 first:border-t-0"
+                    className="px-4 py-3 border-t border-border/70 first:border-t-0"
                   >
                     {item.topics && item.topics.length > 0 ? (
-                      <div className="divide-y divide-yellow-200">
+                      <div className="divide-y divide-border/70">
                         {item.topics.map((topic, i) => (
                           <div
                             key={`${item.id || item.title || ''}-topic-${topic}-${i}`}
-                            className="flex items-start gap-2 py-2 text-sm md:text-base text-gray-700"
+                            className="flex items-start gap-2 py-2 text-sm md:text-base text-foreground"
                           >
                             <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary/70" aria-hidden="true" />
                             <span className="leading-relaxed break-words whitespace-pre-wrap">{topic}</span>
@@ -185,13 +103,13 @@ const SwotSection = ({ label, displayLabel, color, data, selectedSubject }) => {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-500 italic">No data available for this category.</p>
+                      <p className="text-sm text-muted-foreground italic">No data available for this category.</p>
                     )}
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="px-4 py-3 text-sm text-gray-500 italic">No data available for this category.</p>
+              <p className="px-4 py-3 text-sm text-muted-foreground italic">No data available for this category.</p>
             )}
           </div>
         </div>
@@ -218,16 +136,46 @@ const IAnalysis = () => {
     if (!Array.isArray(educators)) return [];
     return [...educators].sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
   }, [educators]);
-  const {
-    selectedSubject,
-    setSelectedSubject,
-    selectedTest,
-    setSelectedTest,
-    availableTests = [],
-    swotData,
-    loading,
-    error
-  } = useSwotData(fetchInstitutionEducatorSWOT, fetchAvailableSwotTests_InstitutionEducator, selectedEducatorId);
+  const [selectedSubject, setSelectedSubject] = useState('Physics');
+  const [selectedTest, setSelectedTest] = useState('');
+
+  const { data: availableTestsData = [], isLoading: availableTestsLoading, error: availableTestsError } = useAvailableSwotTestsInstitution(selectedEducatorId);
+
+  const availableTests = React.useMemo(() => {
+    const uniqueTests = [...new Set(availableTestsData || [])];
+    uniqueTests.sort((a, b) => {
+      if (a === 0) return -1;
+      if (b === 0) return 1;
+      return b - a;
+    });
+    return uniqueTests.map((num) => (num === 0 ? 'Overall' : `Test ${num}`));
+  }, [availableTestsData]);
+
+  useEffect(() => {
+    if (!selectedTest && availableTests.length > 0) {
+      setSelectedTest(availableTests[0]);
+    }
+    if (selectedTest && availableTests.length > 0 && !availableTests.includes(selectedTest)) {
+      setSelectedTest(availableTests[0]);
+    }
+  }, [availableTests, selectedTest]);
+
+  const selectedTestNum = React.useMemo(() => {
+    if (!selectedTest) return null;
+    if (selectedTest === 'Overall') return 0;
+    const parsed = parseInt(selectedTest.split(' ')[1], 10);
+    return Number.isNaN(parsed) ? null : parsed;
+  }, [selectedTest]);
+
+  const { data: swotResponse, isLoading: swotLoading, error: swotError } = useInstitutionEducatorSwot(selectedEducatorId, selectedTestNum);
+
+  const swotData = React.useMemo(() => {
+    if (!swotResponse || swotResponse.error || !swotResponse.swot) return {};
+    return organizeSwotData(swotResponse.swot);
+  }, [swotResponse]);
+
+  const loading = availableTestsLoading || swotLoading;
+  const error = availableTestsError || swotError;
 
   const filteredSwotData = React.useMemo(() => {
     if (!swotData) return swotData;
@@ -353,7 +301,7 @@ const IAnalysis = () => {
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="Select Educator" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-60">
                 {sortedEducators.map((edu) => (
                   <SelectItem key={edu.id} value={String(edu.id)}>
                     {edu.name}
@@ -379,12 +327,15 @@ const IAnalysis = () => {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-screen p-4">
-        <div className="alert alert-error max-w-md shadow-lg">
-          <AlertCircle className="stroke-current shrink-0 h-6 w-6" />
-          <div>
-            <h3 className="font-bold">Error</h3>
-            <div className="text-xs">{String(error)}</div>
-          </div>
+        <div className="max-w-md w-full">
+          <Alert
+            variant="destructive"
+            icon={<AlertCircle className="h-5 w-5 text-rose-600" aria-hidden />}
+            className="shadow-sm"
+          >
+            <div className="font-semibold text-sm">Error</div>
+            <div className="text-xs text-rose-800/80 break-words">{String(error)}</div>
+          </Alert>
         </div>
       </div>
     );
@@ -394,17 +345,17 @@ const IAnalysis = () => {
     <div className="md:mt-12 lg:px-4 lg:space-y-6">
       <div className="hidden lg:flex lg:flex-row lg:items-start lg:justify-between mb-4 pb-4 gap-6">
         <div className="flex flex-col gap-2">
-          <h2 className="text-3xl font-semibold text-gray-800">Classroom Analysis</h2>
-          <p className="text-sm text-gray-500">Review strengths and focus areas by subject and test.</p>
+          <h2 className="text-3xl font-semibold text-foreground">Classroom Analysis</h2>
+          <p className="text-sm text-muted-foreground">Review strengths and focus areas by subject and test.</p>
         </div>
         <div className="flex items-start gap-4 flex-wrap justify-end">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-400 min-w-max pl-1">Classroom</span>
+            <span className="text-sm text-muted-foreground min-w-max pl-1">Classroom</span>
             <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
-              <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-[220px] lg:w-auto text-start">
+              <SelectTrigger className="m-1 w-[220px] lg:w-auto justify-start truncate text-start bg-card border-border">
                 <SelectValue placeholder="Select Classroom" />
               </SelectTrigger>
-              <SelectContent side="bottom" align="start">
+              <SelectContent side="bottom" align="start" className="max-h-60">
                 {sortedEducators.map((edu) => (
                   <SelectItem key={edu.id} value={String(edu.id)}>
                     {edu.name}
@@ -413,12 +364,12 @@ const IAnalysis = () => {
               </SelectContent>
             </Select>
 
-            <span className="text-sm text-gray-400 min-w-max pl-1">Test</span>
+            <span className="text-sm text-muted-foreground min-w-max pl-1">Test</span>
             <Select value={selectedTest} onValueChange={(v) => setSelectedTest && setSelectedTest(v)}>
-              <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full lg:w-auto text-start">
+              <SelectTrigger className="m-1 w-full lg:w-auto justify-start truncate text-start bg-card border-border">
                 <SelectValue placeholder="Select Test" />
               </SelectTrigger>
-              <SelectContent side="bottom" align="end">
+              <SelectContent side="bottom" align="end" className="max-h-60">
                 {testOptions.map(opt => (
                   <SelectItem key={String(opt.value)} value={opt.value}>
                     {opt.label}
@@ -427,12 +378,12 @@ const IAnalysis = () => {
               </SelectContent>
             </Select>
 
-            <span className="text-sm text-gray-400 min-w-max pl-1">Subject</span>
+            <span className="text-sm text-muted-foreground min-w-max pl-1">Subject</span>
             <Select value={selectedSubject} onValueChange={(v) => setSelectedSubject && setSelectedSubject(v)}>
-              <SelectTrigger className="btn btn-sm justify-start truncate m-1 w-full lg:w-auto text-start">
+              <SelectTrigger className="m-1 w-full lg:w-auto justify-start truncate text-start bg-card border-border">
                 <SelectValue placeholder="Select Subject" />
               </SelectTrigger>
-              <SelectContent side="bottom" align="end">
+              <SelectContent side="bottom" align="end" className="max-h-60">
                 {subjectOptions.map(opt => (
                   <SelectItem key={String(opt.value)} value={opt.value}>
                     {opt.label}
@@ -445,15 +396,15 @@ const IAnalysis = () => {
       </div>
       <div className="lg:hidden">
         <div>
-          <div className="flex w-full bg-white px-3 border-b justify-between items-center">
+          <div className="flex w-full bg-card px-3 border-b border-border justify-between items-center">
             <div className="text-left py-4">
-              <h1 className="text-2xl font-bold text-gray-800">Test wise analysis</h1>
+              <h1 className="text-2xl font-bold text-foreground">Test wise analysis</h1>
               <div className="mt-2">
                 <Select value={selectedEducatorId ? String(selectedEducatorId) : ''} onValueChange={(v) => setSelectedEducatorId ? setSelectedEducatorId(v ? Number(v) : null) : null}>
                   <SelectTrigger className="w-36">
                     <SelectValue placeholder="Classroom" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-60">
                     {sortedEducators.map((edu) => (
                       <SelectItem key={edu.id} value={String(edu.id)}>
                         {edu.name}
@@ -465,7 +416,7 @@ const IAnalysis = () => {
             </div>
             <div className="py-4">
               <button
-                className="btn btn-sm justify-start rounded-lg text-sm w-auto inline-flex items-center gap-2"
+                className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-muted"
                 onClick={() => setTestDrawerOpen(true)}
                 aria-label="Select Test"
               >
@@ -489,7 +440,7 @@ const IAnalysis = () => {
             </div>
           </div>
 
-          <div className="flex bg-white border-b relative pb-1 overflow-x-auto">
+          <div className="flex bg-card border-b border-border relative pb-1 overflow-x-auto">
             {orderedSubjects.map((subject) => {
               const shortName = subject === 'Physics'
                 ? 'Phy'
@@ -535,7 +486,7 @@ const IAnalysis = () => {
                 <button
                   key={subject}
                   onClick={() => setSelectedSubject(subject)}
-                  className={`flex-1 pt-2 px-1 text-center text-sm font-medium flex flex-col items-center justify-center gap-1 transition-all duration-200 ${isSelected ? 'text-gray-800' : 'text-gray-600 hover:text-gray-800'}`}
+                  className={`flex-1 pt-2 px-1 text-center text-sm font-medium flex flex-col items-center justify-center gap-1 transition-all duration-200 ${isSelected ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                   <div className={`${isSelected ? activeBg : baseBg} rounded-lg p-2 mb-1 transform ${isSelected ? 'scale-105 shadow-md' : 'scale-100'}`}>
                     {icon}
@@ -583,11 +534,11 @@ const IAnalysis = () => {
                           role="tab"
                           className={`flex-1 py-2 px-2 text-sm font-semibold rounded-xl transition-all duration-300 ease-out transform scale-[1.02] ${isActive
                             ? activeClasses
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-white/50 active:scale-95'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 active:scale-95'
                             }`}
                         >
                           <div className="text-center">
-                            <div className={`font-semibold text-sm ${isActive ? '' : 'text-gray-600'}`}>
+                            <div className={`font-semibold text-sm ${isActive ? '' : 'text-muted-foreground'}`}>
                               {tab.label}
                             </div>
                           </div>
@@ -604,12 +555,12 @@ const IAnalysis = () => {
 
                       if (allTopics.length > 0) {
                         return (
-                          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                            <ul className="divide-y divide-gray-100/80">
+                          <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+                            <ul className="divide-y divide-border/70">
                               {allTopics.map((topic, i) => (
                                 <li
                                   key={`${activeLabel}-${selectedSubject}-${i}`}
-                                  className="py-1 px-4 text-gray-700 hover:bg-gray-50/50 transition-colors duration-200 group"
+                                  className="py-1 px-4 text-foreground hover:bg-muted/70 transition-colors duration-200 group"
                                 >
                                   <div className="flex items-start space-x-2">
                                     <div className="flex-shrink-0 w-1.5 h-1.5 bg-primary rounded-full mt-2 transform transition-transform duration-300" />
@@ -625,14 +576,14 @@ const IAnalysis = () => {
                       }
 
                       return (
-                        <div className="text-center py-8 bg-white/50 rounded-2xl border-2 border-dashed border-gray-200/70">
-                          <div className="w-10 h-10 mx-auto mb-3 bg-gray-100/70 rounded-full flex items-center justify-center">
-                            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="text-center py-8 bg-muted/50 rounded-2xl border-2 border-dashed border-border/80">
+                          <div className="w-10 h-10 mx-auto mb-3 bg-muted rounded-full flex items-center justify-center">
+                            <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                             </svg>
                           </div>
-                          <p className="text-gray-500 text-sm font-medium">No insights available</p>
-                          <p className="text-gray-400 text-xs mt-1">Check back later for updates</p>
+                          <p className="text-muted-foreground text-sm font-medium">No insights available</p>
+                          <p className="text-muted-foreground text-xs mt-1">Check back later for updates</p>
                         </div>
                       );
                     })()}
@@ -645,7 +596,7 @@ const IAnalysis = () => {
       </div>
 
       <div className="hidden lg:grid grid-cols-[3fr_1fr] gap-6 items-start">
-        <div className="flex flex-col space-y-6 bg-white rounded-2xl p-6 border border-gray-200">
+        <div className="flex flex-col space-y-6 bg-card rounded-2xl p-6 border border-border">
           {sections.map(({ label, displayLabel, icon, color, border }) => (
             <SwotSection
               key={displayLabel}
@@ -660,27 +611,27 @@ const IAnalysis = () => {
           ))}
         </div>
 
-        <aside className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm flex flex-col gap-4">
+        <aside className="bg-card rounded-2xl p-5 border border-border shadow-sm flex flex-col gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-12 h-12 bg-gray-100 rounded-full border border-gray-200">
+            <div className="flex items-center justify-center w-12 h-12 bg-muted rounded-full border border-border">
               {teacherInitials ? (
-                <span className="text-base font-semibold text-gray-700">{teacherInitials}</span>
+                <span className="text-base font-semibold text-foreground">{teacherInitials}</span>
               ) : (
-                <User className="w-5 h-5 text-gray-500" />
+                <User className="w-5 h-5 text-muted-foreground" />
               )}
             </div>
             <div>
-              <div className="text-sm font-semibold text-gray-900">{teacherName}</div>
-              <div className="text-xs text-gray-500">Educator · {selectedSubject}</div>
+              <div className="text-sm font-semibold text-foreground">{teacherName}</div>
+              <div className="text-xs text-muted-foreground">Educator · {selectedSubject}</div>
             </div>
           </div>
-          <div className="space-y-2 text-sm text-gray-700">
+          <div className="space-y-2 text-sm text-foreground">
             <div className="flex items-center gap-2">
-              <Mail className="w-4 h-4 text-gray-400" />
+              <Mail className="w-4 h-4 text-muted-foreground" />
               <span className="truncate">{teacherEmail}</span>
             </div>
             <div className="flex items-center gap-2">
-              <Phone className="w-4 h-4 text-gray-400" />
+              <Phone className="w-4 h-4 text-muted-foreground" />
               <span className="truncate">{teacherPhone}</span>
             </div>
           </div>

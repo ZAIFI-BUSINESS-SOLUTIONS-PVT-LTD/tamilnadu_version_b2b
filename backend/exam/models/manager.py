@@ -7,6 +7,15 @@ class Manager(models.Model):
     email = models.EmailField(unique=True)
     password = models.CharField(max_length=255)  # ✅ Storing hashed passwords
     institution = models.CharField(max_length=255, blank=True, null=True)  # ✅ Institution field for manager
+    phone_number = models.CharField(max_length=20, blank=True, null=True)  # For WhatsApp notifications
+    
+    # WhatsApp opt-in and activation tracking
+    whatsapp_opt_in = models.BooleanField(default=False, null=True, blank=True)  # null = not asked yet, False = declined, True = accepted
+    whatsapp_opt_in_timestamp = models.DateTimeField(null=True, blank=True)
+    whatsapp_consent_ip = models.CharField(max_length=45, blank=True, null=True)  # IPv4 or IPv6
+    whatsapp_consent_text = models.TextField(blank=True, null=True)  # Exact consent text shown
+    whatsapp_activated = models.BooleanField(default=False)  # True after first incoming WhatsApp message
+    whatsapp_first_interaction_timestamp = models.DateTimeField(null=True, blank=True)
 
     def set_password(self, raw_password):
         """Hashes and sets the password securely."""
