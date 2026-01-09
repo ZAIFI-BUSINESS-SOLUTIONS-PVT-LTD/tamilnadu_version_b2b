@@ -35,6 +35,8 @@ export const useFileUpload = () => {
         educatorId
       );
 
+      
+
       // Handle API response for errors
       if (response?.error) {
         toast.error(`Upload failed: ${response.error}`);

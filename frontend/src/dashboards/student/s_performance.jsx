@@ -113,10 +113,26 @@ const usePerformanceData = () => {
 
   // Derived state for chapter options to display in a dropdown
   const chapterOptions = Object.values(chapterMapEffective).filter(Boolean);
+  // Helper to robustly match a latest test label against available keys
+  const extractTestNumLocal = (s) => {
+    if (!s) return NaN;
+    const m = String(s).match(/(\d+)/);
+    return m ? parseInt(m[1], 10) : NaN;
+  };
+  // Determine latest test number by scanning all available chapter test keys
+  const allChapterTestKeys = Object.values(chapterAccuracy || {}).flatMap(acc => Object.keys(acc || {}));
+  const chapterNums = allChapterTestKeys.map(extractTestNumLocal).filter(n => !isNaN(n));
+  const fallbackLatestNum = extractTestNumLocal(latestTest);
+  const effectiveLatestNum = chapterNums.length ? Math.max(...chapterNums) : fallbackLatestNum;
+
+  const hasLatestNumInKeys = (keys = [], latestNum) => {
+    if (!Array.isArray(keys) || isNaN(latestNum)) return false;
+    return keys.some(k => extractTestNumLocal(k) === latestNum);
+  };
   // Map of chapterName -> boolean indicating whether this chapter was updated in latest test
   // Use the effective chapter map (validated / fallback) so flags align with displayed names
   const updatedChapterFlags = Object.fromEntries(
-    Object.entries(chapterMapEffective).map(([idx, name]) => [name, Object.keys(chapterAccuracy[idx] || {}).includes(latestTest)])
+    Object.entries(chapterMapEffective).map(([idx, name]) => [name, hasLatestNumInKeys(Object.keys(chapterAccuracy[idx] || {}), effectiveLatestNum)])
   );
   // Derived state to find the index of the selected chapter
   const chapterIndex = Object.entries(chapterMapEffective).find(([, name]) => name === selectedChapter)?.[0];
@@ -130,7 +146,7 @@ const usePerformanceData = () => {
   const updatedTopicFlags = Object.fromEntries(
     Object.entries(topicsMapEffective || {}).map(([cIdx, topics]) => [
       cIdx,
-      Object.fromEntries(Object.keys(topics || {}).map(tName => [tName, Object.keys(topics?.[tName] || {}).includes(latestTest)]))
+      Object.fromEntries(Object.keys(topics || {}).map(tName => [tName, hasLatestNumInKeys(Object.keys(topics?.[tName] || {}), effectiveLatestNum)]))
     ])
   );
   // Derived state for chapter-wise accuracy data for visualization
@@ -493,6 +509,39 @@ const SPerformance = () => {
   // Format subject options for the dropdown
   const subjectOptions = subjects.map(subject => ({ value: subject, label: subject }));
 
+  // Ensure test labels are ordered numerically (old -> new) and map data accordingly
+  const extractTestNum = (s) => {
+    if (!s) return NaN;
+    const m = String(s).match(/(\d+)/);
+    return m ? parseInt(m[1], 10) : NaN;
+  };
+
+  const rawChapterLabels = Object.keys(chapterAccuracy[chapterIndex] || {});
+  const chapterLabels = [...rawChapterLabels].sort((a, b) => {
+    const na = extractTestNum(a);
+    const nb = extractTestNum(b);
+    if (!isNaN(na) && !isNaN(nb)) return na - nb; // ascending numeric
+    if (!isNaN(na)) return -1;
+    if (!isNaN(nb)) return 1;
+    return a.localeCompare(b);
+  });
+  const chapterDataMapped = chapterLabels.map(l => (chapterAccuracy[chapterIndex] || {})[l] ?? null);
+
+  // For topic chart, use `testLabels` and `topicData` returned by the hook
+  const rawTopicLabels = Array.isArray(testLabels) ? testLabels : Object.keys(topicsMap?.[chapterIndex]?.[selectedTopic] || {});
+  const topicLabelsSorted = [...rawTopicLabels].sort((a, b) => {
+    const na = extractTestNum(a);
+    const nb = extractTestNum(b);
+    if (!isNaN(na) && !isNaN(nb)) return na - nb;
+    if (!isNaN(na)) return -1;
+    if (!isNaN(nb)) return 1;
+    return a.localeCompare(b);
+  });
+  const topicDataMapped = topicLabelsSorted.map(l => {
+    const idx = rawTopicLabels.indexOf(l);
+    return (Array.isArray(topicData) && idx >= 0) ? topicData[idx] ?? null : null;
+  });
+
   // --- Main Component Render ---
   return (
     <>
@@ -574,8 +623,8 @@ const SPerformance = () => {
               {/* Chapter Performance Chart */}
               <PerformanceChart
                 title="Chapter Performance"
-                data={chapterData} // Data points for the chart line
-                labels={Object.keys(chapterAccuracy[chapterIndex] || {})} // Labels for the X-axis (e.g., "Test 1", "Test 2")
+                data={chapterDataMapped} // Data points for the chart line (aligned to sorted labels)
+                labels={chapterLabels} // Sorted labels for the X-axis (old -> new)
               />
 
               {/* Chapter Insights Card */}
@@ -592,8 +641,8 @@ const SPerformance = () => {
               {/* Topic Performance Chart */}
               <PerformanceChart
                 title="Topic Performance"
-                data={topicData} // Data points for the chart line
-                labels={testLabels} // Labels for the X-axis (e.g., "Test 1", "Test 2")
+                data={topicDataMapped} // Data points for the topic chart line (aligned to sorted labels)
+                labels={topicLabelsSorted} // Sorted labels for the X-axis (old -> new)
               />
 
               {/* Topic Insights Card */}
