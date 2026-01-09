@@ -2,6 +2,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from exam.models.overview import Overview
 from exam.models.performance import Performance
+from exam.models.checkpoints import Checkpoints
 import json
 from rest_framework.permissions import IsAuthenticated
 from exam.models.student import Student
@@ -197,3 +198,46 @@ def list_available_swot_tests(request):
     student_id = request.user.student_id
     tests = SWOT.objects.filter(user_id=student_id).values_list('test_num', flat=True).distinct()
     return Response({"available_tests": list(tests)})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def get_student_checkpoints(request):
+    """
+    Get combined checkpoints (checklist + action plan) for a specific test.
+    POST body: {"test_num": <test_number>}
+    """
+    try:
+        student_id = request.user.student_id
+        student = Student.objects.filter(student_id=student_id).first()
+
+        if not student:
+            return Response({"error": "Student not found"}, status=404)
+
+        # Get test_num from POST data
+        test_num = request.data.get("test_num")
+        if test_num is None:
+            return Response({"error": "Missing 'test_num' in request body"}, status=400)
+
+        logger.info(f"get_student_checkpoints called for student={student_id} test_num={test_num}")
+
+        # Fetch checkpoints record
+        class_id = student.class_id
+        record = Checkpoints.objects.filter(
+            student_id=student_id,
+            class_id=class_id,
+            test_num=test_num
+        ).first()
+
+        if not record:
+            logger.info(f"No checkpoints found for student={student_id} class={class_id} test_num={test_num}")
+            return Response({"checkpoints": []}, status=200)
+
+        # Return the insights JSON directly
+        return Response({
+            "checkpoints": record.insights if record.insights else []
+        })
+
+    except Exception as e:
+        logger.exception(f"Error in get_student_checkpoints: {str(e)}")
+        return Response({"error": str(e)}, status=500)

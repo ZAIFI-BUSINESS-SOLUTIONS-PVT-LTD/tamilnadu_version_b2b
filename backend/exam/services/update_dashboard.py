@@ -201,6 +201,26 @@ def _internal_student_dashboard_update(student_id, class_id, test_num, db_name):
         Save_Overview_Metric(student_id, class_id, "ST", study_tips)
         logger.info(f"✅ Study tips saved for {student_id} with {len(study_tips)} tips")
     
+    # Generate and save checkpoints (combined checklist + action plan) if feature enabled
+    from django.conf import settings
+    if getattr(settings, 'ENABLE_CHECKPOINTS', False) and test_num:
+        try:
+            from exam.services.checkpoint_task import populate_checkpoints_testwise
+            populate_checkpoints_testwise.delay(student_id, class_id, test_num)
+            logger.info(f"🔍 Triggered checkpoints generation for student {student_id}, test {test_num}")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to trigger checkpoints generation for {student_id}: {e}")
+    
+    # Generate and save cumulative checkpoints (all tests) if feature enabled
+    # This happens AFTER test-wise checkpoints and analyzes patterns across all tests
+    if getattr(settings, 'ENABLE_CUMULATIVE_CHECKPOINTS', False):
+        try:
+            from exam.services.checkpoint_task import populate_checkpoints_cumulative
+            populate_checkpoints_cumulative.delay(student_id, class_id)
+            logger.info(f"🔍 Triggered cumulative checkpoints generation for student {student_id} (test_num=0)")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to trigger cumulative checkpoints generation for {student_id}: {e}")
+    
     result['overview'] = {'metrics': metrics, 'insights': insights, 'PT': PT, 'SA': SA, 'AP': action_plan, 'CL': checklist, 'ST': study_tips}
 
     # Generate and populate performance data (PostgreSQL)

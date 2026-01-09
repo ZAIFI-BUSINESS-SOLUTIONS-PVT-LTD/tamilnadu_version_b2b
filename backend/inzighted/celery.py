@@ -52,3 +52,21 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'inzighted.settings')
 app = Celery('inzighted')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
+
+# Explicitly import task modules that are not in standard tasks.py location
+# This ensures they are registered even if autodiscover doesn't find them
+@app.on_after_finalize.connect
+def setup_periodic_tasks(sender, **kwargs):
+    """Import non-standard task modules to register them with Celery."""
+    import exam.services.misconception_task  # noqa
+    import exam.services.checkpoint_task  # noqa
+    import exam.services.checkpoints_task  # noqa
+    import exam.services.pdf_trigger  # noqa
+    import exam.services.whatsapp_notification  # noqa
+    import exam.services.process_test_data  # noqa
+    import exam.services.update_dashboard  # noqa
+    import exam.services.save_students  # noqa
+    import exam.services.debug  # noqa
+    import exam.utils.email_tasks  # noqa
+    import exam.utils.analysis_generator  # noqa
+    import exam.utils.student_analysis  # noqa

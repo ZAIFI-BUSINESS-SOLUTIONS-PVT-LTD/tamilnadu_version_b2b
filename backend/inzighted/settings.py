@@ -203,6 +203,18 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
+# === Misconception Inference Feature Flag ===
+# Enable/disable LLM-based misconception inference for wrong answers
+ENABLE_MISCONCEPTION_INFERENCE = os.getenv('ENABLE_MISCONCEPTION_INFERENCE', 'false').lower() in ('true', '1', 'yes')
+
+# === Checkpoints Feature Flag ===
+# Enable/disable combined checklist + action plan generation (new Checkpoints table)
+ENABLE_CHECKPOINTS = os.getenv('ENABLE_CHECKPOINTS', 'false').lower() in ('true', '1', 'yes')
+
+# === Cumulative Checkpoints Feature Flag ===
+# Enable/disable cumulative (all-tests) checkpoint generation stored with test_num=0
+ENABLE_CUMULATIVE_CHECKPOINTS = os.getenv('ENABLE_CUMULATIVE_CHECKPOINTS', 'false').lower() in ('true', '1', 'yes')
+
 # === Sentry Error Logging ===
 SENTRY_DSN = os.getenv("SENTRY_DSN", "")  # Optional env var
 if SENTRY_DSN:

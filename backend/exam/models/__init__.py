@@ -13,6 +13,7 @@ from .response import StudentResponse
 from .analysis import QuestionAnalysis
 
 from .result import Result, StudentResult
+from .checkpoints import Checkpoints
 
 
 

@@ -61,6 +61,7 @@ class StudentAnalyzer:
         """
         Save question-level results to StudentResult table for PostgreSQL-based queries.
         This enables the new PG-based retrieval functions to work correctly.
+        Note: misconception field is intentionally NOT updated here - it's populated separately by the async inference task.
         """
         try:
             for item in self.analysis:
@@ -68,18 +69,32 @@ class StudentAnalyzer:
                 opted_answer = item.get('OptedAnswer')
                 was_attempted = opted_answer is not None and str(opted_answer).strip() != ''
                 
+                # Get existing record to preserve misconception if it exists
+                existing = StudentResult.objects.filter(
+                    student_id=self.student_id,
+                    class_id=self.class_id,
+                    test_num=self.test_num,
+                    question_number=item['QuestionNumber']
+                ).first()
+                
+                defaults = {
+                    'is_correct': item['IsCorrect'],
+                    'was_attempted': was_attempted,
+                    'subject': item['Subject'],
+                    'chapter': item['Chapter'],
+                    'topic': item['Topic']
+                }
+                
+                # Preserve existing misconception if present
+                if existing and existing.misconception:
+                    defaults['misconception'] = existing.misconception
+                
                 StudentResult.objects.update_or_create(
                     student_id=self.student_id,
                     class_id=self.class_id,
                     test_num=self.test_num,
                     question_number=item['QuestionNumber'],
-                    defaults={
-                        'is_correct': item['IsCorrect'],
-                        'was_attempted': was_attempted,
-                        'subject': item['Subject'],
-                        'chapter': item['Chapter'],
-                        'topic': item['Topic']
-                    }
+                    defaults=defaults
                 )
             logger.info(f"✅ Saved {len(self.analysis)} question-level results to StudentResult for student {self.student_id}")
         except Exception as e:
@@ -220,6 +235,16 @@ def analyze_single_student(student_id, class_id, student_db, questions, test_dat
         create_graph(student_id, student_db.lower(), pd.DataFrame(analyzer.analysis), test_num)
     except Exception as e:
         logger.exception(f"Failed to create Neo4j graph for {student_id}: {e}")
+    
+    # Trigger async misconception inference for wrong answers (non-blocking)
+    try:
+        from exam.services.misconception_task import infer_student_misconceptions
+        from django.conf import settings
+        if getattr(settings, 'ENABLE_MISCONCEPTION_INFERENCE', False):
+            infer_student_misconceptions.delay(student_id, class_id, test_num)
+            logger.info(f"🔍 Triggered misconception inference for student {student_id}, test {test_num}")
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to trigger misconception inference for {student_id}: {e}")
 
 @shared_task
 def analyse_students(class_id, test_num, subject=None):

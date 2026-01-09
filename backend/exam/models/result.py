@@ -53,6 +53,7 @@ class StudentResult(models.Model):
     subject = models.CharField(max_length=50)
     chapter = models.TextField()
     topic = models.TextField()
+    misconception = models.TextField(null=True, blank=True)  # LLM-inferred student misconception
 
     class Meta:
         unique_together = (
