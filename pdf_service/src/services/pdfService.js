@@ -8,6 +8,8 @@ import logger from '../utils/logger.js';
 import archiver from 'archiver';
 import jwt from 'jsonwebtoken';
 import { S3Client, PutObjectCommand, HeadObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { spawn } from 'child_process';
+import { promisify } from 'util';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -301,6 +303,110 @@ class PdfService {
   }
 
   /**
+   * Compress PDF using Ghostscript
+   * @param {string} inputPath - Path to original PDF file
+   * @returns {Promise<{path: string, originalSize: number, compressedSize: number}>} - Path to compressed PDF and sizes
+   */
+  async compressPdfWithGhostscript(inputPath) {
+    const compressedPath = `${inputPath}.compressed.pdf`;
+    
+    try {
+      // Get original file size
+      const originalStats = fs.statSync(inputPath);
+      const originalSize = originalStats.size;
+      
+      logger.debug('Starting PDF compression', { 
+        inputPath, 
+        originalSize: `${(originalSize / 1024).toFixed(2)}KB` 
+      });
+
+      // Spawn Ghostscript process
+      const gsArgs = [
+        '-sDEVICE=pdfwrite',
+        '-dCompatibilityLevel=1.4',
+        '-dPDFSETTINGS=/ebook',
+        '-dNOPAUSE',
+        '-dBATCH',
+        '-dQUIET',
+        `-sOutputFile=${compressedPath}`,
+        inputPath
+      ];
+
+      await new Promise((resolve, reject) => {
+        const gs = spawn('gs', gsArgs);
+        let stderr = '';
+
+        gs.stderr.on('data', (data) => {
+          stderr += data.toString();
+        });
+
+        gs.on('close', (code) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new Error(`Ghostscript exited with code ${code}: ${stderr}`));
+          }
+        });
+
+        gs.on('error', (err) => {
+          reject(new Error(`Failed to spawn Ghostscript: ${err.message}`));
+        });
+      });
+
+      // Verify compressed file exists and get size
+      if (!fs.existsSync(compressedPath)) {
+        throw new Error('Compressed PDF was not created');
+      }
+
+      const compressedStats = fs.statSync(compressedPath);
+      const compressedSize = compressedStats.size;
+      
+      // Calculate compression ratio
+      const ratio = ((1 - compressedSize / originalSize) * 100).toFixed(1);
+      
+      logger.info('PDF compression successful', {
+        originalSize: `${(originalSize / 1024).toFixed(2)}KB`,
+        compressedSize: `${(compressedSize / 1024).toFixed(2)}KB`,
+        reduction: `${ratio}%`
+      });
+
+      // Replace original with compressed (atomically)
+      fs.renameSync(compressedPath, inputPath);
+      
+      return {
+        path: inputPath,
+        originalSize,
+        compressedSize
+      };
+    } catch (error) {
+      logger.error('PDF compression failed, using original PDF', { 
+        inputPath, 
+        error: error.message 
+      });
+      
+      // Clean up compressed file if it exists
+      if (fs.existsSync(compressedPath)) {
+        try {
+          fs.unlinkSync(compressedPath);
+        } catch (cleanupErr) {
+          logger.warn('Failed to clean up compressed file', { 
+            compressedPath, 
+            error: cleanupErr.message 
+          });
+        }
+      }
+      
+      // Return original file path on failure (fallback)
+      const originalStats = fs.existsSync(inputPath) ? fs.statSync(inputPath) : { size: 0 };
+      return {
+        path: inputPath,
+        originalSize: originalStats.size,
+        compressedSize: originalStats.size
+      };
+    }
+  }
+
+  /**
    * Generate a presigned URL for downloading from S3
    * @param {string} s3Key - The S3 object key
    * @param {number} expiresIn - Expiration time in seconds (default: 1 hour)
@@ -466,25 +572,32 @@ class PdfService {
 
       fs.writeFileSync(filePath, pdfBuffer);
 
+      // Compress PDF with Ghostscript
+      const compressionResult = await this.compressPdfWithGhostscript(filePath);
+      
+      // Read the compressed PDF buffer for S3 upload
+      const finalPdfBuffer = fs.readFileSync(compressionResult.path);
+
       const duration = Date.now() - startTime;
       logger.info('PDF generated successfully', {
         studentId,
         testId,
         duration: `${duration}ms`,
         filename,
-        size: `${(pdfBuffer.length / 1024).toFixed(2)}KB`
+        originalSize: `${(compressionResult.originalSize / 1024).toFixed(2)}KB`,
+        finalSize: `${(compressionResult.compressedSize / 1024).toFixed(2)}KB`
       });
 
       // Upload to S3 asynchronously (non-blocking) with deterministic naming
       if (classId) {
-        this.uploadToS3(pdfBuffer, classId, testId, filename, 'student', studentId).catch(err => {
+        this.uploadToS3(finalPdfBuffer, classId, testId, filename, 'student', studentId).catch(err => {
           logger.error('S3 upload failed but continuing', { error: err.message });
         });
       } else {
         logger.debug('Skipping S3 upload - no classId provided');
       }
 
-      return { filePath, filename, buffer: pdfBuffer };
+      return { filePath, filename, buffer: finalPdfBuffer };
 
     } catch (error) {
       const duration = Date.now() - startTime;
@@ -570,7 +683,7 @@ class PdfService {
         try {
           const result = await this.generatePdf(studentId, testId, jwtToken, origin, classId, educatorId);
           
-          // Handle PDF from S3 (already exists)
+          // Handle PDF from S3 (already exists and already compressed)
           if (result.fromS3 && result.s3Key) {
             try {
               const pdfBuffer = await this.downloadFromS3(result.s3Key);
@@ -580,10 +693,10 @@ class PdfService {
               logger.warn('Failed to download PDF from S3 for zip', { studentId, s3Key: result.s3Key, error: s3Err.message });
             }
           } else if (result.filePath) {
-            // Handle newly generated PDF (has local filePath)
+            // Handle newly generated PDF (has local filePath, already compressed by generatePdf)
             archive.file(result.filePath, { name: result.filename });
           } else if (result.buffer) {
-            // Handle PDF buffer directly
+            // Handle PDF buffer directly (already compressed by generatePdf)
             archive.append(result.buffer, { name: result.filename });
           } else {
             logger.warn('No valid PDF data to add to zip', { studentId });
@@ -787,18 +900,30 @@ class PdfService {
       const filename = `inzighted_student_report_${sanitizedTestId}.pdf`;
       const filePath = path.join(config.pdf.tempDir, filename);
       fs.writeFileSync(filePath, pdfBuffer);
-      logger.info('Student self-report PDF generated', { testId: sanitizedTestId, filename });
+      
+      // Compress PDF with Ghostscript
+      const compressionResult = await this.compressPdfWithGhostscript(filePath);
+      
+      // Read the compressed PDF buffer for S3 upload
+      const finalPdfBuffer = fs.readFileSync(compressionResult.path);
+      
+      logger.info('Student self-report PDF generated', { 
+        testId: sanitizedTestId, 
+        filename,
+        originalSize: `${(compressionResult.originalSize / 1024).toFixed(2)}KB`,
+        finalSize: `${(compressionResult.compressedSize / 1024).toFixed(2)}KB`
+      });
       
       // Upload to S3 asynchronously (non-blocking) with deterministic naming
       if (classId && studentId) {
-        this.uploadToS3(pdfBuffer, classId, sanitizedTestId, filename, 'student', studentId).catch(err => {
+        this.uploadToS3(finalPdfBuffer, classId, sanitizedTestId, filename, 'student', studentId).catch(err => {
           logger.error('S3 upload failed but continuing', { error: err.message });
         });
       } else {
         logger.debug('Skipping S3 upload - no classId or studentId provided for student self-report');
       }
       
-      return { filePath, filename, buffer: pdfBuffer };
+      return { filePath, filename, buffer: finalPdfBuffer };
     } catch (error) {
       logger.error('Student self-report PDF generation failed', { testId: sanitizedTestId, error: error.message });
       throw error;
@@ -899,18 +1024,30 @@ class PdfService {
       const filename = `inzighted_teacher_report_${sanitizedTestId}.pdf`;
       const filePath = path.join(config.pdf.tempDir, filename);
       fs.writeFileSync(filePath, pdfBuffer);
-      logger.info('Teacher self-report PDF generated', { testId: sanitizedTestId, filename });
+      
+      // Compress PDF with Ghostscript
+      const compressionResult = await this.compressPdfWithGhostscript(filePath);
+      
+      // Read the compressed PDF buffer for S3 upload
+      const finalPdfBuffer = fs.readFileSync(compressionResult.path);
+      
+      logger.info('Teacher self-report PDF generated', { 
+        testId: sanitizedTestId, 
+        filename,
+        originalSize: `${(compressionResult.originalSize / 1024).toFixed(2)}KB`,
+        finalSize: `${(compressionResult.compressedSize / 1024).toFixed(2)}KB`
+      });
       
       // Upload to S3 asynchronously (non-blocking) with deterministic naming
       if (classId && teacherId) {
-        this.uploadToS3(pdfBuffer, classId, sanitizedTestId, filename, 'teacher', teacherId).catch(err => {
+        this.uploadToS3(finalPdfBuffer, classId, sanitizedTestId, filename, 'teacher', teacherId).catch(err => {
           logger.error('S3 upload failed but continuing', { error: err.message });
         });
       } else {
         logger.debug('Skipping S3 upload - no classId or teacherId provided for teacher self-report');
       }
       
-      return { filePath, filename, buffer: pdfBuffer };
+      return { filePath, filename, buffer: finalPdfBuffer };
     } catch (error) {
       logger.error('Teacher self-report PDF generation failed', { testId: sanitizedTestId, error: error.message });
       throw error;
