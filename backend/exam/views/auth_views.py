@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework_simplejwt.tokens import RefreshToken
-from exam.models import Educator, Student, Manager
+from exam.models import Educator, Student, Manager, Institution
 import re
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.hashers import check_password
@@ -19,6 +19,28 @@ def normalize_subdomain(raw_value):
     slug = re.sub(r'[^a-z0-9-]', '-', str(raw_value).strip().lower())
     slug = re.sub(r'-+', '-', slug).strip('-')
     return slug or None
+
+def resolve_institution_for_name(raw_name):
+    """
+    Resolve an Institution record from a user-provided institution string.
+    Strategy (best-effort):
+    1) Exact display_name match (case-insensitive)
+    2) Fallback to normalized subdomain + ".inzighted.com" matching Institution.domain
+    Returns (inst or None)
+    """
+    if not raw_name:
+        return None
+    name = str(raw_name).strip()
+    inst = Institution.objects.filter(display_name__iexact=name).first()
+    if inst:
+        return inst
+    candidate_sub = normalize_subdomain(name)
+    if candidate_sub:
+        candidate_domain = f"{candidate_sub}.inzighted.com"
+        inst = Institution.objects.filter(domain=candidate_domain).first()
+        if inst:
+            return inst
+    return None
 
 # Function to generate JWT tokens
 def get_tokens_for_user(user, role):
@@ -48,11 +70,19 @@ def admin_login(request):
         if check_password(password, manager.password):
             tokens = get_tokens_for_user(manager, "manager")
             logger.info("✅ Manager Login Successful")
-            #print("✅ Manager Login Successful")
+            inst = resolve_institution_for_name(manager.institution)
+            tenant_domain = inst.domain if inst else None
+            redirect_on_login = bool(inst.redirect_on_login) if inst else False
+            # Derive subdomain part for backward compatibility
+            institute_subdomain = None
+            if tenant_domain and isinstance(tenant_domain, str) and '.' in tenant_domain:
+                institute_subdomain = tenant_domain.split('.')[0]
             return Response({
                 'token': tokens['access'],
                 'role': 'manager',
-                'institute_subdomain': normalize_subdomain(manager.institution),
+                'tenant_domain': tenant_domain,
+                'redirect_on_login': redirect_on_login,
+                'institute_subdomain': institute_subdomain,
             }, status=200)
         logger.warning("❌ Manager Login Failed: Invalid credentials")
         #print("❌ Manager Login Failed: Invalid credentials")
@@ -78,12 +108,19 @@ def educator_login(request):
         if check_password(password, educator.password):
             tokens = get_tokens_for_user(educator, "educator")
             logger.info("✅ Educator Login Successful")
-            #print("✅ Educator Login Successful")
+            inst = resolve_institution_for_name(educator.institution)
+            tenant_domain = inst.domain if inst else None
+            redirect_on_login = bool(inst.redirect_on_login) if inst else False
+            institute_subdomain = None
+            if tenant_domain and isinstance(tenant_domain, str) and '.' in tenant_domain:
+                institute_subdomain = tenant_domain.split('.')[0]
             return Response({
                 'token': tokens['access'],
                 'csv_status': educator.csv_status,
                 'role': 'educator',
-                'institute_subdomain': normalize_subdomain(educator.institution),
+                'tenant_domain': tenant_domain,
+                'redirect_on_login': redirect_on_login,
+                'institute_subdomain': institute_subdomain,
             }, status=200)
 
         logger.warning("❌ Educator Login Failed: Invalid credentials")
@@ -112,10 +149,18 @@ def student_login(request):
             #print("✅ Student Login Successful")
             # Best-effort institution resolution via associated educator class
             educator = Educator.objects.filter(class_id=student.class_id).first()
+            inst = resolve_institution_for_name(educator.institution) if educator else None
+            tenant_domain = inst.domain if inst else None
+            redirect_on_login = bool(inst.redirect_on_login) if inst else False
+            institute_subdomain = None
+            if tenant_domain and isinstance(tenant_domain, str) and '.' in tenant_domain:
+                institute_subdomain = tenant_domain.split('.')[0]
             return Response({
                 'token': tokens['access'],
                 'role': 'student',
-                'institute_subdomain': normalize_subdomain(educator.institution) if educator else None,
+                'tenant_domain': tenant_domain,
+                'redirect_on_login': redirect_on_login,
+                'institute_subdomain': institute_subdomain,
             }, status=200)
         logger.warning("❌ Student Login Failed: Invalid credentials")
         #print("❌ Student Login Failed: Invalid credentials")
@@ -144,11 +189,19 @@ def institution_login(request):
         if check_password(password, manager.password):
             tokens = get_tokens_for_user(manager, "manager")
             logger.info("✅ Institution Login Successful")
+            inst = resolve_institution_for_name(manager.institution)
+            tenant_domain = inst.domain if inst else None
+            redirect_on_login = bool(inst.redirect_on_login) if inst else False
+            institute_subdomain = None
+            if tenant_domain and isinstance(tenant_domain, str) and '.' in tenant_domain:
+                institute_subdomain = tenant_domain.split('.')[0]
             return Response({
                 'token': tokens['access'],
                 'role': 'manager',
                 'institution': manager.institution,
-                'institute_subdomain': normalize_subdomain(manager.institution),
+                'tenant_domain': tenant_domain,
+                'redirect_on_login': redirect_on_login,
+                'institute_subdomain': institute_subdomain,
             }, status=200)
         
         logger.warning("❌ Institution Login Failed: Invalid credentials")

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { educatorLogin } from '../../utils/api';
+import { educatorLogin, handleInstituteRedirect } from '../../utils/api';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Eye, EyeOff, Lock, Mail, Sparkles } from 'lucide-react';
 import educatorLoginImg from '../../assets/auth images/educatorlogin.svg';
@@ -44,6 +44,11 @@ const EducatorLogin = () => {
       localStorage.setItem('token', response.token);
       localStorage.setItem('csv_status', response.csv_status);
       localStorage.setItem('educator_email', educatorId);
+
+      // If redirect is configured for this institution, perform it and stop local navigation.
+      if (handleInstituteRedirect(response)) {
+        return;
+      }
 
       switch (response.csv_status) {
         case 'pending':

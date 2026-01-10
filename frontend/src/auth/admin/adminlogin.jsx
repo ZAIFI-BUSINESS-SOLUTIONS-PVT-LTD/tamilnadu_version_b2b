@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import bgImage from '../../assets/landingpage-images/bg_001.webp';  // Background image';
-import { adminLogin } from '../../utils/api';  // Import the login function
+import { adminLogin, handleInstituteRedirect } from '../../utils/api';  // Import the login & redirect helper
 import { Button } from '../../components/ui/button.jsx';
 
 const AdminLogin = () => {
@@ -25,7 +25,11 @@ const AdminLogin = () => {
         // Save token in localStorage or context
         localStorage.setItem('adminToken', response.token);
 
-        // Redirect to dashboard
+        // If institution expects redirect, perform it and stop local navigation
+        if (handleInstituteRedirect(response)) {
+          return;
+        }
+        // Otherwise, stay on gateway dashboard
         navigate('/admin/dashboard');
       } else {
         setError('Invalid credentials, please try again');

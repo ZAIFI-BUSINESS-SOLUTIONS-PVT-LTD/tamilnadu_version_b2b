@@ -11,6 +11,9 @@ class Institution(models.Model):
     id = models.BigAutoField(primary_key=True)
     domain = models.CharField(max_length=255, unique=True, db_index=True)
     display_name = models.CharField(max_length=255)
+    # Controls whether users of this institution should be redirected to the
+    # institution domain after login from the gateway (web.inzighted.com).
+    redirect_on_login = models.BooleanField(default=True)
 
     class Meta:
         db_table = 'exam_institution'

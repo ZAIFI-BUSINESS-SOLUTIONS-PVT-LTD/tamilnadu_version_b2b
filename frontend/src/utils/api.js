@@ -64,22 +64,28 @@ export const handleInstituteRedirect = (loginResponse) => {
     if (!isProductionGateway()) {
       return false; // Dev or other environment - no redirect
     }
-    
-    // Extract institute subdomain from backend response
-    const instituteSubdomain = loginResponse?.institute_subdomain;
-    
-    // Validate subdomain exists and is a valid string
-    if (!instituteSubdomain || typeof instituteSubdomain !== 'string' || !instituteSubdomain.trim()) {
-      return false; // Backend doesn't support multi-tenant yet, or no subdomain assigned
+    // Respect backend control: redirect_on_login must be true
+    const redirectAllowed = !!loginResponse?.redirect_on_login;
+    if (!redirectAllowed) return false;
+
+    // Prefer exact tenant domain from backend
+    let targetHostname = null;
+    const tenantDomain = loginResponse?.tenant_domain;
+    if (typeof tenantDomain === 'string' && tenantDomain.trim()) {
+      targetHostname = tenantDomain.trim().toLowerCase();
+    } else {
+      // Fallback to subdomain if provided (legacy)
+      const instituteSubdomain = loginResponse?.institute_subdomain;
+      if (!instituteSubdomain || typeof instituteSubdomain !== 'string' || !instituteSubdomain.trim()) {
+        return false;
+      }
+      targetHostname = `${instituteSubdomain.trim().toLowerCase()}.inzighted.com`;
     }
-    
+
     // Get current hostname
     const currentHostname = window.location.hostname;
     
-    // Construct target subdomain
-    const targetHostname = `${instituteSubdomain.trim()}.inzighted.com`;
-    
-    // Prevent redirect if we're already on the target subdomain
+    // Prevent redirect if we're already on the target domain
     if (currentHostname === targetHostname) {
       return false; // Already on correct subdomain (should never happen from web.inzighted.com)
     }
@@ -132,12 +138,6 @@ export const adminLogin = async (email, password) => {
     });
 
     const data = await response.json();
-    
-    // Check for production institute subdomain redirect
-    // Note: Redirect will happen inside handleInstituteRedirect if conditions are met
-    // The redirect is non-blocking for the return statement since it's a full page navigation
-    handleInstituteRedirect(data);
-    
     return data;
   } catch (error) {
     return { error: 'Network error, please try again' };
@@ -162,12 +162,6 @@ export const studentLogin = async (studentId, password) => {
     });
 
     const data = await response.json();
-    
-    // Check for production institute subdomain redirect
-    // Note: Redirect will happen inside handleInstituteRedirect if conditions are met
-    // The redirect is non-blocking for the return statement since it's a full page navigation
-    handleInstituteRedirect(data);
-    
     return data;
   } catch (error) {
     return { error: 'Network error, please try again' };
@@ -498,12 +492,6 @@ export const educatorLogin = async (email, password) => {
     });
 
     const data = await response.json();
-    
-    // Check for production institute subdomain redirect
-    // Note: Redirect will happen inside handleInstituteRedirect if conditions are met
-    // The redirect is non-blocking for the return statement since it's a full page navigation
-    handleInstituteRedirect(data);
-    
     return data;
   } catch (error) {
     return { error: 'Network error, please try again' };
@@ -524,12 +512,6 @@ export const institutionLogin = async (email, password) => {
     });
 
     const data = await response.json();
-    
-    // Check for production institute subdomain redirect
-    // Note: Redirect will happen inside handleInstituteRedirect if conditions are met
-    // The redirect is non-blocking for the return statement since it's a full page navigation
-    handleInstituteRedirect(data);
-    
     return data;
   } catch (error) {
     return { error: 'Network error, please try again' };
