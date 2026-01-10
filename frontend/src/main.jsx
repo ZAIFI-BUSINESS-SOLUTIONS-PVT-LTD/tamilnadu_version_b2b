@@ -56,7 +56,8 @@ function InstitutionBootstrap() {
   const [state, setState] = useState({ status: 'loading', institution: null });
 
   useEffect(() => {
-    const host = (typeof window !== 'undefined' && window.location && window.location.host) ? window.location.host : '';
+    const rawHost = (typeof window !== 'undefined' && window.location && window.location.hostname) ? window.location.hostname : '';
+    const host = rawHost.split(':')[0];
     const isLocal = host.includes('localhost') || host.startsWith('127.0.0.1') || host.startsWith('13.219.64.187') || host === '::1' || host.endsWith('.local') || host === '';
     // Treat the official gateway and the Tamilnadu gateway as "safe" hosts
     // that should not perform a remote institution lookup.
@@ -71,6 +72,7 @@ function InstitutionBootstrap() {
       return;
     }
 
+    console.log('Resolving institution for domain:', host);
     const controller = new AbortController();
     (async () => {
       try {
