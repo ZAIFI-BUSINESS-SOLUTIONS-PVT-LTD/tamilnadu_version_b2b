@@ -57,7 +57,9 @@ function InstitutionBootstrap() {
   useEffect(() => {
     const host = (typeof window !== 'undefined' && window.location && window.location.host) ? window.location.host : '';
     const isLocal = host.includes('localhost') || host.startsWith('127.0.0.1') || host.startsWith('13.219.64.187') || host === '::1' || host.endsWith('.local') || host === '';
-    const isGatewayHost = host === 'web.inzighted.com';
+    // Treat the official gateway and the Tamilnadu gateway as "safe" hosts
+    // that should not perform a remote institution lookup.
+    const isGatewayHost = host === 'web.inzighted.com' || host === 'tamilnadu.inzighted.com' || host.endsWith('.tamilnadu.inzighted.com');
 
     // Local and gateway safe fallback (no remote lookup for localhost/gateway)
     if (isLocal || isGatewayHost) {
