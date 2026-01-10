@@ -4,37 +4,27 @@ import axios from 'axios';
 export const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 /**
- * Detects if the current environment is the production gateway domain.
+ * Detects if the current environment should support redirects.
  * 
- * Uses TWO signals (both must be true):
- * 1. Runtime hostname matches 'web.inzighted.com'
- * 2. VITE_API_URL points to production API (not dev)
+ * Allows redirects from gateway domains (both prod and dev staging).
+ * - Production gateway: web.inzighted.com with api.inzighted.com
+ * - Dev/Staging gateway: tamilnadu.inzighted.com with tamilnaduapi.inzighted.com
  * 
- * Why both checks:
- * - Hostname alone could be spoofed or misconfigured
- * - API URL is injected by GitHub Actions workflow at build time
- * - Dev builds use tamilnaduapi.inzighted.com
- * - Prod builds use api.inzighted.com
+ * This enables institution-based redirects in both environments.
  * 
- * Note: Cannot use import.meta.env.MODE (always "production" for both builds)
- * 
- * @returns {boolean} - True if on production gateway, false otherwise
+ * @returns {boolean} - True if on a gateway domain that supports redirects, false otherwise
  */
 export const isProductionGateway = () => {
   try {
     const currentHostname = window.location.hostname;
-    const apiUrl = API_BASE_URL || '';
     
-    // Check 1: Must be on the gateway frontend domain. Allow both production
-    // gateway and the Tamilnadu staging gateway so redirects run there too.
-    const isWebDomain = currentHostname === 'web.inzighted.com' || currentHostname === 'tamilnadu.inzighted.com' || currentHostname.endsWith('.tamilnadu.inzighted.com');
+    // Allow redirects from any gateway domain (production and staging)
+    // These are the main entry points for multi-tenant routing
+    const isGatewayDomain = 
+      currentHostname === 'web.inzighted.com' ||  // Production gateway
+      currentHostname === 'tamilnadu.inzighted.com';  // Dev/Staging gateway
     
-    // Check 2: Must be using production API (not dev API)
-    // Dev API: https://tamilnaduapi.inzighted.com/api
-    // Prod API: https://api.inzighted.com/api
-    const isProdApi = apiUrl.includes('api.inzighted.com') && !apiUrl.includes('tamilnaduapi');
-    
-    return isWebDomain && isProdApi;
+    return isGatewayDomain;
   } catch (error) {
     return false; // Fail safe: no redirect on error
   }

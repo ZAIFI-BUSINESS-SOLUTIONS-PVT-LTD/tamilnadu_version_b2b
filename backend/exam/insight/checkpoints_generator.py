@@ -55,37 +55,49 @@ For each checkpoint, you will provide BOTH the problem identification AND the co
     "subject": "Subject name",
     "accuracy": 0.45,
     "checklist": "Specific problem or mistake identified (10–15 words)",
-    "action_plan": "Specific action to fix this problem (10–15 words)"
+    "action_plan": "Specific action to fix this problem (10–15 words)",
+    "citation": [5, 12, 18]
   },
   {
     "topic": "Topic name",
     "subject": "Subject name",
     "accuracy": 0.32,
     "checklist": "Specific problem or mistake identified (10–15 words)",
-    "action_plan": "Specific action to fix this problem (10–15 words)"
+    "action_plan": "Specific action to fix this problem (10–15 words)",
+    "citation": [7, 22]
   },
   {
     "topic": "Topic name",
     "subject": "Subject name",
     "accuracy": 0.58,
     "checklist": "Specific problem or mistake identified (10–15 words)",
-    "action_plan": "Specific action to fix this problem (10–15 words)"
+    "action_plan": "Specific action to fix this problem (10–15 words)",
+    "citation": [3, 9, 14]
   },
   {
     "topic": "Topic name",
     "subject": "Subject name",
     "accuracy": 0.41,
     "checklist": "Specific problem or mistake identified (10–15 words)",
-    "action_plan": "Specific action to fix this problem (10–15 words)"
+    "action_plan": "Specific action to fix this problem (10–15 words)",
+    "citation": [11, 20]
   },
   {
     "topic": "Topic name",
     "subject": "Subject name",
     "accuracy": 0.29,
     "checklist": "Specific problem or mistake identified (10–15 words)",
-    "action_plan": "Specific action to fix this problem (10–15 words)"
+    "action_plan": "Specific action to fix this problem (10–15 words)",
+    "citation": [2, 15, 19]
   }
 ]
+
+**Citation Requirements**:
+- Each checkpoint MUST include a "citation" field listing the question numbers that support this insight
+- Citation format: array of question numbers, e.g., [5, 12, 18]
+- Include 2-5 question numbers per checkpoint as evidence
+- Select questions that best demonstrate the specific problem identified in the checklist
+- Questions in citation should be from the wrong_questions data provided for that topic
 
 **Guidelines**:
 - Return EXACTLY 5 checkpoint pairs total (not per topic)
@@ -144,6 +156,25 @@ def clean_checkpoints_response(response):
                 logger.warning(f"Checklist word count out of range: {checklist_words} words")
             if action_words < 5 or action_words > 20:
                 logger.warning(f"Action plan word count out of range: {action_words} words")
+            
+            # Validate citation if present (optional for backward compatibility)
+            if 'citation' in item:
+                citation = item['citation']
+                if not isinstance(citation, list):
+                    logger.warning(f"Citation should be a list of question numbers: {citation}")
+                    # Try to convert if it's a string or other format
+                    if isinstance(citation, str):
+                        # Parse string like "Q5, Q12" or "5, 12"
+                        try:
+                            citation = [int(q.strip().replace('Q', '').replace('q', '')) for q in citation.split(',')]
+                            item['citation'] = citation
+                        except:
+                            item['citation'] = []
+                    else:
+                        item['citation'] = []
+            else:
+                # Add empty citation for consistency
+                item['citation'] = []
             
             validated.append(item)
         

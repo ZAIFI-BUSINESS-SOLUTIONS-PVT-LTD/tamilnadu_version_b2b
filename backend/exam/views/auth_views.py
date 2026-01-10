@@ -73,6 +73,7 @@ def admin_login(request):
             inst = resolve_institution_for_name(manager.institution)
             tenant_domain = inst.domain if inst else None
             redirect_on_login = bool(inst.redirect_on_login) if inst else False
+            logger.info(f"Institution resolution: raw_name={manager.institution}, resolved_inst={inst}, tenant_domain={tenant_domain}, redirect_on_login={redirect_on_login}")
             # Derive subdomain part for backward compatibility
             institute_subdomain = None
             if tenant_domain and isinstance(tenant_domain, str) and '.' in tenant_domain:

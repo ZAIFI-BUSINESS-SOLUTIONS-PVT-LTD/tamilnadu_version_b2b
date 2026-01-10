@@ -80,37 +80,48 @@ Each pair must be directly related—checkpoint #1's problem is addressed by act
     "subject": "Subject name",
     "accuracy": 0.45,
     "checkpoint": "Specific mistake or misconception (10–15 words)",
-    "action": "How to fix this mistake (10–15 words)"
+    "action": "How to fix this mistake (10–15 words)",
+    "citation": [5, 12, 18]
   },
   {
     "topic": "Topic name",
     "subject": "Subject name",
     "accuracy": 0.32,
     "checkpoint": "Specific mistake or misconception (10–15 words)",
-    "action": "How to fix this mistake (10–15 words)"
+    "action": "How to fix this mistake (10–15 words)",
+    "citation": [7, 22]
   },
   {
     "topic": "Topic name",
     "subject": "Subject name",
     "accuracy": 0.58,
     "checkpoint": "Specific mistake or misconception (10–15 words)",
-    "action": "How to fix this mistake (10–15 words)"
+    "action": "How to fix this mistake (10–15 words)",
+    "citation": [3, 9, 14]
   },
   {
     "topic": "Topic name",
     "subject": "Subject name",
     "accuracy": 0.41,
     "checkpoint": "Specific mistake or misconception (10–15 words)",
-    "action": "How to fix this mistake (10–15 words)"
+    "action": "How to fix this mistake (10–15 words)",
+    "citation": [11, 20]
   },
   {
     "topic": "Topic name",
     "subject": "Subject name",
     "accuracy": 0.29,
     "checkpoint": "Specific mistake or misconception (10–15 words)",
-    "action": "How to fix this mistake (10–15 words)"
+    "action": "How to fix this mistake (10–15 words)",
+    "citation": [2, 15, 19]
   }
 ]
+
+**Citation Requirements**:
+- Each checkpoint MUST include a "citation" field listing the question numbers that support this insight
+- Citation format: array of question numbers, e.g., [5, 12, 18]
+- Include 1-3 question numbers per checkpoint as evidence
+- Questions in citation should be from the wrong_questions data provided for that topic
 
 **Guidelines**:
 - Return EXACTLY 5 paired checkpoints total (not per topic)
@@ -125,7 +136,7 @@ Each pair must be directly related—checkpoint #1's problem is addressed by act
 - Return ONLY the JSON array of exactly 5 items
 - No explanations, no notes, no markdown code blocks
 - Strictly follow the format above
-- Each item MUST have both "checkpoint" and "action" fields
+- Each item MUST have "checkpoint", "action", and "citation" fields
 
 """
 
@@ -274,6 +285,26 @@ def validate_checkpoint_structure(data):
             'checkpoint': checkpoint.strip(),
             'action': action.strip()
         }
+        
+        # Validate citation if present (optional for backward compatibility)
+        if 'citation' in item:
+            citation = item['citation']
+            # Can be list of ints (test-wise) or list of dicts (cumulative)
+            if isinstance(citation, list):
+                validated_item['citation'] = citation
+            elif isinstance(citation, str):
+                # Try to parse string format
+                try:
+                    citation = [int(q.strip().replace('Q', '').replace('q', '')) for q in citation.split(',')]
+                    validated_item['citation'] = citation
+                except:
+                    validated_item['citation'] = []
+            else:
+                validated_item['citation'] = []
+        else:
+            # Add empty citation for consistency
+            validated_item['citation'] = []
+        
         validated.append(validated_item)
     
     # Ensure exactly 5 items
@@ -380,37 +411,50 @@ For each weak topic you will receive:
     "subject": "Subject name",
     "accuracy": 64,
     "checkpoint": "Specific recurring pattern with evidence: Test X (QY), Test Z (QW)... (20–25 words)",
-    "action": "Concrete remedial action addressing the specific pattern (20–25 words)"
+    "action": "Concrete remedial action addressing the specific pattern (20–25 words)",
+    "citation": [{"test": 3, "questions": [12, 15]}, {"test": 7, "questions": [5, 22]}]
   },
   {
     "topic": "Topic name",
     "subject": "Subject name",
     "accuracy": 52,
     "checkpoint": "Specific recurring pattern with evidence: Test X (QY), Test Z (QW)... (20–25 words)",
-    "action": "Concrete remedial action addressing the specific pattern (20–25 words)"
+    "action": "Concrete remedial action addressing the specific pattern (20–25 words)",
+    "citation": [{"test": 1, "questions": [8]}, {"test": 4, "questions": [11, 19]}, {"test": 8, "questions": [3]}]
   },
   {
     "topic": "Topic name",
     "subject": "Subject name",
     "accuracy": 48,
     "checkpoint": "Specific recurring pattern with evidence: Test X (QY), Test Z (QW)... (20–25 words)",
-    "action": "Concrete remedial action addressing the specific pattern (20–25 words)"
+    "action": "Concrete remedial action addressing the specific pattern (20–25 words)",
+    "citation": [{"test": 2, "questions": [6, 14]}, {"test": 5, "questions": [9]}]
   },
   {
     "topic": "Topic name",
     "subject": "Subject name",
     "accuracy": 71,
     "checkpoint": "Specific recurring pattern with evidence: Test X (QY), Test Z (QW)... (20–25 words)",
-    "action": "Concrete remedial action addressing the specific pattern (20–25 words)"
+    "action": "Concrete remedial action addressing the specific pattern (20–25 words)",
+    "citation": [{"test": 3, "questions": [7, 18]}, {"test": 6, "questions": [2, 13]}]
   },
   {
     "topic": "Topic name",
     "subject": "Subject name",
     "accuracy": 39,
     "checkpoint": "Specific recurring pattern with evidence: Test X (QY), Test Z (QW)... (20–25 words)",
-    "action": "Concrete remedial action addressing the specific pattern (20–25 words)"
+    "action": "Concrete remedial action addressing the specific pattern (20–25 words)",
+    "citation": [{"test": 1, "questions": [4, 10]}, {"test": 7, "questions": [15, 20]}]
   }
 ]
+
+**Citation Requirements**:
+- Each checkpoint MUST include a "citation" field with structured test and question references
+- Citation format: array of objects with test number and question numbers
+  Example: [{"test": 3, "questions": [12, 15]}, {"test": 7, "questions": [5, 22]}]
+- Include 2-5 test instances per checkpoint showing the pattern across multiple tests
+- Select questions that best demonstrate the recurring pattern identified
+- Questions should come from the wrong_questions_by_test data provided
 
 **Guidelines**:
 - Return EXACTLY 5 paired checkpoints total (across all topics)
@@ -429,9 +473,9 @@ For each weak topic you will receive:
 - Return ONLY the JSON array of exactly 5 items
 - No explanations, no notes, no markdown code blocks
 - Strictly follow the format above
-- Each item MUST have both "checkpoint" and "action" fields
+- Each item MUST have "checkpoint", "action", and "citation" fields
 - Focus on PATTERNS and EVOLUTION, not isolated mistakes
-- **MANDATORY**: Checkpoints must include test/question citations for credibility and actionability
+- **MANDATORY**: Citations must include structured test/question references for credibility and actionability
 """
 
 
