@@ -38,6 +38,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './index.css';
 import App from './App.jsx';
 import { InstitutionProvider } from './lib/institutionContext.jsx';
+import { API_BASE_URL } from './utils/api.js';
 
 // Shared React Query client with sensible defaults for cached data access.
 const queryClient = new QueryClient({
@@ -73,7 +74,7 @@ function InstitutionBootstrap() {
     const controller = new AbortController();
     (async () => {
       try {
-        const res = await fetch(`/institution-by-domain?domain=${encodeURIComponent(host)}` , {
+        const res = await fetch(`${API_BASE_URL}/institution-by-domain?domain=${encodeURIComponent(host)}` , {
           method: 'GET',
           headers: { 'Accept': 'application/json' },
           signal: controller.signal,
