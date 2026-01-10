@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { studentLogin } from '../../utils/api';
+import { studentLogin, handleInstituteRedirect } from '../../utils/api';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Eye, EyeOff, GraduationCap, Sparkles } from 'lucide-react';
 import studentLoginImg from '../../assets/auth images/studentlogin.svg';
@@ -43,6 +43,10 @@ const StudentLogin = () => {
 
       localStorage.setItem('token', response.token);
       localStorage.setItem('student_id', studentId);
+      // If redirect is configured for this institution, perform it and stop local navigation
+      if (handleInstituteRedirect(response)) {
+        return;
+      }
       navigate('/student/dashboard');
     } catch {
       setError('Invalid credentials or network issue.');
