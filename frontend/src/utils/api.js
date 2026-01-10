@@ -25,8 +25,9 @@ export const isProductionGateway = () => {
     const currentHostname = window.location.hostname;
     const apiUrl = API_BASE_URL || '';
     
-    // Check 1: Must be on web.inzighted.com frontend domain
-    const isWebDomain = currentHostname === 'web.inzighted.com';
+    // Check 1: Must be on the gateway frontend domain. Allow both production
+    // gateway and the Tamilnadu staging gateway so redirects run there too.
+    const isWebDomain = currentHostname === 'web.inzighted.com' || currentHostname === 'tamilnadu.inzighted.com' || currentHostname.endsWith('.tamilnadu.inzighted.com');
     
     // Check 2: Must be using production API (not dev API)
     // Dev API: https://tamilnaduapi.inzighted.com/api
