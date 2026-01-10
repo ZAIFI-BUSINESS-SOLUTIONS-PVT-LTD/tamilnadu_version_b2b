@@ -76,7 +76,16 @@ function InstitutionBootstrap() {
     const controller = new AbortController();
     (async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/institution-by-domain?domain=${encodeURIComponent(host)}` , {
+        // Use API_BASE_URL but strip a trailing `/api` if present so we call
+        // the correct top-level endpoint (`/institution-by-domain`). This
+        // prevents double `/api/api` or calling `/api/institution-by-domain`
+        // when the server exposes it at `/institution-by-domain`.
+        const apiBase = (typeof API_BASE_URL === 'string' && API_BASE_URL.replace(/\/api$/, '')) || '';
+        const url = apiBase
+          ? `${apiBase}/institution-by-domain?domain=${encodeURIComponent(host)}`
+          : `/institution-by-domain?domain=${encodeURIComponent(host)}`;
+
+        const res = await fetch(url, {
           method: 'GET',
           headers: { 'Accept': 'application/json' },
           signal: controller.signal,
