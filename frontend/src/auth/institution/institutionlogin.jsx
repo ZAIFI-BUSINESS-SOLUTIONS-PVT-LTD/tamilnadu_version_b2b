@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { institutionLogin } from '../../utils/api';
+import { institutionLogin, handleInstituteRedirect } from '../../utils/api';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Eye, EyeOff, Lock, Mail, Sparkles } from 'lucide-react';
 import instituteLoginImg from '../../assets/auth images/institutelogin.svg';
@@ -42,7 +42,11 @@ const InstitutionLogin = () => {
       localStorage.setItem('token', response.token);
       localStorage.setItem('institution_email', email);
 
-      // Assuming institution login redirects to dashboard
+      // If redirect is configured for this institution, perform it and stop local navigation
+      if (handleInstituteRedirect(response)) {
+        return;
+      }
+      // Otherwise, stay on gateway dashboard
       navigate('/institution/dashboard');
     } catch {
       setError('Invalid credentials or network issue.');

@@ -38,6 +38,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './index.css';
 import App from './App.jsx';
 import { InstitutionProvider } from './lib/institutionContext.jsx';
+import { API_BASE_URL } from './utils/api.js';
 
 // Shared React Query client with sensible defaults for cached data access.
 const queryClient = new QueryClient({
@@ -55,13 +56,15 @@ function InstitutionBootstrap() {
   const [state, setState] = useState({ status: 'loading', institution: null });
 
   useEffect(() => {
-    const host = (typeof window !== 'undefined' && window.location && window.location.host) ? window.location.host : '';
+    const rawHost = (typeof window !== 'undefined' && window.location && window.location.hostname) ? window.location.hostname : '';
+    const host = rawHost.split(':')[0];
     const isLocal = host.includes('localhost') || host.startsWith('127.0.0.1') || host.startsWith('13.219.64.187') || host === '::1' || host.endsWith('.local') || host === '';
-    const isDevHost = host === 'tamilnadu.inzighted.com' || host.endsWith('.tamilnadu.inzighted.com');
-    const isGatewayHost = host === 'web.inzighted.com';
+    // Treat the official gateway and the Tamilnadu gateway as "safe" hosts
+    // that should not perform a remote institution lookup.
+    const isGatewayHost = host === 'web.inzighted.com' || host === 'tamilnadu.inzighted.com' || host.endsWith('.tamilnadu.inzighted.com');
 
-    // Local / dev-domain / gateway safe fallback (no remote lookup)
-    if (isLocal || isDevHost || isGatewayHost) {
+    // Local and gateway safe fallback (no remote lookup for localhost/gateway)
+    if (isLocal || isGatewayHost) {
       setState({
         status: 'ready',
         institution: { institutionId: 'dev', displayName: 'InzightEd' }
@@ -69,10 +72,11 @@ function InstitutionBootstrap() {
       return;
     }
 
+    console.log('Resolving institution for domain:', host);
     const controller = new AbortController();
     (async () => {
       try {
-        const res = await fetch(`/institution-by-domain?domain=${encodeURIComponent(host)}` , {
+        const res = await fetch(`${API_BASE_URL}/institution-by-domain?domain=${encodeURIComponent(host)}` , {
           method: 'GET',
           headers: { 'Accept': 'application/json' },
           signal: controller.signal,

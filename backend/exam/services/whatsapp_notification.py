@@ -418,7 +418,7 @@ def send_whatsapp_notification(self, class_id: str, test_num: int, educator_id: 
                     logger.error(f"❌ WhatsApp send failed (educator): {error_msg}")
                     send_results.append({'recipient': 'educator', 'id': educator.id, 'phone': formatted_phone, 'success': False, 'error': error_msg})
                     educator_failed = True
-                educator_error = error_msg
+                    educator_error = error_msg
         else:
             # No phone or already sent: still proceed to managers
             if not formatted_phone:

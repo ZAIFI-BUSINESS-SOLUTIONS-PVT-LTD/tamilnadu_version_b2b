@@ -213,8 +213,16 @@ def trigger_student_pdf_generation(self, student_id: str, test_id: str, class_id
     return result
 
 @shared_task(bind=True)
-def trigger_teacher_pdf_generation(self, teacher_id: str, test_id: str, class_id: str):
-    """Async task to trigger teacher PDF generation"""
+def trigger_teacher_pdf_generation(self, teacher_id: str, test_id: str, class_id: str, previous_results=None):
+    """
+    Async task to trigger teacher PDF generation.
+    
+    Args:
+        teacher_id: Educator ID
+        test_id: Test number
+        class_id: Class identifier
+        previous_results: Optional results from previous chord tasks (ignored)
+    """
     service = PDFTriggerService()
     result = service.trigger_pdf_generation(
         test_id=test_id,

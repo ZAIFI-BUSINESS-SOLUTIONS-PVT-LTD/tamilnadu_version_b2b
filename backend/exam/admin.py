@@ -1,5 +1,5 @@
 from django.contrib import admin
-from exam.models import Educator, Manager, TestProcessingStatus, Test, Student, Result, StudentResponse,Gemini_ApiCallLog, Gemini_ApiKeyModelMinuteStats, Gemini_ApiKeyModelDayStats, SWOT, TestMetadata, NotificationLog
+from exam.models import Educator, Manager, TestProcessingStatus, Test, Student, Result, StudentResponse, Gemini_ApiCallLog, Gemini_ApiKeyModelMinuteStats, Gemini_ApiKeyModelDayStats, SWOT, TestMetadata, NotificationLog, Institution
 from django.contrib import admin
 
 
@@ -201,3 +201,10 @@ class NotificationLogAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         # Prevent manual creation of notification logs
         return False
+
+
+@admin.register(Institution)
+class InstitutionAdmin(admin.ModelAdmin):
+    list_display = ('id', 'display_name', 'domain', 'redirect_on_login')
+    search_fields = ('display_name', 'domain')
+    ordering = ('display_name',)

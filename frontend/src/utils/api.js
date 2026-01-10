@@ -4,36 +4,27 @@ import axios from 'axios';
 export const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 /**
- * Detects if the current environment is the production gateway domain.
+ * Detects if the current environment should support redirects.
  * 
- * Uses TWO signals (both must be true):
- * 1. Runtime hostname matches 'web.inzighted.com'
- * 2. VITE_API_URL points to production API (not dev)
+ * Allows redirects from gateway domains (both prod and dev staging).
+ * - Production gateway: web.inzighted.com with api.inzighted.com
+ * - Dev/Staging gateway: tamilnadu.inzighted.com with tamilnaduapi.inzighted.com
  * 
- * Why both checks:
- * - Hostname alone could be spoofed or misconfigured
- * - API URL is injected by GitHub Actions workflow at build time
- * - Dev builds use tamilnaduapi.inzighted.com
- * - Prod builds use api.inzighted.com
+ * This enables institution-based redirects in both environments.
  * 
- * Note: Cannot use import.meta.env.MODE (always "production" for both builds)
- * 
- * @returns {boolean} - True if on production gateway, false otherwise
+ * @returns {boolean} - True if on a gateway domain that supports redirects, false otherwise
  */
 export const isProductionGateway = () => {
   try {
     const currentHostname = window.location.hostname;
-    const apiUrl = API_BASE_URL || '';
     
-    // Check 1: Must be on web.inzighted.com frontend domain
-    const isWebDomain = currentHostname === 'web.inzighted.com';
+    // Allow redirects from any gateway domain (production and staging)
+    // These are the main entry points for multi-tenant routing
+    const isGatewayDomain = 
+      currentHostname === 'web.inzighted.com' ||  // Production gateway
+      currentHostname === 'tamilnadu.inzighted.com';  // Dev/Staging gateway
     
-    // Check 2: Must be using production API (not dev API)
-    // Dev API: https://tamilnaduapi.inzighted.com/api
-    // Prod API: https://api.inzighted.com/api
-    const isProdApi = apiUrl.includes('api.inzighted.com') && !apiUrl.includes('tamilnaduapi');
-    
-    return isWebDomain && isProdApi;
+    return isGatewayDomain;
   } catch (error) {
     return false; // Fail safe: no redirect on error
   }
@@ -64,22 +55,28 @@ export const handleInstituteRedirect = (loginResponse) => {
     if (!isProductionGateway()) {
       return false; // Dev or other environment - no redirect
     }
-    
-    // Extract institute subdomain from backend response
-    const instituteSubdomain = loginResponse?.institute_subdomain;
-    
-    // Validate subdomain exists and is a valid string
-    if (!instituteSubdomain || typeof instituteSubdomain !== 'string' || !instituteSubdomain.trim()) {
-      return false; // Backend doesn't support multi-tenant yet, or no subdomain assigned
+    // Respect backend control: redirect_on_login must be true
+    const redirectAllowed = !!loginResponse?.redirect_on_login;
+    if (!redirectAllowed) return false;
+
+    // Prefer exact tenant domain from backend
+    let targetHostname = null;
+    const tenantDomain = loginResponse?.tenant_domain;
+    if (typeof tenantDomain === 'string' && tenantDomain.trim()) {
+      targetHostname = tenantDomain.trim().toLowerCase();
+    } else {
+      // Fallback to subdomain if provided (legacy)
+      const instituteSubdomain = loginResponse?.institute_subdomain;
+      if (!instituteSubdomain || typeof instituteSubdomain !== 'string' || !instituteSubdomain.trim()) {
+        return false;
+      }
+      targetHostname = `${instituteSubdomain.trim().toLowerCase()}.inzighted.com`;
     }
-    
+
     // Get current hostname
     const currentHostname = window.location.hostname;
     
-    // Construct target subdomain
-    const targetHostname = `${instituteSubdomain.trim()}.inzighted.com`;
-    
-    // Prevent redirect if we're already on the target subdomain
+    // Prevent redirect if we're already on the target domain
     if (currentHostname === targetHostname) {
       return false; // Already on correct subdomain (should never happen from web.inzighted.com)
     }
@@ -132,12 +129,6 @@ export const adminLogin = async (email, password) => {
     });
 
     const data = await response.json();
-    
-    // Check for production institute subdomain redirect
-    // Note: Redirect will happen inside handleInstituteRedirect if conditions are met
-    // The redirect is non-blocking for the return statement since it's a full page navigation
-    handleInstituteRedirect(data);
-    
     return data;
   } catch (error) {
     return { error: 'Network error, please try again' };
@@ -162,12 +153,6 @@ export const studentLogin = async (studentId, password) => {
     });
 
     const data = await response.json();
-    
-    // Check for production institute subdomain redirect
-    // Note: Redirect will happen inside handleInstituteRedirect if conditions are met
-    // The redirect is non-blocking for the return statement since it's a full page navigation
-    handleInstituteRedirect(data);
-    
     return data;
   } catch (error) {
     return { error: 'Network error, please try again' };
@@ -498,12 +483,6 @@ export const educatorLogin = async (email, password) => {
     });
 
     const data = await response.json();
-    
-    // Check for production institute subdomain redirect
-    // Note: Redirect will happen inside handleInstituteRedirect if conditions are met
-    // The redirect is non-blocking for the return statement since it's a full page navigation
-    handleInstituteRedirect(data);
-    
     return data;
   } catch (error) {
     return { error: 'Network error, please try again' };
@@ -524,12 +503,6 @@ export const institutionLogin = async (email, password) => {
     });
 
     const data = await response.json();
-    
-    // Check for production institute subdomain redirect
-    // Note: Redirect will happen inside handleInstituteRedirect if conditions are met
-    // The redirect is non-blocking for the return statement since it's a full page navigation
-    handleInstituteRedirect(data);
-    
     return data;
   } catch (error) {
     return { error: 'Network error, please try again' };

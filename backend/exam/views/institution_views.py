@@ -68,9 +68,10 @@ def institution_by_domain(request):
         """
         domain = request.GET.get('domain')
         if not domain:
-                return Response({"error": "Missing 'domain' query parameter"}, status=400)
+            return Response({"error": "Missing 'domain' query parameter"}, status=400)
 
-        domain_norm = domain.strip().lower()
+        # Defensive: strip any port or accidental suffix (e.g. 'example.com:1')
+        domain_norm = domain.split(':')[0].strip().lower()
 
         # lightweight lookup and projection for cache-friendly response
         inst = Institution.objects.filter(domain=domain_norm).values('id', 'display_name').first()
