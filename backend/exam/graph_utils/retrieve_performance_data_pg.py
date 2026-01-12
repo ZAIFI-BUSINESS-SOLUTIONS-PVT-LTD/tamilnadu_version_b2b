@@ -114,20 +114,21 @@ def fetch_chapter_topic_graph_pg(student_id, class_id):
 
 def fetch_full_chapter_topic_data_pg(student_id, class_id):
     """
-    Fetches subject → chapter → topic → list of feedback comments.
+    Fetches subject → chapter → topic → list of feedback/misconception data.
+    For wrong answers: includes both misconception and feedback.
+    For correct answers: includes only feedback.
     Returns dict compatible with frontend.
     """
-    # Get all questions attempted by student
-    # Match Neo4j: only questions where optedAnswer IS NOT NULL
+    # Get all questions attempted by student with correctness info
     attempted_questions = StudentResult.objects.filter(
         student_id=student_id,
         class_id=class_id,
         was_attempted=True  # Only attempted questions like Neo4j
-    ).values_list('test_num', 'question_number', 'subject', 'chapter', 'topic')
+    ).values_list('test_num', 'question_number', 'subject', 'chapter', 'topic', 'is_correct')
     
     subject_map = {}
     
-    for test_num, q_num, subject, chapter, topic in attempted_questions:
+    for test_num, q_num, subject, chapter, topic, is_correct in attempted_questions:
         try:
             qa = QuestionAnalysis.objects.get(
                 class_id=class_id,
@@ -135,7 +136,7 @@ def fetch_full_chapter_topic_data_pg(student_id, class_id):
                 question_number=q_num
             )
             
-            # Get student's selected answer to retrieve correct feedback
+            # Get student's selected answer to retrieve correct feedback and misconception
             from exam.models.response import StudentResponse
             response = StudentResponse.objects.filter(
                 student_id=student_id,
@@ -153,11 +154,28 @@ def fetch_full_chapter_topic_data_pg(student_id, class_id):
                 feedback = getattr(qa, f'option_{option_num}_feedback', '')
                 
                 if feedback:
+                    # For wrong answers, also include misconception data
+                    if not is_correct:
+                        misconception_type = getattr(qa, f'option_{option_num}_type', '')
+                        misconception_desc = getattr(qa, f'option_{option_num}_misconception', '')
+                        
+                        # Build entry with misconception if available
+                        if misconception_type and misconception_desc:
+                            entry = f"Q{q_num}: [Misconception: {misconception_type}] {misconception_desc}. Explanation: {feedback}"
+                        else:
+                            entry = f"Q{q_num}: {feedback}"
+                    else:
+                        # For correct answers, only feedback
+                        entry = f"Q{q_num}: {feedback}"
+                    
+                    # Structure: Subject → Chapter → Topic → Test → [entries]
+                    test_key = f"Test{test_num}"
                     subject_map \
                         .setdefault(subject, {}) \
                         .setdefault(chapter, {}) \
-                        .setdefault(topic, []) \
-                        .append(feedback)
+                        .setdefault(topic, {}) \
+                        .setdefault(test_key, []) \
+                        .append(entry)
         except QuestionAnalysis.DoesNotExist:
             continue
     

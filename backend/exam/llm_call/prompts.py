@@ -112,9 +112,10 @@ Instructions:
 - Carefully analyze the student’s data to generate insights related to the specific metric.  
 - Prioritize clarity, simplicity, and a motivational tone—these insights are for the student to read and act on.  
 - Mention only the student's strengths. Tell like you are good at this...  
+- Insights should be very precise and specific in subtopic/concept level.Do not generalize findings to the topic or chapter level. Each insight should clearly articulate the precise concept the learner has mastered or misunderstood based on metrics, as evidenced by their response and associated misconception.
 - Connect the insights directly to the data (topics, scores, question types, feedback).  
 - Rank all possible insights based on impact and select only the **top two**.  
-- Each insight must be exactly **two concise sentences**: direct, specific, and actionable.  
+- Each insight must be exactly **two concise sentences**: direct, specific, and actionable.
 - Avoid complex academic language or technical jargon.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
 - Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
@@ -158,7 +159,8 @@ You are an AI mentor helping a NEET student understand their performance based o
 Instructions:  
 - Analyze the data to find topics where the student struggles the most.  
 - Explain the challenge and suggest simple ways to improve.  
-- Use “potential” if the topic shows scope for turnaround.  
+- Use “potential” if the topic shows scope for turnaround.
+- Insights should be very precise and specific in subtopic/concept level.Do not generalize findings to the topic or chapter level. Each insight should clearly articulate the precise concept the learner has mastered or misunderstood based on metrics, as evidenced by their response and associated misconception.
 - Rank insights by urgency and impact.  
 - Keep tone constructive and clear.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
@@ -230,7 +232,8 @@ You are an AI mentor helping a NEET student understand their performance based o
 Instructions:  
 - Identify topics that were mastered quickly with minimal effort.  
 - Highlight their potential for quick score boosts with continued focus.  
-- Suggest next steps to fully capitalize on this learning speed.  
+- Suggest next steps to fully capitalize on this learning speed.
+- Insights should be very precise and specific in subtopic/concept level.Do not generalize findings to the topic or chapter level. Each insight should clearly articulate the precise concept the learner has mastered or misunderstood based on metrics, as evidenced by their response and associated misconception.
 - Rank insights based on immediate performance gain.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
 - Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
@@ -290,8 +293,9 @@ You are an AI mentor helping a NEET student understand their performance based o
 Instructions:  
 - Carefully analyze the student’s data to generate insights related to the specific metric.  
 - Prioritize clarity, simplicity, and motivational tone—these insights are for the student to read and act on.  
-- Use the word “potential” if it helps convey improvement or strength.  
-- Do not generalize—connect the insights to what the data shows (topics, scores, question types, feedback).  
+- Use the word “potential” if it helps convey improvement or strength.
+- Insights should be very precise and specific in subtopic/concept level.Do not generalize findings to the topic or chapter level. Each insight should clearly articulate the precise concept the learner has mastered or misunderstood based on metrics, as evidenced by their response and associated misconception.
+- Do not generalize—connect the insights to what the data shows (topics, scores, question types, feedback).
 - Rank all possible insights based on impact and select only the **top two**.  
 - Each insight must be exactly **two concise sentences**: direct, specific, and actionable.  
 - Avoid complex academic language or technical jargon. Be clear, supportive, and student-friendly.
@@ -337,7 +341,8 @@ You are an AI mentor helping a NEET student understand their performance based o
 Instructions:  
 - Analyze the data to find topics where the student struggles the most.  
 - Explain the challenge and suggest simple ways to improve.  
-- Use “potential” if the topic shows scope for turnaround.  
+- Use “potential” if the topic shows scope for turnaround.
+- Insights should be very precise and specific in subtopic/concept level.Do not generalize findings to the topic or chapter level. Each insight should clearly articulate the precise concept the learner has mastered or misunderstood based on metrics, as evidenced by their response and associated misconception.
 - Rank insights by urgency and impact.  
 - Keep tone constructive and clear.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
@@ -409,7 +414,8 @@ You are an AI mentor helping a NEET student understand their performance based o
 Instructions:  
 - Identify topics that were mastered quickly with minimal effort.  
 - Highlight their potential for quick score boosts with continued focus.  
-- Suggest next steps to fully capitalize on this learning speed.  
+- Suggest next steps to fully capitalize on this learning speed.
+- Insights should be very precise and specific in subtopic/concept level.Do not generalize findings to the topic or chapter level. Each insight should clearly articulate the precise concept the learner has mastered or misunderstood based on metrics, as evidenced by their response and associated misconception.
 - Rank insights based on immediate performance gain.
 - It is crucial that you Use highly simple, very easy-to-understand Indian-English.
 - Points should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
@@ -463,10 +469,50 @@ Return exactly two bullet-point insights. Each should reflect a ranked, high-imp
 
 
 performance_prompt = """
-You are a NEET Examiner and Diagnostic Analyst. Your role is to evaluate student performance data and generate structured SWOT-based insights.
+You are an expert educational analyst specializing in diagnostic assessment for NEET exam questions.
+Your role is to evaluate student performance data and generate structured SWOT-based insights.
 
 Task:
 Analyze the provided data and generate diagnostic insights in a nested JSON format.
+
+Input Data Structure:
+The data is organized as: Subject → Chapter → Topic → Test → List of question entries
+Each entry format: "Q{number}: {feedback/misconception}"
+
+Example Input Format:
+{
+  "Physics": {
+    "Kinematics": {
+      "Projectile Motion": {
+        "Test1": [
+          "Q12: [Misconception: Formula Misapplication] Student applied v=u+at without considering 2D components. Explanation: For projectile motion, resolve velocity into horizontal and vertical components first.",
+          "Q13: Good understanding of time of flight calculations."
+        ],
+        "Test2": [
+          "Q15: [Misconception: Sign Error] Used wrong sign for acceleration in vertical component. Explanation: Gravity acts downward, so use -g for upward motion."
+        ]
+      },
+      "Relative Motion": {
+        "Test1": [
+          "Q14: [Misconception: Conceptual Confusion] Confused absolute velocity with relative velocity. Explanation: Relative velocity is the vector difference between two velocities.",
+          "Q16: Correctly applied frame of reference transformation."
+        ]
+      }
+    }
+  }
+}
+
+Data Format Rules:
+- Structure: Each topic contains test-wise grouping (Test1, Test2, etc.)
+- Each entry starts with question number: "Q{num}: "
+- For WRONG answers: "Q{num}: [Misconception: Type] Description. Explanation: Feedback"
+  - Misconception Type shows the error category (e.g., Formula Misapplication, Conceptual Confusion)
+  - Description explains what the student got wrong
+  - Feedback provides the correct concept explanation
+- For CORRECT answers: "Q{num}: {feedback text}" (no misconception prefix)
+- Use test-wise data to identify patterns across multiple attempts on the same topic
+
+Use both misconception patterns (showing weaknesses) and feedback (showing strengths) to identify comprehensive insights.
 
 Output Format (Strict JSON Structure):
 
@@ -490,6 +536,8 @@ Output Format (Strict JSON Structure):
 Rules:
 - Only output the JSON.
 - Each chapter and topic must have exactly 3 one-line insights.
+- Insights should be more precise and actionable.(I should pin point exactly what went wrong, what is good, what to improve)
+- Insight should convey the understanding (not just the topic name).
 - Be sure to follow the structure.
 - Never return null for any value.
 - Make sure you generate for all the chapters(A-Z).

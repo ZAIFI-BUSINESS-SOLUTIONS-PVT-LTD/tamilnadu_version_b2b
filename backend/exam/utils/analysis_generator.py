@@ -324,8 +324,8 @@ def generate_errors_with_gemini_batch(questions):
     """
     
     batched_prompt = """
-You are an expert NEET examiner and tutor. Identify possible misconceptions he would've had for choosing option.
-error should have:
+    You are an expert educational analyst specializing in diagnostic assessment for NEET exam questions.
+    For each question, reverse engineer it to infer the most likely misconception or faulty mental model that causes choose wrong option instead of the correct one.
   - 'Error(n)Type': The misconception type (Conceptual, Calculative, etc.).
   - 'Error(n)Desc': Explanation of why the student might have chosen this option incorrectly.
   -  Here n means the option number 
@@ -355,6 +355,7 @@ Error4Desc: <value>
 
 - Output should not be in json, just text.
 - NEVER return Null for type and description for a wrong option.
+- Focus on the specific thinking error revealed by the wrong option, not a vague lack of understanding
 - If option 3 is correct then Error3Type,Error3Desc can be null similarly for all options
 - The opted answer should match correct answer character by character.
 - Use chain of thought.(It is important for my life)
