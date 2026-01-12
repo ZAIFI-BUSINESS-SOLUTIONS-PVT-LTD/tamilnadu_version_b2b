@@ -88,6 +88,7 @@ def get_test_student_performance(class_id, test_num):
         test_num=test_num
     ).order_by('question_number').values(
         'question_number',
+        'subject',
         'question_text',
         'option_1',
         'option_2',
@@ -137,6 +138,7 @@ def get_test_student_performance(class_id, test_num):
         questions_formatted = [
             {
                 "question_number": q['question_number'],
+                "subject": q.get('subject'),
                 "question_text": q['question_text'],
                 "options": [
                     q['option_1'],
@@ -183,6 +185,7 @@ def get_test_student_performance(class_id, test_num):
     questions_formatted = [
         {
             "question_number": q['question_number'],
+            "subject": q.get('subject'),
             "question_text": q['question_text'],  # Keep original with LaTeX for frontend to handle
             "options": [
                 q['option_1'],

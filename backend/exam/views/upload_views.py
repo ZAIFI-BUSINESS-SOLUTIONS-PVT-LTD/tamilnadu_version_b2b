@@ -126,14 +126,13 @@ def upload_test(request):
                         for subject in subject_order:
                             if subject not in section_counts:
                                 return JsonResponse({'error': f'Missing count for subject: {subject}'}, status=400)
-                            if not isinstance(section_counts[subject], int) or section_counts[subject] <= 0:
-                                return JsonResponse({'error': f'Invalid count for {subject}: must be positive integer'}, status=400)
+                            if not isinstance(section_counts[subject], int) or section_counts[subject] < 0:
+                                return JsonResponse({'error': f'Invalid count for {subject}: must be non-negative integer'}, status=400)
 
                         sum_counts = sum(section_counts.values())
-                        if sum_counts != total_questions:
-                            return JsonResponse({
-                                'error': f'Sum of section_counts ({sum_counts}) does not match total_questions ({total_questions})'
-                            }, status=400)
+                        if sum_counts <= 0:
+                            return JsonResponse({'error': 'At least one subject must have a positive question count'}, status=400)
+
 
                     # Create TestMetadata (include optional test_name)
                     TestMetadata.objects.create(
@@ -274,11 +273,14 @@ def save_test_metadata(request):
             for subject in subject_order:
                 if subject not in section_counts:
                     return JsonResponse({'error': f'Missing count for subject: {subject}'}, status=400)
-                if not isinstance(section_counts[subject], int) or section_counts[subject] <= 0:
-                    return JsonResponse({'error': f'Invalid count for {subject}: must be positive integer'}, status=400)
+                if not isinstance(section_counts[subject], int) or section_counts[subject] < 0:
+                    return JsonResponse({'error': f'Invalid count for {subject}: must be non-negative integer'}, status=400)
             
             # Check sum matches total
             sum_counts = sum(section_counts.values())
+            if sum_counts <= 0:
+                return JsonResponse({'error': 'At least one subject must have a positive question count'}, status=400)
+
             if sum_counts != total_questions:
                 return JsonResponse({
                     'error': f'Sum of section_counts ({sum_counts}) does not match total_questions ({total_questions})'
