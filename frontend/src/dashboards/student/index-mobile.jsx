@@ -88,6 +88,21 @@ export const SLayout = () => {
 
     return (
         <div className="flex h-screen bg-gray-100 text-text">
+            <style>{`
+                @media print {
+                    /* Hide navigation elements in print mode */
+                    header, nav, .dock-container, [class*="Header"], [class*="Dock"] {
+                        display: none !important;
+                    }
+                    
+                    main {
+                        padding: 0 !important;
+                        margin: 0 !important;
+                        overflow: visible !important;
+                    }
+                }
+            `}</style>
+
             {/* Conditional rendering of the DownloadReportModal */}
             {showDownloadModal && (
                 <DownloadReportModal onClose={() => setShowDownloadModal(false)} />
