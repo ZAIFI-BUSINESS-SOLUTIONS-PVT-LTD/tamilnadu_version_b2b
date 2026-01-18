@@ -48,3 +48,4 @@ export const SLayout = () => {
 export { default as SDashboard } from './s_dashboard.jsx';
 export { default as SSWOT } from './s_analysis.jsx';
 export { default as SPerformance } from './s_performance.jsx';
+export { default as SReportCard } from './s_reportcard.jsx';

@@ -95,21 +95,15 @@ export const handleInstituteRedirect = (loginResponse) => {
 // Helper to get PDF service URL with fallback.
 // Priority order:
 // 1. `VITE_PDF_SERVICE_URL` if explicitly provided (useful for staging/testing)
-// 2. In development: `http://localhost:8080` (local pdf_service container)
-// 3. In production: use the nginx proxy path `/pdf` so requests are
-//    same-origin and forwarded to the `pdf_service` container by nginx.
+// 2. Use `/pdf` proxy path - in DEV mode, Vite proxy forwards to nginx
+// 3. In production: same `/pdf` path goes through nginx to pdf_service
 const computePdfServiceUrl = () => {
   const explicit = import.meta.env.VITE_PDF_SERVICE_URL;
   if (explicit) return explicit;
 
-  // Vite exposes flags for the current mode
-  if (import.meta.env.DEV) {
-    return 'http://localhost:8080';
-  }
-
-  // Production default: rely on backend/nginx proxy at `/pdf`.
-  // Using a relative path keeps requests same-origin and routes
-  // them through the existing `nginx` proxy (`location /pdf/`).
+  // Use relative path `/pdf` for both dev and production
+  // In dev: Vite proxy (vite.config.js) forwards /pdf -> nginx -> pdf_service
+  // In prod: nginx directly routes /pdf -> pdf_service
   return '/pdf';
 };
 
@@ -234,6 +228,30 @@ export const fetchAvailableSwotTests = async () => {
     return response.data?.available_tests || [];
   } catch (error) {
     return [];
+  }
+};
+
+/**
+ * Fetch Student Report Card Data
+ */
+export const fetchStudentReportCard = async (testNum = null) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.post(
+      `${API_BASE_URL}/student/report-card/`,
+      { test_num: testNum },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error('Failed to fetch report card data:', error);
+    throw error;
   }
 };
 
@@ -747,6 +765,35 @@ export const generateTeacherSelfPdfReport = async (testId, classId = null, educa
     }
     const response = await fetch(
       url,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      }
+    );
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+    }
+    const blob = await response.blob();
+    return blob;
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Generate PDF for Student Report Card (2 pages) - Direct download, no S3
+ */
+export const generateStudentReportCardPdf = async (testId) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('Authentication token not found');
+    }
+    const response = await fetch(
+      `${PDF_SERVICE_URL}/generate-student-report-card-pdf?testId=${encodeURIComponent(testId)}`,
       {
         method: 'GET',
         headers: {

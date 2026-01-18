@@ -4,7 +4,8 @@ import {
     House,
     Target,
     ChartBar,
-    Files
+    Files,
+    GraduationCap
 } from "@phosphor-icons/react";
 import { useUserData } from '../components/hooks/z_header/z_useUserData.js';
 import { fetchstudentdetail } from '../../utils/api.js';
@@ -39,7 +40,7 @@ export const SLayout = () => {
             to: '/student/dashboard',
             icon: <House weight="regular" size={20} />,
             text: 'Home',
-            activePattern: /^\/student\/dashboard/
+            activePattern: /^\/student\/dashboard$/
         },
         {
             to: '/student/swot',
@@ -52,6 +53,12 @@ export const SLayout = () => {
             icon: <ChartBar weight="regular" size={20} />,
             text: 'Deep Dive',
             activePattern: /^\/student\/performance/
+        },
+        {
+            to: '/student/report-card',
+            icon: <GraduationCap weight="regular" size={20} />,
+            text: 'Report Card',
+            activePattern: /^\/student\/report-card/
         },
     ];
 
@@ -111,3 +118,4 @@ export const SLayout = () => {
 export { default as SDashboard } from './s_dashboard.jsx';
 export { default as SSWOT } from './s_analysis.jsx';
 export { default as SPerformance } from './s_performance.jsx';
+export { default as SReportCard } from './s_reportcard.jsx';

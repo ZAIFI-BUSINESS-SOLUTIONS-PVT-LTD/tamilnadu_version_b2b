@@ -1074,5 +1074,53 @@ chapter_list = {
   ]
 }
 
-
-
+chapter_weights = {
+  "Physics": [
+    { "topic": "Current Electricity", "weightage": "10%" },
+    { "topic": "Electrostatic Potential and Capacitance", "weightage": "7%" },
+    { "topic": "Ray Optics and Optical Instruments", "weightage": "6%" },
+    { "topic": "Semiconductor Electronics", "weightage": "5%" },
+    { "topic": "Units and Measurements", "weightage": "5%" },
+    { "topic": "Alternating Current", "weightage": "4%" },
+    { "topic": "Dual Nature of Radiation and Matter", "weightage": "4%" },
+    { "topic": "Gravitation", "weightage": "4%" },
+    { "topic": "Moving Charges and Magnetism", "weightage": "4%" },
+    { "topic": "Rotational Motion", "weightage": "4%" }
+  ],
+  "Chemistry": [
+    { "topic": "Aldehydes, Ketones & Carboxylic Acids", "weightage": "9%" },
+    { "topic": "Organic Chemistry – Basic Principles", "weightage": "7%" },
+    { "topic": "Hydrocarbons", "weightage": "6%" },
+    { "topic": "Chemical Bonding and Molecular Structure", "weightage": "6%" },
+    { "topic": "Coordination Compounds", "weightage": "6%" },
+    { "topic": "Equilibrium", "weightage": "6%" },
+    { "topic": "Chemical Kinetics", "weightage": "6%" },
+    { "topic": "d- & f-Block Elements", "weightage": "6%" },
+    { "topic": "Solutions", "weightage": "4%" },
+    { "topic": "Electrochemistry", "weightage": "4%" }
+  ],
+  "Botany": [
+    { "topic": "Molecular Basis of Inheritance", "weightage": "14%" },
+    { "topic": "Principles of Inheritance and Variation", "weightage": "10%" },
+    { "topic": "Cell Cycle and Cell Division", "weightage": "9%" },
+    { "topic": "Anatomy of Flowering Plants", "weightage": "7%" },
+    { "topic": "Plant Kingdom", "weightage": "7%" },
+    { "topic": "Morphology of Flowering Plants", "weightage": "6%" },
+    { "topic": "Plant Growth and Development", "weightage": "6%" },
+    { "topic": "Sexual Reproduction in Flowering Plants", "weightage": "6%" },
+    { "topic": "Cell: The Unit of Life", "weightage": "5%" },
+    { "topic": "Biodiversity and Conservation", "weightage": "4%" }
+  ],
+  "Zoology": [
+    { "topic": "Biotechnology – Principles and Processes", "weightage": "12%" },
+    { "topic": "Biomolecules", "weightage": "10%" },
+    { "topic": "Structural Organisation in Animals", "weightage": "8%" },
+    { "topic": "Reproductive Health", "weightage": "8%" },
+    { "topic": "Animal Kingdom", "weightage": "10%" },
+    { "topic": "Human Reproduction", "weightage": "6%" },
+    { "topic": "Evolution", "weightage": "6%" },
+    { "topic": "Human Health and Disease", "weightage": "7%" },
+    { "topic": "Body Fluids and Circulation", "weightage": "5%" },
+    { "topic": "Excretory Products and Elimination", "weightage": "5%" }
+  ]
+}

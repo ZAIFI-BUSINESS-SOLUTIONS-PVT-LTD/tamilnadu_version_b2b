@@ -275,6 +275,49 @@ export const generateTeacherSelfPdf = async (req, res) => {
   }
 };
 
+export const generateStudentReportCardPdf = async (req, res) => {
+  const { testId } = req.query;
+  let jwtToken = undefined;
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    jwtToken = authHeader.replace(/^Bearer /, '');
+  }
+  
+  // Get origin from request headers
+  let origin = req.headers.origin || req.headers.referer || config.tenants.defaultOrigin;
+  if (!req.headers.origin && req.headers.referer) {
+    try {
+      const refererUrl = new URL(req.headers.referer);
+      origin = `${refererUrl.protocol}//${refererUrl.hostname}`;
+    } catch (err) {
+      // Invalid referer, use as-is
+    }
+  }
+  
+  try {
+    logger.info('Student report card PDF generation request received', { testId, origin });
+    const result = await pdfService.generateStudentReportCardPdf(testId, jwtToken, origin);
+    
+    // Direct streaming only (no S3)
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+    res.setHeader('Content-Length', result.buffer.length);
+    res.send(result.buffer);
+    if (config.nodeEnv === 'production') {
+      pdfService.cleanup(result.filePath);
+    }
+    logger.info('Student report card PDF sent successfully', { testId, filename: result.filename });
+  } catch (error) {
+    logger.error('Student report card PDF generation request failed', { testId, error: error.message });
+    const isDevelopment = config.nodeEnv === 'development';
+    res.status(500).json({
+      error: 'PDF Generation Failed',
+      message: 'Unable to generate student report card PDF',
+      ...(isDevelopment && { details: error.message })
+    });
+  }
+};
+
 // Internal service authentication middleware
 const validateInternalAuth = (req, res, next) => {
   const authHeader = req.headers['x-service-auth'];

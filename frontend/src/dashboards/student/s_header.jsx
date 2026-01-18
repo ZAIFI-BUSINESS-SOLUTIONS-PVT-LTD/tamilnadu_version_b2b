@@ -5,7 +5,8 @@ import {
   WandSparkles,
   Blocks,
   FileText,
-  AlignLeft
+  AlignLeft,
+  GraduationCap
 } from "lucide-react";
 import { useStudentDetails } from '../../hooks/useStudentData';
 import DesktopSidebar from '../components/header/DesktopSidebar.jsx';
@@ -49,7 +50,7 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
       to: '/student/dashboard',
       icon: <Home size={20} />,
       text: 'Home',
-      activePattern: /^\/student\/dashboard/
+      activePattern: /^\/student\/dashboard$/
     },
     {
       to: '/student/swot',
@@ -62,6 +63,12 @@ const StudentHeader = ({ isSidebarCollapsed, toggleSidebarCollapse }) => {
       icon: <Blocks size={20} />,
       text: 'Chapters & Topics',
       activePattern: /^\/student\/performance/
+    },
+    {
+      to: '/student/report-card',
+      icon: <GraduationCap size={20} />,
+      text: 'Report Card',
+      activePattern: /^\/student\/report-card/
     },
   ];
 

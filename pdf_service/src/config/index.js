@@ -9,6 +9,10 @@ const tenantConfig = {
     frontend: 'https://inzighted.com',
     backend: 'https://api.inzighted.com/api'
   },
+  'https://rgracademy.inzighted.com': {
+    frontend: 'https://rgracademy.inzighted.com',
+    backend: 'https://api.inzighted.com/api'
+  },
   'https://tamilnadu.inzighted.com': {
     frontend: process.env.PDF_TAMIL_FRONTEND_URL || 'https://tamilnadu.inzighted.com',
     backend: process.env.PDF_TAMIL_BACKEND_URL || 'https://tamilnaduapi.inzighted.com/api'
@@ -69,7 +73,8 @@ const config = {
           'http://13.219.64.187:5173',
           'http://13.219.64.187:3000',
           'https://inzighted.com',
-          'https://tamilnadu.inzighted.com'
+          'https://tamilnadu.inzighted.com',
+          'https://rgracademy.inzighted.com'
         ],
     credentials: true,
     optionsSuccessStatus: 200

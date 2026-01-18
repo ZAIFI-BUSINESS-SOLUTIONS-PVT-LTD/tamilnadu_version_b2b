@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 # Combined Checkpoint Prompt
 checkpoint_prompt = """
-**Task**: Generate 5 paired diagnostic checkpoints for a NEET student's test performance.
+**Task**: Generate 2 paired diagnostic checkpoints PER SUBJECT for a NEET student's test performance.
 
 **Context**: You are an educational analyst creating paired insights where:
 - **Checkpoint** identifies WHAT went wrong (the problem/mistake) — diagnostic and factual
@@ -24,7 +24,7 @@ checkpoint_prompt = """
 Each pair must be directly related—checkpoint #1's problem is addressed by action #1.
 
 **Input Data Provided**:
-- Multiple weak topics from a specific test with performance metrics (accuracy, weighted accuracy, improvement rate)
+- Multiple weak topics GROUPED BY SUBJECT from a specific test with performance metrics (accuracy, weighted accuracy, improvement rate)
 - Wrong questions from each topic including:
   - Question text, options, selected answer, correct answer
   - Misconception type and description
@@ -32,8 +32,8 @@ Each pair must be directly related—checkpoint #1's problem is addressed by act
   - Question type
 
 **Your Task**:
-1. Analyze ALL weak topics and wrong answers provided
-2. Identify specific problems, mistakes, and misconceptions across all topics:
+1. Analyze ALL weak topics and wrong answers provided FOR EACH SUBJECT SEPARATELY
+2. Identify specific problems, mistakes, and misconceptions within each subject:
    - What conceptual errors were made
    - What calculation/procedural mistakes occurred
    - What patterns of confusion are evident
@@ -44,7 +44,7 @@ Each pair must be directly related—checkpoint #1's problem is addressed by act
    - **Severity/Impact**: How much this mistake affects overall performance
    - **Frequency**: How often this mistake appears across questions
    - **Actionability**: How clear and achievable the solution is
-4. Select the **top 5 most critical problem-solution pairs** from across all topics
+4. Select the **top 2 most critical problem-solution pairs PER SUBJECT**
 5. For each problem, generate a paired checkpoint:
    - **Checkpoint**: What went wrong (diagnostic, factual, not prescriptive)
    - **Action**: How to fix it (prescriptive, actionable, specific to the mistake)
@@ -77,6 +77,7 @@ Each pair must be directly related—checkpoint #1's problem is addressed by act
 [
   {
     "topic": "Topic name",
+    "subtopic": "Specific subtopic/concept within the topic",
     "subject": "Subject name",
     "accuracy": 0.45,
     "checkpoint": "Specific mistake or misconception (10–15 words)",
@@ -85,35 +86,12 @@ Each pair must be directly related—checkpoint #1's problem is addressed by act
   },
   {
     "topic": "Topic name",
+    "subtopic": "Specific subtopic/concept within the topic",
     "subject": "Subject name",
     "accuracy": 0.32,
     "checkpoint": "Specific mistake or misconception (10–15 words)",
     "action": "How to fix this mistake (10–15 words)",
     "citation": [7, 22]
-  },
-  {
-    "topic": "Topic name",
-    "subject": "Subject name",
-    "accuracy": 0.58,
-    "checkpoint": "Specific mistake or misconception (10–15 words)",
-    "action": "How to fix this mistake (10–15 words)",
-    "citation": [3, 9, 14]
-  },
-  {
-    "topic": "Topic name",
-    "subject": "Subject name",
-    "accuracy": 0.41,
-    "checkpoint": "Specific mistake or misconception (10–15 words)",
-    "action": "How to fix this mistake (10–15 words)",
-    "citation": [11, 20]
-  },
-  {
-    "topic": "Topic name",
-    "subject": "Subject name",
-    "accuracy": 0.29,
-    "checkpoint": "Specific mistake or misconception (10–15 words)",
-    "action": "How to fix this mistake (10–15 words)",
-    "citation": [2, 15, 19]
   }
 ]
 
@@ -124,19 +102,24 @@ Each pair must be directly related—checkpoint #1's problem is addressed by act
 - Questions in citation should be from the wrong_questions data provided for that topic
 
 **Guidelines**:
-- Return EXACTLY 5 paired checkpoints total (not per topic)
-- These 5 should be the highest-impact issues across ALL topics
+- Return EXACTLY 2 paired checkpoints PER SUBJECT (not 5 total)
+- If Physics topics provided, return 2 Physics checkpoints
+- If Chemistry topics provided, return 2 Chemistry checkpoints
+- If Biology topics provided, return 2 Biology checkpoints
+- Total checkpoints = 2 × (number of subjects in input data)
+- Within each subject, select the 2 highest-impact issues from that subject's topics
 - Each checkpoint-action pair must be logically connected
 - Checkpoints should reflect actual wrong answers in the data
 - Actions should directly address the checkpoint's problem
-- Multiple pairs can be from the same topic if they're high-impact
+- Multiple pairs can be from the same topic if they're high-impact within that subject
 - Keep tone supportive and constructive
 
 **Important**:
-- Return ONLY the JSON array of exactly 5 items
+- Return ONLY the JSON array with 2 items per subject
 - No explanations, no notes, no markdown code blocks
 - Strictly follow the format above
-- Each item MUST have "checkpoint", "action", and "citation" fields
+- Each item MUST have "topic", "subtopic", "subject", "checkpoint", "action", and "citation" fields
+- Group output by subject (all Physics together, all Chemistry together, all Biology together)
 
 """
 
@@ -145,6 +128,7 @@ Each pair must be directly related—checkpoint #1's problem is addressed by act
 def generate_checkpoints_testwise(student_id, class_id, test_num, weak_topics_data):
     """
     Generate combined checkpoints (checklist + action plan) in a single LLM call.
+    Now generates 2 checkpoints per subject instead of 5 total.
     
     Args:
         student_id: Student identifier
@@ -153,16 +137,18 @@ def generate_checkpoints_testwise(student_id, class_id, test_num, weak_topics_da
         weak_topics_data: Dict containing 'topics' list with weak topic information
     
     Returns:
-        list: List of 5 checkpoint dictionaries with checkpoint and action fields
+        list: List of checkpoint dictionaries (2 per subject) with checkpoint and action fields
     """
     try:
         if not weak_topics_data or 'topics' not in weak_topics_data or not weak_topics_data['topics']:
             logger.info(f"No weak topics found for student {student_id} - performing well")
             return []
         
-        # Prepare data for LLM (same format as actionplan/checklist)
-        topics_for_llm = []
+        # Group topics by subject
+        from collections import defaultdict
+        topics_by_subject = defaultdict(list)
         for topic_data in weak_topics_data['topics']:
+            subject = topic_data.get('subject', 'Unknown')
             topic_info = {
                 'topic': topic_data['topic'],
                 'subject': topic_data['subject'],
@@ -172,10 +158,17 @@ def generate_checkpoints_testwise(student_id, class_id, test_num, weak_topics_da
                 'total_questions': topic_data['total_questions'],
                 'wrong_questions': topic_data['wrong_questions']
             }
-            topics_for_llm.append(topic_info)
+            topics_by_subject[subject].append(topic_info)
         
-        # Build LLM prompt
-        full_prompt = checkpoint_prompt + "\n\n**Weak Topics Data**:\n" + json.dumps(topics_for_llm, indent=2)
+        # Convert to list grouped by subject
+        topics_for_llm = []
+        for subject in sorted(topics_by_subject.keys()):  # Sort for consistency
+            topics_for_llm.extend(topics_by_subject[subject])
+        
+        # Build LLM prompt with subject grouping info
+        subject_count = len(topics_by_subject)
+        subject_names = ", ".join(sorted(topics_by_subject.keys()))
+        full_prompt = checkpoint_prompt + f"\n\n**Subjects in Data**: {subject_names} ({subject_count} subjects)\n**Expected Output**: {subject_count * 2} checkpoints (2 per subject)\n\n**Weak Topics Data (Grouped by Subject)**:\n" + json.dumps(topics_for_llm, indent=2)
         
         # Call Gemini with retry (structured)
         for attempt in range(3):
@@ -280,6 +273,7 @@ def validate_checkpoint_structure(data):
         
         validated_item = {
             'topic': item['topic'],
+            'subtopic': item.get('subtopic', '').strip(),
             'subject': item['subject'],
             'accuracy': item.get('accuracy', 0.0),
             'checkpoint': checkpoint.strip(),
@@ -307,8 +301,9 @@ def validate_checkpoint_structure(data):
         
         validated.append(validated_item)
     
-    # Ensure exactly 5 items
-    return validated[:5]
+    # Return all validated items (2 per subject, variable total)
+    # No longer limiting to exactly 5 items
+    return validated
 
 
 # ========================================
@@ -316,15 +311,15 @@ def validate_checkpoint_structure(data):
 # ========================================
 
 cumulative_checkpoint_prompt = """
-**Task**: Generate 5 paired diagnostic checkpoints analyzing a NEET student's long-term learning patterns across ALL tests taken.
+**Task**: Generate 2 paired diagnostic checkpoints PER SUBJECT analyzing a NEET student's long-term learning patterns across ALL tests taken.
 
 **Context**: You are an expert educational analyst specializing in long-term learning behavior across multiple exams. You will receive:
-- Topic-level performance metrics aggregated across all tests
+- Topic-level performance metrics aggregated across all tests GROUPED BY SUBJECT
 - Wrong questions grouped by test (in chronological order)
 - For each wrong question: misconception type and detailed misconception description
 
-**Your Goal**: Analyze the student's learning trajectory over time to:
-1. Identify recurring or semantically similar misconceptions across different tests
+**Your Goal**: Analyze the student's learning trajectory over time PER SUBJECT to:
+1. Identify recurring or semantically similar misconceptions across different tests WITHIN EACH SUBJECT
 2. Track how misunderstandings evolve (e.g., conceptual → application errors)
 3. Detect subtopics where foundational understanding was never fully corrected
 4. Reveal hidden weaknesses not obvious from accuracy or improvement rate alone
@@ -408,6 +403,7 @@ For each weak topic you will receive:
 [
   {
     "topic": "Topic name",
+    "subtopic": "Specific subtopic/concept within the topic",
     "subject": "Subject name",
     "accuracy": 64,
     "checkpoint": "Specific recurring pattern with evidence: Test X (QY), Test Z (QW)... (20–25 words)",
@@ -416,6 +412,7 @@ For each weak topic you will receive:
   },
   {
     "topic": "Topic name",
+    "subtopic": "Specific subtopic/concept within the topic",
     "subject": "Subject name",
     "accuracy": 52,
     "checkpoint": "Specific recurring pattern with evidence: Test X (QY), Test Z (QW)... (20–25 words)",
@@ -456,26 +453,37 @@ For each weak topic you will receive:
 - Select questions that best demonstrate the recurring pattern identified
 - Questions should come from the wrong_questions_by_test data provided
 
+**Subtopic Requirements**:
+- Each checkpoint MUST include a "subtopic" field identifying the specific concept area
+- Infer subtopic from the pattern of misconceptions across tests
+- Subtopic should be more granular than topic (e.g., "Gametophyte vs Sporophyte Phases" within "Bryophyte Life Cycle")
+- Keep subtopic name concise (3-5 words)
+
 **Guidelines**:
-- Return EXACTLY 5 paired checkpoints total (across all topics)
-- Prioritize patterns that appear in multiple tests or affect multiple subtopics
+- Return EXACTLY 2 paired checkpoints PER SUBJECT (not 5 total)
+- If Physics topics provided, return 2 Physics checkpoints
+- If Chemistry topics provided, return 2 Chemistry checkpoints
+- If Biology topics provided, return 2 Biology checkpoints
+- Total checkpoints = 2 × (number of subjects in input data)
+- Within each subject, prioritize patterns that appear in multiple tests or affect multiple subtopics
 - Focus on HIGH-IMPACT patterns that block long-term mastery
 - **CRITICAL**: Each checkpoint MUST cite specific test numbers and question numbers as evidence
 - Each checkpoint should reveal insights humans would miss by looking at individual tests
 - Be SPECIFIC about the exact misconception, not vague (e.g., "confused X with Y" not "missed details")
 - Actions should target systematic improvement, not quick fixes
 - Actions should include concrete activities (e.g., "draw 10 diagrams", "solve 15 problems on X")
-- Multiple checkpoints can be from the same topic if multiple distinct patterns exist
+- Multiple checkpoints can be from the same topic within a subject if multiple distinct patterns exist
 - Keep tone supportive yet honest about persistent issues
 - Quality over brevity: use the full 20-25 word limit to be specific and evidence-based
 
 **Important**:
-- Return ONLY the JSON array of exactly 5 items
+- Return ONLY the JSON array with 2 items per subject
 - No explanations, no notes, no markdown code blocks
 - Strictly follow the format above
-- Each item MUST have "checkpoint", "action", and "citation" fields
+- Each item MUST have "topic", "subtopic", "subject", "checkpoint", "action", and "citation" fields
 - Focus on PATTERNS and EVOLUTION, not isolated mistakes
 - **MANDATORY**: Citations must include structured test/question references for credibility and actionability
+- Group output by subject (all Physics together, all Chemistry together, all Biology together)
 """
 
 
@@ -483,6 +491,7 @@ For each weak topic you will receive:
 def generate_cumulative_checkpoints(student_id, class_id, topics_data):
     """
     Generate cumulative checkpoints analyzing patterns across all tests.
+    Now generates 2 checkpoints per subject instead of 5 total.
     
     Args:
         student_id: Student identifier
@@ -490,23 +499,32 @@ def generate_cumulative_checkpoints(student_id, class_id, topics_data):
         topics_data: Dict with 'topics' list containing cumulative data
     
     Returns:
-        list: List of 5 checkpoint dictionaries with checkpoint and action fields
+        list: List of checkpoint dictionaries (2 per subject) with checkpoint and action fields
     """
     try:
         if not topics_data or 'topics' not in topics_data or not topics_data['topics']:
             logger.info(f"No cumulative topics data for student {student_id} - no tests taken or perfect performance")
             return []
         
-        # Prepare data for LLM
-        topics_for_llm = []
+        # Group topics by subject
+        from collections import defaultdict
+        topics_by_subject = defaultdict(list)
         for topic_data in topics_data['topics']:
-            topics_for_llm.append({
+            subject = topic_data['topic_metadata'].get('subject', 'Unknown')
+            topics_by_subject[subject].append({
                 'topic_metadata': topic_data['topic_metadata'],
                 'wrong_questions_by_test': topic_data['wrong_questions_by_test']
             })
         
-        # Build LLM prompt
-        full_prompt = cumulative_checkpoint_prompt + "\n\n**Cumulative Topics Data**:\n" + json.dumps(topics_for_llm, indent=2)
+        # Convert to list grouped by subject
+        topics_for_llm = []
+        for subject in sorted(topics_by_subject.keys()):  # Sort for consistency
+            topics_for_llm.extend(topics_by_subject[subject])
+        
+        # Build LLM prompt with subject grouping info
+        subject_count = len(topics_by_subject)
+        subject_names = ", ".join(sorted(topics_by_subject.keys()))
+        full_prompt = cumulative_checkpoint_prompt + f"\n\n**Subjects in Data**: {subject_names} ({subject_count} subjects)\n**Expected Output**: {subject_count * 2} checkpoints (2 per subject)\n\n**Cumulative Topics Data (Grouped by Subject)**:\n" + json.dumps(topics_for_llm, indent=2)
         
         # Call Gemini with retry (structured)
         for attempt in range(3):

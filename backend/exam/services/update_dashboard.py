@@ -270,6 +270,25 @@ def _internal_student_dashboard_update(student_id, class_id, test_num, db_name):
             status_obj.save()
         logger.info(f"✅ Test-wise SWOT saved for {student_id} test {test_num}")
     
+    # Generate and save student report data (after all other updates)
+    if test_num:
+        try:
+            from exam.services.student_report_service import compute_student_report_data, save_student_report
+            
+            report_data = compute_student_report_data(student_id, class_id, test_num)
+            save_student_report(student_id, class_id, test_num, report_data)
+            result['student_report'] = report_data
+            
+            if status_obj:
+                status_obj.logs += f"✅ Student report saved for {student_id} test {test_num}\n"
+                status_obj.save()
+            logger.info(f"✅ Student report saved for {student_id} test {test_num}")
+        except Exception as e:
+            logger.error(f"⚠️ Failed to save student report for {student_id}: {e}", exc_info=True)
+            if status_obj:
+                status_obj.logs += f"⚠️ Student report error (non-critical): {e}\n"
+                status_obj.save()
+    
     logger.info(f"✅ Dashboard update completed for student {student_id}")
     return result
 

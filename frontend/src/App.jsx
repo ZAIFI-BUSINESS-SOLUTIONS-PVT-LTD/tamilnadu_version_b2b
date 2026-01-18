@@ -31,7 +31,8 @@ import {
   SLayout,
   SDashboard,
   SSWOT,
-  SPerformance
+  SPerformance,
+  SReportCard
 } from './dashboards/student';
 
 // Import institution layout and nested pages
@@ -82,6 +83,7 @@ function App() {
           <Route path="dashboard" element={<SDashboard />} />
           <Route path="swot" element={<SSWOT />} />
           <Route path="performance" element={<SPerformance />} />
+          <Route path="report-card" element={<SReportCard />} />
         </Route>
 
         {/* Institution protected pages via layout */}

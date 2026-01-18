@@ -241,3 +241,176 @@ def get_student_checkpoints(request):
     except Exception as e:
         logger.exception(f"Error in get_student_checkpoints: {str(e)}")
         return Response({"error": str(e)}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def get_student_report_card(request):
+    """
+    Get comprehensive report card data for a specific test.
+    POST body: {"test_num": <test_number>} (optional, defaults to last test)
+    
+    Returns data for two-page report card:
+    - Page 1: Performance metrics, subject-wise charts, improvement trend, mistakes table
+    - Page 2: Study planner, frequent mistakes, class vs student analysis
+    """
+    try:
+        from exam.models.student_report import StudentReport
+        from exam.models.test import Test
+        from collections import defaultdict
+        
+        student_id = request.user.student_id
+        student = Student.objects.filter(student_id=student_id).first()
+
+        if not student:
+            return Response({"error": "Student not found"}, status=404)
+
+        class_id = student.class_id
+        
+        # Get available tests for this student
+        available_tests = Test.objects.filter(class_id=class_id).order_by('test_num').values_list('test_num', flat=True)
+        available_tests = list(available_tests)
+        
+        if not available_tests:
+            return Response({"error": "No tests found for this student"}, status=404)
+        
+        # Get test_num from request or default to last test
+        test_num = request.data.get("test_num")
+        if test_num is None:
+            test_num = available_tests[-1]  # Last test
+        else:
+            test_num = int(test_num)
+            
+        logger.info(f"get_student_report_card called for student={student_id} test_num={test_num}")
+
+        # Fetch current test report
+        current_report = StudentReport.objects.filter(
+            student_id=student_id,
+            class_id=class_id,
+            test_num=test_num
+        ).first()
+
+        if not current_report:
+            return Response({"error": f"No report found for test {test_num}"}, status=404)
+
+        # Fetch all reports for trend analysis
+        all_reports = StudentReport.objects.filter(
+            student_id=student_id,
+            class_id=class_id,
+            test_num__lte=test_num
+        ).order_by('test_num')
+
+        # Fetch checkpoints for mistakes table
+        checkpoints = Checkpoints.objects.filter(
+            student_id=student_id,
+            class_id=class_id,
+            test_num=test_num
+        ).first()
+
+        # === PAGE 1 DATA ===
+        
+        # Header & Top Summary Cards
+        page1_data = {
+            "student_name": student.name,
+            "total_marks": current_report.mark,
+            "improvement_percentage": round(current_report.improvement_rate, 1),
+            "average_marks": round(current_report.average, 1),
+        }
+
+        # Subject-wise pie charts
+        subject_wise_data = []
+        subject_wise = current_report.subject_wise or {}
+        subject_wise_avg = current_report.subject_wise_avg or {}
+        
+        for subject, counts in subject_wise.items():
+            subject_wise_data.append({
+                "subject": subject,
+                "correct_count": counts.get("correct", 0),
+                "incorrect_count": counts.get("incorrect", 0),
+                "skipped_count": counts.get("skipped", 0),
+                "subject_average_marks": round(subject_wise_avg.get(subject, 0), 1)
+            })
+        
+        page1_data["subject_wise_data"] = subject_wise_data
+
+        # Performance Trend Line Graph - Send sub_wise_marks as-is
+        # Format: { "1": {"Botany": 138, "Physics": 78, ...}, "2": {...}, ... }
+        page1_data["performance_trend"] = current_report.sub_wise_marks or {}
+
+        # Mistakes Table (from checkpoints - first checkpoint per subject)
+        mistakes_table = []
+        if checkpoints and checkpoints.insights:
+            seen_subjects = set()
+            for insight in checkpoints.insights:
+                subject = insight.get("subject", "")
+                if subject and subject not in seen_subjects:
+                    mistakes_table.append({
+                        "subject": subject,
+                        "subtopic": insight.get("subtopic", ""),
+                        "mistake_detail": insight.get("checkpoint", ""),
+                        "checked": False
+                    })
+                    seen_subjects.add(subject)
+        
+        page1_data["mistakes_table"] = mistakes_table
+
+        # === PAGE 2 DATA ===
+        
+        page2_data = {}
+
+        # Study Planner Table (6 days × subjects)
+        subtopic_list = current_report.subtopic_list or {}
+        study_planner = []
+        
+        # Get all subjects
+        subjects = list(subtopic_list.keys())
+        
+        # Create 6 days of study plan
+        for day in range(1, 7):
+            day_plan = {"day": day}
+            for subject in subjects:
+                subtopics = subtopic_list.get(subject, [])
+                if day - 1 < len(subtopics):
+                    day_plan[subject] = subtopics[day - 1].get("subtopic", "")
+                else:
+                    day_plan[subject] = ""
+            study_planner.append(day_plan)
+        
+        page2_data["study_planner"] = study_planner
+        page2_data["subjects"] = subjects
+
+        # Frequent Mistake Cards (highest citation count per subject)
+        frequent_mistakes = []
+        for subject, subtopics in subtopic_list.items():
+            if subtopics:
+                # Find subtopic with highest citation count
+                max_subtopic = max(subtopics, key=lambda x: len(x.get("citations", [])))
+                frequent_mistakes.append({
+                    "subject": subject,
+                    "subtopic": max_subtopic.get("subtopic", ""),
+                    "frequency": len(max_subtopic.get("citations", []))
+                })
+        
+        page2_data["frequent_mistakes"] = frequent_mistakes
+
+        # Class vs You Analysis
+        class_vs_student = current_report.class_vs_student or []
+        page2_data["class_vs_you"] = class_vs_student
+
+        # Chapter Word Cloud (based on lowest accuracy chapters with NEET weights)
+        from exam.utils.chapter_cloud import get_chapter_word_cloud
+        word_cloud_data = get_chapter_word_cloud(student_id, class_id, test_num)
+        page2_data["previous_year_topics"] = word_cloud_data
+
+        # Return combined data
+        return Response({
+            "test_num": test_num,
+            "available_tests": available_tests,
+            "page1": page1_data,
+            "page2": page2_data
+        })
+
+    except Exception as e:
+        logger.exception(f"Error in get_student_report_card: {str(e)}")
+        sentry_sdk.capture_exception(e)
+        return Response({"error": str(e)}, status=500)

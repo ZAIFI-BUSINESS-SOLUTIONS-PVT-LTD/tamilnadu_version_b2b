@@ -41,6 +41,9 @@ urlpatterns = [
     
     # Checkpoints API (combined checklist + action plan)
     path('api/student/checkpoints/', student_views.get_student_checkpoints, name='student_checkpoints'),
+    
+    # Report Card API (comprehensive report card data)
+    path('api/student/report-card/', student_views.get_student_report_card, name='student_report_card'),
 
     path('api/educator/swot/', educator_views.get_educator_swot, name='educator_swot'),
     path('api/educator/swot/tests/', educator_views.list_available_swot_tests, name='educator_test'),

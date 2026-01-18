@@ -1055,6 +1055,129 @@ class PdfService {
       if (page) await page.close();
     }
   }
+
+  /**
+   * Generate PDF for student report card (2 pages) - NO S3 upload
+   * @param {string} testId
+   * @param {string} jwtToken
+   * @param {string} origin
+   */
+  async generateStudentReportCardPdf(testId, jwtToken, origin) {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+
+    // Get tenant-specific URLs
+    const tenantUrls = config.pdf.getTenantUrls(origin);
+    const startTime = Date.now();
+    let page = null;
+
+    try {
+      logger.info('Starting student report card PDF generation', { testId, origin });
+      page = await this.browser.newPage();
+
+      // Set JWT token in localStorage for React app authentication
+      if (jwtToken) {
+        await page.evaluateOnNewDocument((token) => {
+          localStorage.setItem('token', token);
+        }, jwtToken);
+        await page.setCookie({
+          name: 'jwt',
+          value: jwtToken,
+          domain: new URL(tenantUrls.frontend).hostname,
+          path: '/',
+          httpOnly: false
+        });
+      }
+
+      // Set viewport for consistent rendering
+      await page.setViewport({ width: 1200, height: 1600 });
+
+      // Build report card URL
+      const reportURL = `${tenantUrls.frontend}/student/report-card?testId=${encodeURIComponent(testId)}`;
+      logger.debug('Navigating to student report card URL', { url: reportURL, testId });
+
+      // Navigate to the page
+      await page.goto(reportURL, {
+        waitUntil: 'networkidle0',
+        timeout: config.pdf.timeout
+      });
+
+      // Wait for React app to be ready
+      logger.debug('Waiting for report card to be ready...');
+      try {
+        await page.waitForFunction(
+          "window.__PDF_READY__ === true",
+          {
+            timeout: 120000,
+            polling: 500
+          }
+        );
+      } catch (waitError) {
+        logger.error('Timeout waiting for __PDF_READY__', { error: waitError.message });
+        const screenshotPath = path.join(config.pdf.tempDir, `debug_reportcard_${testId}_${Date.now()}.png`);
+        const htmlPath = path.join(config.pdf.tempDir, `debug_reportcard_${testId}_${Date.now()}.html`);
+        try {
+          await page.screenshot({ path: screenshotPath, fullPage: true });
+          const html = await page.content();
+          fs.writeFileSync(htmlPath, html);
+          logger.info('Debug artifacts saved', { screenshot: screenshotPath, html: htmlPath });
+        } catch (debugErr) {
+          logger.warn('Could not save debug artifacts', { error: debugErr.message });
+        }
+        throw waitError;
+      }
+
+      // Generate PDF
+      logger.debug('Generating PDF...');
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: {
+          top: '20px',
+          right: '20px',
+          bottom: '20px',
+          left: '20px'
+        }
+      });
+
+      // Save to temp file
+      const filename = `student_report_card_test_${testId}.pdf`;
+      const filePath = path.join(config.pdf.tempDir, filename);
+      fs.writeFileSync(filePath, pdfBuffer);
+
+      // Compress PDF with Ghostscript
+      const compressionResult = await this.compressPdfWithGhostscript(filePath);
+
+      // Read the compressed PDF buffer
+      const finalPdfBuffer = fs.readFileSync(compressionResult.path);
+
+      const duration = Date.now() - startTime;
+      logger.info('Student report card PDF generated successfully', {
+        testId,
+        duration: `${duration}ms`,
+        filename,
+        originalSize: `${(compressionResult.originalSize / 1024).toFixed(2)}KB`,
+        finalSize: `${(compressionResult.compressedSize / 1024).toFixed(2)}KB`
+      });
+
+      // NO S3 upload - direct download only
+      return { filePath, filename, buffer: finalPdfBuffer };
+
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      logger.error('Student report card PDF generation failed', {
+        testId,
+        duration: `${duration}ms`,
+        error: error.message
+      });
+      throw error;
+    } finally {
+      if (page) {
+        await page.close();
+      }
+    }
+  }
 }
 
 export default new PdfService();

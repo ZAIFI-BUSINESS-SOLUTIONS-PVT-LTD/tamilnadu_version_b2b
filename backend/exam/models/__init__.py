@@ -14,6 +14,7 @@ from .analysis import QuestionAnalysis
 
 from .result import Result, StudentResult
 from .checkpoints import Checkpoints
+from .student_report import StudentReport
 
 
 
