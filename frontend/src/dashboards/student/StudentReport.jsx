@@ -279,10 +279,10 @@ const Page1 = ({ data, getSubjectPattern }) => {
       <div>
         <h2 className="font-bold text-black border-b-2 pb-1" style={{ fontSize: '14px', marginBottom: '8px', borderBottomColor: 'rgba(0,0,0,0.6)' }}>Performance Trend</h2>
         <div className="rounded-md" style={{ border: '2px solid rgba(0,0,0,0.6)', padding: '8px' }}>
-          <ResponsiveContainer width="96%" height={145}>
+          <ResponsiveContainer width="94%" height={140}>
             <LineChart
               data={formatTotalTrendData(performanceTrend)}
-              margin={{ top: 20, right: 40, left: 10, bottom: 10 }}
+              margin={{ top: 20, right: 45, left: 18, bottom: 10 }}
             >
               <XAxis
                 dataKey="test_num"
