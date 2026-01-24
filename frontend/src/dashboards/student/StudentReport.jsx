@@ -61,10 +61,19 @@ export default function StudentReport() {
     const loadReportCard = async () => {
       try {
         const q = new URLSearchParams(window.location.search);
-        const testId = q.get('testId');
+        const testIdParam = q.get('testId');
+        
+        // Parse testId: handle "Test 1", "1", null
+        let testNum = null;
+        if (testIdParam) {
+          const match = String(testIdParam).match(/\d+/);
+          if (match) {
+            testNum = parseInt(match[0], 10);
+          }
+        }
         
         setLoading(true);
-        const data = await fetchStudentReportCard(testId);
+        const data = await fetchStudentReportCard(testNum);
         setReportData(data);
       } catch (err) {
         setError('Failed to load report card data');
