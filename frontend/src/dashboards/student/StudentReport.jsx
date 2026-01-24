@@ -282,31 +282,31 @@ const Page1 = ({ data, getSubjectPattern }) => {
           <ResponsiveContainer width="100%" height={160}>
             <LineChart
               data={formatTotalTrendData(performanceTrend)}
-              margin={{ top: 15, right: 20, left: 0, bottom: 20 }}
+              margin={{ top: 10, right: 15, left: 10, bottom: 10 }}
             >
               <XAxis
                 dataKey="test_num"
-                interval={0}
-                angle={-45}
-                textAnchor="end"
-                height={50}
+                label={{ value: 'Test Number', position: 'insideBottom', offset: -3, style: { fontSize: 10 } }}
+                padding={{ left: 15, right: 15 }}
                 stroke="rgba(0,0,0,0.7)"
-                tick={{ fill: 'rgba(0,0,0,0.7)', fontSize: 8 }}
+                tick={{ fill: 'rgba(0,0,0,0.7)', fontSize: 9 }}
               />
               <YAxis
+                label={{ value: 'Total Marks', angle: -90, position: 'insideLeft', style: { fontSize: 10 } }}
+                domain={[dataMin => Math.max(0, dataMin - 20), dataMax => dataMax + 20]}
                 stroke="rgba(0,0,0,0.7)"
-                tick={{ fill: 'rgba(0,0,0,0.7)', fontSize: 8 }}
-                width={35}
+                tick={{ fill: 'rgba(0,0,0,0.7)', fontSize: 9 }}
               />
+              <Tooltip formatter={(value) => [value, 'Total Marks']} contentStyle={{ color: 'rgba(0,0,0,0.7)', fontSize: 10 }} />
+              <Legend wrapperStyle={{ color: 'rgba(0,0,0,0.7)', fontSize: 10 }} />
               <Line
                 type="monotone"
                 dataKey="total_marks"
                 stroke="rgba(0,0,0,0.7)"
                 strokeWidth={2}
-                dot={{ r: 3, fill: 'rgba(0,0,0,0.7)', stroke: 'rgba(0,0,0,0.7)', strokeWidth: 1 }}
-                name="Marks"
+                dot={{ r: 4, fill: 'rgba(0,0,0,0.7)', stroke: 'rgba(0,0,0,0.7)', strokeWidth: 1 }}
               >
-                <LabelList dataKey="total_marks" position="top" dy={-4} style={{ fontSize: 8, fontWeight: 'bold', fill: 'rgba(0,0,0,0.7)' }} />
+                <LabelList dataKey="total_marks" position="top" dy={-5} style={{ fontSize: 10, fontWeight: 'bold', fill: 'rgba(0,0,0,0.7)' }} />
               </Line>
             </LineChart>
           </ResponsiveContainer>
@@ -470,7 +470,7 @@ const Page2 = ({ data, getSubjectPattern }) => {
                       You: X {item.student_option}
                     </span>
                     <span className="font-bold" style={{ fontSize: '9px' }}>
-                      Correct: O {item.correct_option}
+                      Correct: ✓ {item.correct_option}
                     </span>
                   </div>
                 </div>
@@ -492,13 +492,13 @@ const Page2 = ({ data, getSubjectPattern }) => {
 
 // Helper Component: Modern B&W Card with Pattern Strip
 const BWCard = ({ label, value, patternId }) => (
-  <div className="border-2 border-black bg-white flex items-stretch shadow-none rounded-md" style={{ overflow: 'hidden', maxHeight: '75px' }}>
+  <div className="border-2 border-black bg-white flex items-stretch shadow-none rounded-md" style={{ overflow: 'hidden' }}>
     <svg width="10" height="100%" preserveAspectRatio="none">
       <rect width="10" height="100%" fill={patternId ? `url(#${patternId})` : '#000'} />
     </svg>
-    <div className="flex-1 flex flex-col justify-center" style={{ padding: '6px 10px' }}>
-      <p className="uppercase tracking-wide font-semibold text-black" style={{ fontSize: '9px', marginBottom: '2px', lineHeight: '1.1' }}>{label}</p>
-      <p className="font-extrabold text-black" style={{ fontSize: '22px', lineHeight: '1' }}>{value}</p>
+    <div className="flex-1 flex flex-col justify-center" style={{ padding: '8px 10px' }}>
+      <p className="uppercase tracking-wide font-semibold text-black" style={{ fontSize: '9px', marginBottom: '2px' }}>{label}</p>
+      <p className="font-extrabold text-black leading-none" style={{ fontSize: '22px' }}>{value}</p>
     </div>
   </div>
 );
