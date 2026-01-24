@@ -278,33 +278,35 @@ const Page1 = ({ data, getSubjectPattern }) => {
       {/* Performance Trend */}
       <div>
         <h2 className="font-bold text-black border-b-2 pb-1" style={{ fontSize: '14px', marginBottom: '8px', borderBottomColor: 'rgba(0,0,0,0.6)' }}>Performance Trend</h2>
-        <div className="rounded-md" style={{ border: '2px solid rgba(0,0,0,0.6)', padding: '10px' }}>
-          <ResponsiveContainer width="100%" height={160}>
+        <div className="rounded-md" style={{ border: '2px solid rgba(0,0,0,0.6)', padding: '8px' }}>
+          <ResponsiveContainer width="100%" height={145}>
             <LineChart
               data={formatTotalTrendData(performanceTrend)}
-              margin={{ top: 15, right: 20, left: 15, bottom: 5 }}
+              margin={{ top: 20, right: 25, left: 20, bottom: 10 }}
             >
               <XAxis
                 dataKey="test_num"
-                padding={{ left: 15, right: 15 }}
+                padding={{ left: 10, right: 10 }}
                 stroke="rgba(0,0,0,0.7)"
-                tick={{ fill: 'rgba(0,0,0,0.7)', fontSize: 9 }}
+                tick={{ fill: 'rgba(0,0,0,0.7)', fontSize: 8 }}
+                height={30}
               />
               <YAxis
                 domain={[dataMin => Math.max(0, dataMin - 20), dataMax => dataMax + 20]}
                 stroke="rgba(0,0,0,0.7)"
-                tick={{ fill: 'rgba(0,0,0,0.7)', fontSize: 9 }}
+                tick={{ fill: 'rgba(0,0,0,0.7)', fontSize: 8 }}
+                width={35}
               />
-              <Tooltip formatter={(value) => [value, 'Total Marks']} contentStyle={{ color: 'rgba(0,0,0,0.7)', fontSize: 10 }} />
-              <Legend wrapperStyle={{ color: 'rgba(0,0,0,0.7)', fontSize: 10 }} />
+              <Tooltip formatter={(value) => [value, 'Total Marks']} contentStyle={{ color: 'rgba(0,0,0,0.7)', fontSize: 9 }} />
+              <Legend wrapperStyle={{ color: 'rgba(0,0,0,0.7)', fontSize: 9 }} />
               <Line
                 type="monotone"
                 dataKey="total_marks"
                 stroke="rgba(0,0,0,0.7)"
                 strokeWidth={2}
-                dot={{ r: 4, fill: 'rgba(0,0,0,0.7)', stroke: 'rgba(0,0,0,0.7)', strokeWidth: 1 }}
+                dot={{ r: 3, fill: 'rgba(0,0,0,0.7)', stroke: 'rgba(0,0,0,0.7)', strokeWidth: 1 }}
               >
-                <LabelList dataKey="total_marks" position="top" dy={-5} style={{ fontSize: 10, fontWeight: 'bold', fill: 'rgba(0,0,0,0.7)' }} />
+                <LabelList dataKey="total_marks" position="top" dy={-4} style={{ fontSize: 9, fontWeight: 'bold', fill: 'rgba(0,0,0,0.7)' }} />
               </Line>
             </LineChart>
           </ResponsiveContainer>
