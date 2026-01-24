@@ -282,11 +282,11 @@ const Page1 = ({ data, getSubjectPattern }) => {
           <ResponsiveContainer width="100%" height={145}>
             <LineChart
               data={formatTotalTrendData(performanceTrend)}
-              margin={{ top: 20, right: 25, left: 20, bottom: 10 }}
+              margin={{ top: 20, right: 40, left: 5, bottom: 10 }}
             >
               <XAxis
                 dataKey="test_num"
-                padding={{ left: 10, right: 10 }}
+                padding={{ left: 5, right: 15 }}
                 stroke="rgba(0,0,0,0.7)"
                 tick={{ fill: 'rgba(0,0,0,0.7)', fontSize: 8 }}
                 height={30}
@@ -295,7 +295,7 @@ const Page1 = ({ data, getSubjectPattern }) => {
                 domain={[dataMin => Math.max(0, dataMin - 20), dataMax => dataMax + 20]}
                 stroke="rgba(0,0,0,0.7)"
                 tick={{ fill: 'rgba(0,0,0,0.7)', fontSize: 8 }}
-                width={35}
+                width={40}
               />
               <Tooltip formatter={(value) => [value, 'Total Marks']} contentStyle={{ color: 'rgba(0,0,0,0.7)', fontSize: 9 }} />
               <Legend wrapperStyle={{ color: 'rgba(0,0,0,0.7)', fontSize: 9 }} />
