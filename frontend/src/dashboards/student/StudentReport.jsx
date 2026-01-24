@@ -353,11 +353,6 @@ const Page1 = ({ data, getSubjectPattern }) => {
       </div>
 
       {/* Encouragement Message */}
-      <div className="text-center border-2 border-black bg-gray-50 rounded-md" style={{ padding: '10px' }}>
-        <p className="italic text-black" style={{ fontSize: '11px' }}>
-          "You're doing super good and progressing great – <span className="font-bold">Keep it up!</span>"
-        </p>
-      </div>
     </div>
   );
 };
