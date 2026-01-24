@@ -363,8 +363,8 @@ const StudentReportCard = () => {
 
 // Page 1 Component: Performance Report (B&W Version)
 const Page1 = ({ data, getSubjectPattern, checkedItems, toggleCheckbox }) => {
-  const improvementSign = data.improvement_percentage >= 0 ? '↑' : '↓';
-  const isPositive = data.improvement_percentage >= 0;
+  // const improvementSign = data.improvement_percentage >= 0 ? '↑' : '↓';
+  // const isPositive = data.improvement_percentage >= 0;
   
   // Normalize subject_wise_data to array
   const subjectWiseData = Array.isArray(data.subject_wise_data)
@@ -400,10 +400,9 @@ const Page1 = ({ data, getSubjectPattern, checkedItems, toggleCheckbox }) => {
           patternId="pattern-botany"
         />
         <BWCard 
-          label={`Your Improvement ${improvementSign}`}
+          label="Your Improvement"
           value={`${Math.abs(data.improvement_percentage)}%`}
           patternId="pattern-physics"
-          highlight={isPositive}
         />
         <BWCard 
           label="Average Marks" 
@@ -454,15 +453,15 @@ const Page1 = ({ data, getSubjectPattern, checkedItems, toggleCheckbox }) => {
 
         return (
           <div className="border-2 border-black p-4 bg-gray-50 rounded-md">
-            <p className="text-sm font-semibold text-black text-center italic">{message}</p>
+            <p className="text-sm font-semibold text-black text-center italic " style={{ fontSize: '1.1em' }}>{message}</p>
           </div>
         );
       })()}
 
       {/* Performance Trend Graph - B&W with solid/dashed lines */}
       <div>
-        <h2 className="text-lg font-bold text-black mb-3 border-b-2 border-black pb-2">Performance Trend</h2>
-        <div className="border-2 border-black p-4 rounded-md">
+        <h2 className="text-lg font-bold text-black mb-3 pb-2" style={{ borderBottom: '2px solid rgba(0,0,0,0.6)' }}>Performance Trend</h2>
+        <div className="p-4 rounded-md" style={{ border: '2px solid rgba(0,0,0,0.6)' }}>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart
               data={formatTotalTrendData(performanceTrend)}
@@ -473,25 +472,25 @@ const Page1 = ({ data, getSubjectPattern, checkedItems, toggleCheckbox }) => {
                 dataKey="test_num"
                 label={{ value: 'Test Number', position: 'insideBottom', offset: -5 }}
                 padding={{ left: 20, right: 20 }}
-                stroke="#000"
-                tick={{ fill: '#000' }}
+                stroke="rgba(0,0,0,0.7)"
+                tick={{ fill: 'rgba(0,0,0,0.7)' }}
               />
               <YAxis
                 label={{ value: 'Total Marks', angle: -90, position: 'insideLeft' }}
                 domain={[dataMin => Math.max(0, dataMin - 20), dataMax => dataMax + 20]}
-                stroke="#000"
-                tick={{ fill: '#000' }}
+                stroke="rgba(0,0,0,0.7)"
+                tick={{ fill: 'rgba(0,0,0,0.7)' }}
               />
-              <Tooltip formatter={(value) => [value, 'Total Marks']} />
-              <Legend />
+              <Tooltip formatter={(value) => [value, 'Total Marks']} contentStyle={{ color: 'rgba(0,0,0,0.7)' }} />
+              <Legend wrapperStyle={{ color: 'rgba(0,0,0,0.7)' }} />
               <Line
                 type="monotone"
                 dataKey="total_marks"
-                stroke="#000"
+                stroke="rgba(0,0,0,0.7)"
                 strokeWidth={3}
-                dot={{ r: 6, fill: '#000', stroke: '#000', strokeWidth: 2 }}
+                dot={{ r: 6, fill: 'rgba(0,0,0,0.7)', stroke: 'rgba(0,0,0,0.7)', strokeWidth: 1.5 }}
               >
-                <LabelList dataKey="total_marks" position="top" dy={-10} style={{ fontSize: 11, fontWeight: 'bold', fill: '#000' }} />
+                <LabelList dataKey="total_marks" position="top" dy={-8} style={{ fontSize: 14, fontWeight: 'bold', fill: 'rgba(0,0,0,0.7)' }} />
               </Line>
             </LineChart>
           </ResponsiveContainer>
@@ -500,33 +499,36 @@ const Page1 = ({ data, getSubjectPattern, checkedItems, toggleCheckbox }) => {
 
       {/* Mistakes Table - Pattern-based subject tags */}
       <div>
-        <h2 className="text-lg font-bold text-black mb-3 border-b-2 border-black pb-2">Mistakes to Focus On</h2>
-        <div className="overflow-x-auto border-2 border-black rounded-md">
+        <h2 className="text-lg font-bold text-black mb-3 pb-2" style={{ borderBottom: '2px solid rgba(0,0,0,0.6)' }}>Mistakes to Focus On</h2>
+        <div className="overflow-x-auto rounded-md" style={{ border: '2px solid rgba(0,0,0,0.6)' }}>
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-black text-white">
-                <th className="p-2 text-left font-bold border border-black">S.no</th>
-                <th className="p-2 text-left font-bold border border-black">Subject</th>
-                <th className="p-2 text-left font-bold border border-black">Subtopic</th>
-                <th className="p-2 text-left font-bold border border-black">Mistake Detail</th>
-                <th className="p-2 text-center font-bold border border-black">✓</th>
+              <tr style={{ backgroundColor: 'rgba(0,0,0,0.6)', color: '#ffffff' }}>
+                <th className="p-2 text-left font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>S.no</th>
+                <th className="p-2 text-left font-bold" style={{ minWidth: '120px', border: '1px solid rgba(0,0,0,0.6)' }}>Subject</th>
+                <th className="p-2 text-left font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>Subtopic</th>
+                <th className="p-2 text-left font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>Mistake Detail</th>
+                <th className="p-2 text-center font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>✓</th>
               </tr>
             </thead>
             <tbody>
               {mistakesTable?.map((mistake, index) => (
-                <tr key={index} className={`border border-black ${index % 2 === 0 ? 'bg-gray-100' : 'bg-white'}`}>
-                  <td className="p-2 border border-black font-semibold">{index + 1}</td>
-                  <td className="p-2 border border-black">
-                    <SubjectTagBW subject={mistake.subject} getSubjectPattern={getSubjectPattern} />
+                <tr key={index} className={`${index % 2 === 0 ? 'bg-gray-100' : 'bg-white'}`} style={{ border: '1px solid rgba(0,0,0,0.6)' }}>
+                  <td className="p-2 font-semibold" style={{ fontSize: '1.1em', border: '1px solid rgba(0,0,0,0.6)' }}>{index + 1}</td>
+                  <td className="p-2" style={{ fontSize: '1.1em', minWidth: '120px', border: '1px solid rgba(0,0,0,0.6)' }}>
+                    <div style={{ display: 'inline-block' }}>
+                      <SubjectTagBW subject={mistake.subject} getSubjectPattern={getSubjectPattern} />
+                    </div>
                   </td>
-                  <td className="p-2 border border-black text-sm">{mistake.subtopic}</td>
-                  <td className="p-2 border border-black text-sm">{mistake.checkpoint || mistake.mistake_detail || ''}</td>
-                  <td className="p-2 text-center border border-black">
+                  <td className="p-2 text-sm" style={{ fontSize: '1.1em', border: '1px solid rgba(0,0,0,0.6)' }}>{mistake.subtopic}</td>
+                  <td className="p-2 text-sm" style={{ fontSize: '1.1em', border: '1px solid rgba(0,0,0,0.6)' }}>{mistake.checkpoint || mistake.mistake_detail || ''}</td>
+                  <td className="p-2 text-center" style={{ fontSize: '1.1em', border: '1px solid rgba(0,0,0,0.6)' }}>
                     <button
                       onClick={() => toggleCheckbox(index)}
-                      className={`w-5 h-5 rounded-sm border-2 border-black flex items-center justify-center font-bold ${
+                      className={`w-5 h-5 rounded-sm flex items-center justify-center font-bold ${
                         checkedItems[index] ? 'bg-black text-white' : 'bg-white text-black'
                       }`}
+                      style={{ border: '2px solid rgba(0,0,0,0.6)' }}
                     >
                       {checkedItems[index] && '✓'}
                     </button>
@@ -540,7 +542,7 @@ const Page1 = ({ data, getSubjectPattern, checkedItems, toggleCheckbox }) => {
 
       {/* Motivational Footer */}
       <div className="text-center py-4 border-2 border-black bg-gray-50 rounded-md">
-        <p className="text-sm italic text-black">
+        <p className="text-sm italic text-black " style={{ fontSize: '1.1em' }}>
           "You're doing super good and progressing great – <span className="font-bold">Keep it up!</span>"
         </p>
       </div>
@@ -571,7 +573,7 @@ const Page2 = ({ data, getSubjectPattern }) => {
   return (
     <div className="bg-white p-6 space-y-6">
       {/* Header */}
-      <div className="w-full bg-gray-200 border border-black py-4 rounded-md">
+      <div className="w-full bg-gray-200 py-4 rounded-md" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>
         <div className="text-center">
           <h1 className="text-3xl font-bold text-black">Study Planner & Insights</h1>
           <p className="text-sm font-semibold text-black mt-1">Personalized plan and key insights</p>
@@ -581,29 +583,26 @@ const Page2 = ({ data, getSubjectPattern }) => {
       {/* Study Planner Table - Pattern underlines for subjects */}
       <div>
         <h2 className="text-lg font-bold text-black mb-3 border-b-2 border-black pb-2">6-Day Study Plan</h2>
-        <div className="overflow-x-auto border-2 border-black rounded-md">
+        <div className="overflow-x-auto rounded-md" style={{ borderWidth: '2px', borderStyle: 'solid', borderColor: 'rgba(0,0,0,0.6)' }}>
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-black text-white">
-                <th className="p-2 text-center font-bold border border-black">Day</th>
+              <tr style={{ backgroundColor: 'rgba(0,0,0,0.6)', color: '#ffffff' }}>
+                <th className="p-2 text-center font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>Day</th>
                 {subjects.map((subject, index) => (
-                  <th key={index} className="p-2 text-center font-bold border border-black relative">
+                  <th key={index} className="p-2 text-center font-bold relative" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>
                     <div>{subject}</div>
-                    <svg width="100%" height="4" style={{ position: 'absolute', bottom: 0, left: 0 }}>
-                      <rect width="100%" height="4" fill={`url(#${getSubjectPattern(subject).id})`} />
-                    </svg>
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {studyPlanner?.map((day, index) => (
-                <tr key={index} className={`border border-black ${index % 2 === 0 ? 'bg-gray-100' : 'bg-white'}`}>
-                  <td className="p-2 text-center font-bold border border-black">Day {day.day}</td>
+                <tr key={index} className={`${index % 2 === 0 ? 'bg-gray-100' : 'bg-white'}`} style={{ border: '1px solid rgba(0,0,0,0.6)' }}>
+                  <td className="p-2 text-center font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>Day {day.day}</td>
                   {subjects.map((subject, subIndex) => (
-                    <td key={subIndex} className="p-2 text-center border border-black">
+                    <td key={subIndex} className="p-2 text-center" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>
                       {day[subject] ? (
-                        <span className="text-xs text-black">{day[subject]}</span>
+                        <span className="text-xs text-black" style={{ fontSize: '1.1em' }}>{day[subject]}</span>
                       ) : null}
                     </td>
                   ))}
@@ -621,15 +620,16 @@ const Page2 = ({ data, getSubjectPattern }) => {
           {frequentMistakes?.map((mistake, index) => (
             <div 
               key={index}
-              className="border-2 border-black overflow-hidden rounded-md"
+              className="overflow-hidden rounded-md"
+              style={{ border: '2px solid rgba(0,0,0,0.6)' }}
             >
               {/* Pattern header strip */}
               <svg width="100%" height="24">
                 <rect width="100%" height="24" fill={`url(#${getSubjectPattern(mistake.subject).id})`} />
               </svg>
               <div className="p-3 bg-white">
-                <h3 className="text-sm font-bold mb-1 text-black">{mistake.subject}</h3>
-                <p className="text-xs mb-2 text-black">{mistake.subtopic}</p>
+                <h3 className="text-sm font-bold mb-1 text-black" style={{ fontSize: '1.1em' }}>{mistake.subject}</h3>
+                <p className="text-xs mb-2 text-black" style={{ fontSize: '1.1em' }}>{mistake.subtopic}</p>
                 <p className="text-2xl font-bold text-black">{mistake.frequency} Times</p>
               </div>
             </div>
@@ -641,8 +641,8 @@ const Page2 = ({ data, getSubjectPattern }) => {
       {classVsYou && classVsYou.length > 0 && (
         <div>
           <h2 className="text-lg font-bold text-black mb-3 border-b-2 border-black pb-2">Class vs You</h2>
-          <div className="border-2 border-black p-4 bg-gray-50 rounded-md">
-            <p className="text-xs text-black mb-3 font-semibold">
+          <div className="p-4 bg-gray-50 rounded-md" style={{ border: '2px solid rgba(0,0,0,0.6)' }}>
+            <p className="text-xs text-black mb-3 font-semibold" style={{ fontSize: '1.1em' }}>
               Questions where most of the class got it right, but you got it wrong:
             </p>
             <div className="space-y-2">
@@ -650,16 +650,16 @@ const Page2 = ({ data, getSubjectPattern }) => {
                 <div key={index} className="border border-black p-3 bg-white">
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-3">
-                      <span className="font-bold text-black">Q{item.question_num}</span>
-                      <span className="text-xs text-black">
+                      <span className="font-bold text-black" style={{ fontSize: '1.1em' }}>Q{item.question_num}</span>
+                      <span className="text-xs text-black" style={{ fontSize: '1.1em' }}>
                         Class Correct: <span className="font-bold">{item.correct_count}</span>
                       </span>
                     </div>
                     <div className="flex items-center gap-3 text-xs">
-                      <span className="font-bold">
+                      <span className="font-bold" style={{ fontSize: '1.1em' }}>
                         You: ✖ {item.student_option}
                       </span>
-                      <span className="font-bold">
+                      <span className="font-bold" style={{ fontSize: '1.1em' }}>
                         Correct: ✔ {item.correct_option}
                       </span>
                     </div>
@@ -672,7 +672,7 @@ const Page2 = ({ data, getSubjectPattern }) => {
       )}
 
       {/* Previous Year Question Cloud - Text only */}
-      <div>
+      {/* <div>
         <h2 className="text-lg font-bold text-black mb-3 border-b-2 border-black pb-2">Previous Year Question Cloud</h2>
           <div className="border-2 border-black p-6 min-h-[150px] flex items-center justify-center bg-gray-100 rounded-md print:bg-white">
           <div className="text-center space-y-3">
@@ -713,11 +713,11 @@ const Page2 = ({ data, getSubjectPattern }) => {
             )}
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Motivational Footer - No emojis */}
-      <div className="text-center py-4 border-2 border-black bg-gray-50 rounded-md">
-        <p className="text-sm italic text-black">
+      <div className="text-center py-4 bg-gray-50 rounded-md" style={{ border: '2px solid rgba(0,0,0,0.6)' }}>
+        <p className="text-sm italic text-black " style={{ fontSize: '1.1em' }}>
           "You're doing super good and progressing great – <span className="font-bold">Keep it up!</span>"
         </p>
       </div>
@@ -726,7 +726,7 @@ const Page2 = ({ data, getSubjectPattern }) => {
 };
 
 // Helper Component: Modern B&W Card with Pattern Strip (scoped to metrics)
-const BWCard = ({ label, value, patternId, highlight = false }) => (
+const BWCard = ({ label, value, patternId }) => (
   <div className="border-2 border-black bg-white flex items-stretch shadow-none rounded-md" style={{ overflow: 'hidden' }}>
     {/* Pattern strip on left edge - uses subject-like pattern when provided */}
     <svg width="14" height="100%" preserveAspectRatio="none" className="hidden sm:block">
@@ -735,12 +735,7 @@ const BWCard = ({ label, value, patternId, highlight = false }) => (
     <div className="flex-1 p-4">
       <p className="text-xs uppercase tracking-wide font-semibold text-black mb-2">{label}</p>
       <div className="flex items-baseline gap-3">
-        <p className="text-3xl font-extrabold text-black leading-tight">{value}</p>
-        {typeof highlight === 'boolean' && (
-          <span className="text-sm font-semibold" aria-hidden>
-            {highlight ? '↑' : '↓'}
-          </span>
-        )}
+        <p className="text-3xl font-extrabold text-black leading-tight" style={{ fontSize: '2.0625rem' }}>{value}</p>
       </div>
       <div className="mt-2 border-t border-dashed border-black pt-2">
         <p className="text-xs text-gray-700">&nbsp;</p>
@@ -755,8 +750,8 @@ const SubjectTagBW = ({ subject, getSubjectPattern }) => {
   return (
     <div className="flex items-center gap-2">
       <svg width="16" height="16">
-        <rect width="16" height="16" fill={`url(#${pattern.id})`} stroke="black" strokeWidth="1" />
-      </svg>
+          <rect width="16" height="16" fill={`url(#${pattern.id})`} stroke="rgba(0,0,0,0.6)" strokeWidth="1" />
+        </svg>
       <span className="font-bold text-xs text-black">{subject}</span>
     </div>
   );
@@ -767,16 +762,16 @@ const SubjectPieChartBW = ({ subject, getSubjectPattern }) => {
   const pattern = getSubjectPattern(subject.subject);
   
   const pieData = [
-    { name: 'Correct', value: subject.correct_count, fill: '#000' }, // Solid black
+    { name: 'Correct', value: subject.correct_count, fill: 'rgba(0,0,0,0.6)' }, // Soft black for print
     { name: 'Incorrect', value: subject.incorrect_count, fill: `url(#${pattern.id})` }, // Subject pattern
-    { name: 'Skipped', value: subject.skipped_count, fill: '#fff', stroke: '#000' } // White with border
+    { name: 'Skipped', value: subject.skipped_count, fill: '#fff', stroke: 'rgba(0,0,0,0.6)' } // White with softened border
   ].filter(item => item.value > 0);
 
   return (
     <div className="border-2 border-black p-3 bg-white rounded-md">
       <div className="flex items-center justify-center gap-2 mb-2">
-        <svg width="12" height="12">
-          <rect width="12" height="12" fill={`url(#${pattern.id})`} stroke="black" strokeWidth="1" />
+          <svg width="12" height="12">
+          <rect width="12" height="12" fill={`url(#${pattern.id})`} stroke="rgba(0,0,0,0.6)" strokeWidth="1" />
         </svg>
         <h3 className="text-center font-bold text-black text-sm">{subject.subject}</h3>
       </div>
@@ -790,11 +785,11 @@ const SubjectPieChartBW = ({ subject, getSubjectPattern }) => {
             outerRadius={50}
             dataKey="value"
             label={false}
-            stroke="#000"
+            stroke="rgba(0,0,0,0.6)"
             strokeWidth={1}
           >
             {pieData.map((entry, index) => (
-              <Cell key={index} fill={entry.fill} stroke={entry.stroke || '#000'} strokeWidth={1} />
+              <Cell key={index} fill={entry.fill} stroke={entry.stroke || 'rgba(0,0,0,0.6)'} strokeWidth={1} />
             ))}
           </Pie>
           <Tooltip />
@@ -804,16 +799,16 @@ const SubjectPieChartBW = ({ subject, getSubjectPattern }) => {
         {pieData.map((item, index) => (
           <div key={index} className="flex items-center justify-between">
             <div className="flex items-center gap-1">
-              {item.fill && typeof item.fill === 'string' && item.fill.startsWith('url(') ? (
+                {item.fill && typeof item.fill === 'string' && item.fill.startsWith('url(') ? (
                 <svg width="12" height="12">
-                  <rect width="12" height="12" fill={item.fill} stroke="black" strokeWidth="1" />
+                  <rect width="12" height="12" fill={item.fill} stroke="rgba(0,0,0,0.6)" strokeWidth="1" />
                 </svg>
               ) : (
-                <div className="w-3 h-3 border border-black rounded-sm" style={{ background: item.fill }}></div>
+                <div className="w-3 h-3 rounded-sm" style={{ background: item.fill, border: '1px solid rgba(0,0,0,0.6)' }}></div>
               )}
-              <span className="text-black">{item.name}</span>
+              <span className="text-black" style={{ fontSize: '1.1em' }}>{item.name}</span>
             </div>
-            <span className="font-bold text-black">{item.value}</span>
+            <span className="font-bold text-black" style={{ fontSize: '1.1em' }}>{item.value}</span>
           </div>
         ))}
       </div>

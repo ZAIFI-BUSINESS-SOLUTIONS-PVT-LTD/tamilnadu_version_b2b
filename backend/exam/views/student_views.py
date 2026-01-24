@@ -337,20 +337,25 @@ def get_student_report_card(request):
         # Format: { "1": {"Botany": 138, "Physics": 78, ...}, "2": {...}, ... }
         page1_data["performance_trend"] = current_report.sub_wise_marks or {}
 
-        # Mistakes Table (from checkpoints - first checkpoint per subject)
+        # Mistakes Table (from checkpoints - first TWO checkpoints per subject)
         mistakes_table = []
         if checkpoints and checkpoints.insights:
-            seen_subjects = set()
+            subject_counts = {}  # Track how many mistakes we've added per subject
             for insight in checkpoints.insights:
                 subject = insight.get("subject", "")
-                if subject and subject not in seen_subjects:
-                    mistakes_table.append({
-                        "subject": subject,
-                        "subtopic": insight.get("subtopic", ""),
-                        "mistake_detail": insight.get("checkpoint", ""),
-                        "checked": False
-                    })
-                    seen_subjects.add(subject)
+                if subject:
+                    # Add up to 2 mistakes per subject
+                    if subject not in subject_counts:
+                        subject_counts[subject] = 0
+                    
+                    if subject_counts[subject] < 2:
+                        mistakes_table.append({
+                            "subject": subject,
+                            "subtopic": insight.get("subtopic", ""),
+                            "mistake_detail": insight.get("checkpoint", ""),
+                            "checked": False
+                        })
+                        subject_counts[subject] += 1
         
         page1_data["mistakes_table"] = mistakes_table
 

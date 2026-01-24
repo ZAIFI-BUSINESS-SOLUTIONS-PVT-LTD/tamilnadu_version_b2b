@@ -1,550 +1,489 @@
 import { useEffect, useState } from "react";
-import { getStudentDashboardData, fetchStudentSWOT } from "../../utils/api";
+import { fetchStudentReportCard } from "../../utils/api";
 import {
-  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList, ComposedChart, Line
+  PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList
 } from "recharts";
 
-// --- Reused SWOT helpers and utilities (from Report.jsx) ---
-const metricToCategoryMap = {
-  TS_BPT: { category: 'Strengths', subtitle: 'Best Performing Topics' },
-  TW_MCT: { category: 'Weaknesses', subtitle: 'Most Challenging Topics' },
-  TO_RLT: { category: 'Opportunities', subtitle: 'Rapid Learning Topics' },
-  TT_WHIT: { category: 'Threats', subtitle: 'Weakness on High Impact Topics' },
-};
-function formatTopics(topics) {
-  return Array.isArray(topics) && topics.length ? topics.join('\n') : 'No data available';
-}
-function transformSwotData(rawData) {
-  if (!rawData || typeof rawData !== 'object') return { Strengths: [], Weaknesses: [], Opportunities: [], Threats: [] };
-  const organized = { Strengths: [], Weaknesses: [], Opportunities: [], Threats: [] };
-  const primaryMetrics = {
-    Strengths: 'TS_BPT',
-    Weaknesses: 'TW_MCT',
-    Opportunities: 'TO_RLT',
-    Threats: 'TT_WHIT',
-  };
-  for (const [category, metric] of Object.entries(primaryMetrics)) {
-    const subjectMap = rawData[metric];
-    if (subjectMap && typeof subjectMap === 'object') {
-      for (const [subject, topics] of Object.entries(subjectMap)) {
-        organized[category].push({
-          subject,
-          topics: Array.isArray(topics) ? topics : [],
-          subtitle: metricToCategoryMap[metric]?.subtitle,
-        });
-      }
-    }
+// Pattern definitions for subjects (B&W compatible)
+const subjectPatterns = {
+  'Botany': {
+    id: 'pattern-botany',
+    description: 'Diagonal stripes (/ / /)',
+    svg: (
+      <pattern id="pattern-botany" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <line x1="0" y1="0" x2="0" y2="8" stroke="black" strokeWidth="3" />
+      </pattern>
+    )
+  },
+  'Physics': {
+    id: 'pattern-physics',
+    description: 'Cross-hatch grid',
+    svg: (
+      <pattern id="pattern-physics" width="8" height="8" patternUnits="userSpaceOnUse">
+        <line x1="0" y1="0" x2="8" y2="0" stroke="black" strokeWidth="1" />
+        <line x1="0" y1="0" x2="0" y2="8" stroke="black" strokeWidth="1" />
+      </pattern>
+    )
+  },
+  'Zoology': {
+    id: 'pattern-zoology',
+    description: 'Dotted pattern',
+    svg: (
+      <pattern id="pattern-zoology" width="8" height="8" patternUnits="userSpaceOnUse">
+        <circle cx="2" cy="2" r="1.5" fill="black" />
+        <circle cx="6" cy="6" r="1.5" fill="black" />
+      </pattern>
+    )
+  },
+  'Chemistry': {
+    id: 'pattern-chemistry',
+    description: 'Horizontal lines',
+    svg: (
+      <pattern id="pattern-chemistry" width="8" height="8" patternUnits="userSpaceOnUse">
+        <line x1="0" y1="2" x2="8" y2="2" stroke="black" strokeWidth="1.5" />
+        <line x1="0" y1="6" x2="8" y2="6" stroke="black" strokeWidth="1.5" />
+      </pattern>
+    )
   }
-  return organized;
-}
-function getSwotSubtitle(category) {
-  switch (category) {
-    case 'Strengths': return 'Best Performing Topics';
-    case 'Weaknesses': return 'Most Challenging Topics';
-    case 'Opportunities': return 'Rapid Learning Topics';
-    case 'Threats': return 'Weakness on High Impact Topics';
-    default: return '';
-  }
-}
-
-// Print-friendly color palette (matching Report.jsx)
-const SUBJECT_COLORS = {
-  Physics: "#000000",
-  Chemistry: "#000000",
-  Biology: "#000000",
-  Botany: "#000000",
-  Zoology: "#000000"
 };
 
-// --- Dummy chart data constants ---
-const DUMMY_SUBJECT_TOTALS = [
-  { subject: "Physics", total: 160 },
-  { subject: "Chemistry", total: 170 },
-  { subject: "Biology", total: 175 },
-  { subject: "Botany", total: 180 },
-  { subject: "Zoology", total: 150 },
-];
-const DUMMY_ERROR_DATA = [
-  { name: "Conceptual", value: 50 },
-  { name: "Calculation", value: 35 },
-  { name: "Careless", value: 15 },
-];
-const DUMMY_TREND_DATA = [
-  { name: "Test 1", Physics: 60, Chemistry: 120, Biology: 90, Botany: 150, Zoology: 70 },
-  { name: "Test 2", Physics: 170, Chemistry: 150, Biology: 140, Botany: 50, Zoology: 170 },
-  { name: "Test 3", Physics: 150, Chemistry: 160, Biology: 155, Botany: 150, Zoology: 180 },
-  { name: "Test 4", Physics: 180, Chemistry: 180, Biology: 170, Botany: 160, Zoology: 180 },
-  { name: "Test 5", Physics: 160, Chemistry: 160, Biology: 180, Botany: 180, Zoology: 180 },
-];
+const getSubjectPattern = (subject) => {
+  return subjectPatterns[subject] || subjectPatterns['Botany'];
+};
 
 export default function StudentReport() {
-  // high-level state similar to Report.jsx
-  const [dashboard, setDashboard] = useState(null);
-  const [swotData, setSwotData] = useState(null);
+  const [reportData, setReportData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Read testId from query
+  // Read testId from query and fetch report card data
   useEffect(() => {
-    const q = new URLSearchParams(window.location.search);
-    const t = q.get('testId');
-    // fetch dashboard and swot when mounted
-    const fetchAll = async () => {
+    const loadReportCard = async () => {
       try {
-        const dash = await getStudentDashboardData(t);
-        setDashboard(dash || null);
-      } catch (e) {
-        setError('Failed to load student dashboard data');
-      }
-      try {
-        const s = await fetchStudentSWOT(t);
-        setSwotData(s && s.swot ? transformSwotData(s.swot) : transformSwotData(s));
-      } catch (e) {
-        setSwotData(null);
+        const q = new URLSearchParams(window.location.search);
+        const testId = q.get('testId');
+        
+        setLoading(true);
+        const data = await fetchStudentReportCard(testId);
+        setReportData(data);
+      } catch (err) {
+        setError('Failed to load report card data');
       } finally {
-        if (typeof window !== 'undefined') window.__PDF_READY__ = true;
+        setLoading(false);
+        // Set PDF ready flag after a short delay to ensure rendering is complete
+        setTimeout(() => {
+          if (typeof window !== 'undefined') {
+            window.__PDF_READY__ = true;
+          }
+        }, 500);
       }
     };
-    fetchAll();
+    loadReportCard();
   }, []);
 
-  if (error) {
+  if (loading) {
     return (
-      <div className="p-8 text-center text-red-600">
-        <div className="font-bold text-lg mb-2">Error loading report</div>
-        <div>{error}</div>
+      <div className="p-8 text-center text-gray-600">
+        <div className="font-bold text-lg">Generating student report...</div>
       </div>
     );
   }
 
-  if (!dashboard) return <div className="p-8 text-center text-gray-600">Generating student report...</div>;
-
-  // Reuse the robust parsing from the previous StudentReport to derive metrics
-  const SUBJECTS = ["Physics", "Chemistry", "Biology", "Botany", "Zoology"];
-  const mapping = Array.isArray(dashboard.subjectWiseDataMapping) ? dashboard.subjectWiseDataMapping : [];
-
-  // Get test selection logic (prefer query param match)
-  const query = new URLSearchParams(window.location.search);
-  const tparam = query.get('testId');
-  let foundIndex = -1;
-  if (tparam && mapping.length) {
-    foundIndex = mapping.findIndex(r => {
-      if (!r.Test) return false;
-      if (String(r.Test) === String(tparam)) return true;
-      if (String(r.Test).toLowerCase() === (`test ${String(tparam)}`).toLowerCase()) return true;
-      if (String(r.Test).toLowerCase().includes(String(tparam).toLowerCase())) return true;
-      return false;
-    });
-    if (foundIndex === -1) {
-      const num = Number(tparam);
-      if (!isNaN(num)) {
-        foundIndex = mapping.findIndex(r => {
-          const m = String(r.Test || '').match(/\d+/);
-          const n = m ? Number(m[0]) : NaN;
-          return !isNaN(n) && n === num;
-        });
-      }
-    }
-  }
-  if (foundIndex === -1 && mapping.length) foundIndex = mapping.length - 1;
-  const selectedRow = foundIndex >= 0 ? mapping[foundIndex] : null;
-
-  // Summary data
-  let summaryData = [];
-  if (selectedRow) {
-    if (Array.isArray(selectedRow.subjectDetails) && selectedRow.subjectDetails.length) {
-      summaryData = selectedRow.subjectDetails.map(s => ({
-        subject: s.name || s.subject || 'Subject',
-        correct: s.correct ?? 0,
-        incorrect: s.incorrect ?? 0,
-        skipped: s.unattended ?? s.unattempted ?? 0,
-      }));
-    } else {
-      const hasFlattened = SUBJECTS.some(sub => `${sub}__correct` in selectedRow || `${sub}__incorrect` in selectedRow || `${sub}__unattempted` in selectedRow || `${sub}__unattended` in selectedRow);
-      if (hasFlattened) {
-        summaryData = SUBJECTS.map(sub => ({
-          subject: sub,
-          correct: Number(selectedRow[`${sub}__correct`] ?? selectedRow[`${sub}__correctAnswers`] ?? 0) || 0,
-          incorrect: Number(selectedRow[`${sub}__incorrect`] ?? 0) || 0,
-          skipped: Number(selectedRow[`${sub}__unattempted`] ?? selectedRow[`${sub}__unattended`] ?? 0) || 0,
-        }));
-      }
-    }
-  }
-  if (!summaryData || !summaryData.length) summaryData = SUBJECTS.map(s => ({ subject: s, correct: 0, incorrect: 0, skipped: 0 }));
-
-  // Only show non-empty subjects in top metrics (present if any of correct/incorrect/skipped > 0)
-  const visibleSummary = (summaryData || []).filter(e => ((e.correct ?? 0) + (e.incorrect ?? 0) + (e.skipped ?? 0)) > 0);
-  // If nothing is present (edge case), fall back to full summaryData to avoid empty UI
-  const metricsToShow = visibleSummary.length ? visibleSummary : summaryData;
-
-  // subject totals
-  let subjectTotals = [];
-  if (selectedRow) {
-    const hasTotals = SUBJECTS.some(s => typeof selectedRow[s] === 'number');
-    if (hasTotals) {
-      subjectTotals = SUBJECTS.map(s => ({ subject: s, total: Number(selectedRow[s] ?? 0) || 0 }));
-    } else {
-      const hasFlattened = SUBJECTS.some(sub => `${sub}__correct` in selectedRow || `${sub}__incorrect` in selectedRow || `${sub}__unattempted` in selectedRow || `${sub}__unattended` in selectedRow);
-      if (hasFlattened) {
-        subjectTotals = SUBJECTS.map(sub => {
-          const correct = Number(selectedRow[`${sub}__correct`] ?? 0) || 0;
-          const incorrect = Number(selectedRow[`${sub}__incorrect`] ?? 0) || 0;
-          const unattempted = Number(selectedRow[`${sub}__unattempted`] ?? selectedRow[`${sub}__unattended`] ?? 0) || 0;
-          return { subject: sub, total: correct + incorrect + unattempted };
-        });
-      } else {
-        subjectTotals = DUMMY_SUBJECT_TOTALS;
-      }
-    }
-  } else {
-    subjectTotals = DUMMY_SUBJECT_TOTALS;
+  if (error || !reportData) {
+    return (
+      <div className="p-8 text-center text-red-600">
+        <div className="font-bold text-lg mb-2">Error loading report</div>
+        <div>{error || 'No data available'}</div>
+      </div>
+    );
   }
 
-  // trendData (last 5 tests)
-  let trendData = [];
-  if (mapping.length) {
-    trendData = mapping.map((row, idx) => ({
-      name: row.Test || `Test ${idx + 1}`,
-      Physics: row.Physics ?? 0,
-      Chemistry: row.Chemistry ?? 0,
-      Biology: row.Biology ?? 0,
-      Botany: row.Botany ?? 0,
-      Zoology: row.Zoology ?? 0,
-      total: (row.Physics ?? 0) + (row.Chemistry ?? 0) + (row.Biology ?? 0) + (row.Botany ?? 0) + (row.Zoology ?? 0),
-    }));
-    if (trendData.length > 5) trendData = trendData.slice(-5);
-  } else {
-    trendData = DUMMY_TREND_DATA.map(r => ({ ...r, total: (r.Physics ?? 0) + (r.Chemistry ?? 0) + (r.Biology ?? 0) + (r.Botany ?? 0) + (r.Zoology ?? 0) })).slice(-5);
-  }
-
-  // ticks for trend
-  const safeTrendData = Array.isArray(trendData) ? trendData : [];
-  const subjectMaxFromTotals = Math.max(0, ...subjectTotals.map(s => s.total ?? 0));
-  const dataTrendMax = Math.max(0, ...safeTrendData.map(d => Math.max(d.Physics ?? 0, d.Chemistry ?? 0, d.Botany ?? 0, d.Zoology ?? 0)));
-  const baseTrendMax = Math.max(subjectMaxFromTotals, dataTrendMax);
-  const paddedTrendMax = baseTrendMax + 100;
-  const trendMax = Math.ceil(paddedTrendMax / 50) * 50;
-  const trendTicks = Array.from({ length: Math.ceil(trendMax / 50) }, (_, i) => (i + 1) * 50);
-
-  // performance trend (student total)
-  const performanceTrend = safeTrendData.map(d => ({ name: d.name, studentTotal: d.total ?? 0 }));
-  const perfRawMax = Math.max(0, ...performanceTrend.map(d => d.studentTotal ?? 0));
-  let perfMax = Math.ceil(perfRawMax / 100) * 100;
-  if (perfMax < 100) perfMax = 100;
-  const perfTicks = Array.from({ length: perfMax / 100 }, (_, i) => (i + 1) * 100);
-
-  // selected test info & improvement
-  let selectedTestInfo = null;
-  let improvementRate = null;
-  if (mapping.length && foundIndex >= 0) {
-    const sel = mapping[foundIndex];
-    const totalMarks = (sel.Physics ?? 0) + (sel.Chemistry ?? 0) + (sel.Botany ?? 0) + (sel.Zoology ?? 0);
-    const testNum = (() => {
-      const m = String(sel.Test || '').match(/\d+/);
-      return m ? Number(m[0]) : (foundIndex + 1);
-    })();
-    selectedTestInfo = { totalMarks, testNum };
-    if (foundIndex > 0) {
-      const prev = mapping[foundIndex - 1];
-      const prevTotal = (prev.Physics ?? 0) + (prev.Chemistry ?? 0) + (prev.Botany ?? 0) + (prev.Zoology ?? 0);
-      if (prevTotal > 0) improvementRate = (((totalMarks - prevTotal) / prevTotal) * 100).toFixed(2);
-    }
-  }
-
-  // key insights / recommendations
-  const keyInsights = dashboard?.keyInsightsData || {};
-  const improvementPoints = Array.isArray(keyInsights.areasForImprovement) ? keyInsights.areasForImprovement.slice(0, 2) : [];
-  const strengthPoints = Array.isArray(keyInsights.quickRecommendations) ? keyInsights.quickRecommendations.slice(0, 2) : [];
-  const recommendations = [...improvementPoints, ...strengthPoints];
-  while (recommendations.length < 4) recommendations.push("Keep working on concepts and practice regularly.");
-
-  // Prepare SWOT by subject mapping (like Report.jsx)
-  const PREFERRED_SUBJECT_ORDER = ["Physics", "Chemistry", "Biology", "Botany", "Zoology"];
-  const CATEGORIES = ["Weaknesses", "Strengths"];
-  const CATEGORY_LABELS = {
-    Weaknesses: "Focus Zone",
-    Strengths: "Steady Zone"
-  };
-
-  let derivedSubjects = [];
-  if (swotData && typeof swotData === 'object') {
-    const subjectsSet = new Set();
-    CATEGORIES.forEach(cat => {
-      const arr = swotData[cat] || [];
-      if (Array.isArray(arr)) arr.forEach(it => subjectsSet.add(it.subject));
-    });
-    derivedSubjects = Array.from(subjectsSet);
-  }
-  if (!derivedSubjects.length) derivedSubjects = ["Physics", "Chemistry", "Botany", "Zoology"];
-  else {
-    const ordered = PREFERRED_SUBJECT_ORDER.filter(s => derivedSubjects.includes(s));
-    const remainder = derivedSubjects.filter(s => !PREFERRED_SUBJECT_ORDER.includes(s));
-    derivedSubjects = ordered.concat(remainder);
-  }
-
-  const subjectsSwot = {};
-  derivedSubjects.forEach(s => subjectsSwot[s] = { Strengths: [], Weaknesses: [], Threats: [] });
-  if (swotData && typeof swotData === 'object') {
-    Object.keys(swotData).forEach(cat => {
-      const arr = swotData[cat] || [];
-      if (Array.isArray(arr)) {
-        arr.forEach(item => {
-          const subj = item.subject || 'Unknown';
-          const topics = Array.isArray(item.topics) ? item.topics : [];
-          if (!subjectsSwot[subj]) subjectsSwot[subj] = { Strengths: [], Weaknesses: [], Threats: [] };
-          // Only append to known buckets (we removed Opportunities/Edge Zone from the UI)
-          if (subjectsSwot[subj][cat]) {
-            subjectsSwot[subj][cat] = subjectsSwot[subj][cat].concat(topics.length ? topics : ['No data']);
-          }
-        });
-      }
-    });
-  }
-
-  // Patterns for print-friendly legend (from Report.jsx)
-  const PATTERNS = {
-    Physics: 'pattern-physics',
-    Chemistry: 'pattern-chemistry',
-    Biology: 'pattern-biology',
-    Botany: 'pattern-botany',
-    Zoology: 'pattern-zoology',
-    Total: 'pattern-total'
-  };
+  const { page1, page2 } = reportData;
 
   return (
     <div className="min-h-screen bg-white">
-      <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden>
+      {/* SVG Pattern Definitions */}
+      <svg width="0" height="0" style={{ position: 'absolute' }}>
         <defs>
-          <pattern id="pattern-physics" patternUnits="userSpaceOnUse" width="6" height="6">
-            <rect width="6" height="6" fill="#ffffff" />
-            <path d="M0,6 L6,0" stroke="#000" strokeWidth="1" />
-          </pattern>
-          <pattern id="pattern-total" patternUnits="userSpaceOnUse" width="6" height="6">
-            <rect width="6" height="6" fill="#ffffff" />
-            <path d="M0,5 L5,0" stroke="#000" strokeWidth="0.3" />
-            <path d="M1,6 L6,1" stroke="#000" strokeWidth="0.3" />
-          </pattern>
-          <pattern id="pattern-biology" patternUnits="userSpaceOnUse" width="6" height="6">
-            <rect width="6" height="6" fill="#ffffff" />
-            <circle cx="2" cy="2" r="0.8" fill="#000" />
-            <circle cx="5" cy="5" r="0.8" fill="#000" />
-          </pattern>
-          <pattern id="pattern-chemistry" patternUnits="userSpaceOnUse" width="6" height="6">
-            <rect width="6" height="6" fill="#ffffff" />
-            <path d="M0,0 L6,6" stroke="#000" strokeWidth="1" />
-            <path d="M0,6 L6,0" stroke="#000" strokeWidth="1" />
-          </pattern>
-          <pattern id="pattern-botany" patternUnits="userSpaceOnUse" width="6" height="6">
-            <rect width="6" height="6" fill="#ffffff" />
-            <circle cx="3" cy="3" r="1" fill="#000" />
-          </pattern>
-          <pattern id="pattern-zoology" patternUnits="userSpaceOnUse" width="6" height="6">
-            <rect width="6" height="6" fill="#ffffff" />
-            <path d="M0,3 L6,3" stroke="#000" strokeWidth="1" />
-          </pattern>
+          {Object.values(subjectPatterns).map(pattern => pattern.svg)}
         </defs>
       </svg>
 
-      <div className="max-w-5xl mx-auto font-sans text-black bg-white p-8 space-y-6">
-        <div className="flex justify-between items-center px-6 py-6 border border-gray-200 rounded-xl">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-800">Performance Report</h1>
-            <p className="text-sm text-black">powered by <span className="text-xl font-bold text-black">Inzight</span><span className="text-xl font-bold text-black">Ed </span> </p>
-          </div>
-        </div>
+      <div className="max-w-7xl mx-auto bg-white p-6 space-y-8">
+        {/* Page 1: Performance Report */}
+        <Page1 
+          data={page1} 
+          getSubjectPattern={getSubjectPattern}
+        />
 
-        {selectedTestInfo && (
-          <div className="w-fit mx-auto text-center text-base text-black font-regular border border-gray-200 px-6 py-2 rounded-full">
-            You have obtained <span className="font-bold text-black">{selectedTestInfo.totalMarks}</span> marks in <span className="font-bold text-black">Test {selectedTestInfo.testNum}</span>
-            {improvementRate !== null && (
-              (() => {
-                const num = Number(improvementRate);
-                const formatted = isNaN(num) ? improvementRate : `${Number(num).toFixed(2)}`;
-                const colorClass = 'text-black';
-                return (
-                  <> with an improvement rate of <span className={`font-bold ${colorClass}`}>{formatted}%</span> compared to the last test</>
-                );
-              })()
-            )}
-          </div>
-        )}
+        {/* Page Break for PDF */}
+        <div style={{ pageBreakAfter: 'always' }}></div>
 
-        {/* Top Metrics */}
-        <div className="grid grid-flow-col auto-cols-fr gap-6 w-full">
-          {metricsToShow.map((entry, idx) => (
-            <div key={String(entry.subject) + '-' + idx} className="border border-gray-200 bg-white p-4 rounded-lg">
-              <span className="text-lg font-bold text-black block mb-2">{entry.subject}</span>
-              <div className="space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-sm text-black">Correct:</span>
-                  <span className="text-sm font-semibold text-black">{entry.correct ?? 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-black">Incorrect:</span>
-                  <span className="text-sm font-semibold text-black">{entry.incorrect ?? 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-black">Skipped:</span>
-                  <span className="text-sm font-semibold text-black">{entry.skipped ?? 0}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Student vs Class Performance Trend */}
-        <div className="grid grid-cols-1 gap-6">
-          <div className="border border-gray-200 bg-white p-4 rounded-lg">
-            <h2 className="text-lg font-bold mb-4 text-black">Student vs Class Performance Trend</h2>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={performanceTrend} isAnimationActive={false}>
-                  <XAxis dataKey="name" stroke="#000000" isAnimationActive={false} />
-                  <YAxis stroke="#000000" domain={[0, perfMax]} ticks={perfTicks} isAnimationActive={false} />
-                  <Tooltip isAnimationActive={false} />
-                  <Legend isAnimationActive={false} payload={[{ value: 'Total Marks', id: 'Total Marks' }]} />
-                  <Bar dataKey="studentTotal" fill={`url(#pattern-total)`} stroke="#000000" strokeWidth={1} radius={[5, 5, 0, 0]} barSize={20} isAnimationActive={false} name="Total Marks">
-                    <LabelList dataKey="studentTotal" position="top" fill="#000000" fontSize={14} fontWeight={700} isAnimationActive={false} />
-                  </Bar>
-                  <Line type="monotone" dataKey="classAvg" stroke="#000000" strokeWidth={1} dot={{ r: 1.5, stroke: '#000000', fill: '#000000' }} isAnimationActive={false} name="Class Avg" />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
-        {/* Test-wise Subject Performance & Total Trend */}
-        <div className="border border-gray-200 bg-white p-4 rounded-lg">
-          <h2 className="text-lg font-bold mb-4">Test-wise Subject Performance & Total Trend</h2>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={trendData} barCategoryGap={20} barSize={20} isAnimationActive={false}>
-                <XAxis dataKey="name" isAnimationActive={false} stroke="#000000" />
-                <YAxis domain={[0, trendMax]} ticks={trendTicks} isAnimationActive={false} stroke="#000000" />
-                <Tooltip isAnimationActive={false} />
-                <Legend isAnimationActive={false} content={({ payload }) => {
-                  if (!payload) return null;
-                  const available = payload.map(p => p.dataKey);
-                  const preferredOrder = PREFERRED_SUBJECT_ORDER.filter(s => available.includes(s));
-                  const remainder = available.filter(a => !PREFERRED_SUBJECT_ORDER.includes(a));
-                  const orderedKeys = preferredOrder.concat(remainder);
-                  const ordered = orderedKeys.map(k => payload.find(p => p.dataKey === k)).filter(Boolean);
-                  return (
-                    <ul style={{ listStyle: 'none', padding: 0, display: 'flex', justifyContent: 'center', margin: 0 }}>
-                      {ordered.map((entry, i) => {
-                        const patternId = PATTERNS[entry.dataKey] || '';
-                        return (
-                          <li key={`lg-${i}`} style={{ display: 'flex', alignItems: 'center', marginRight: 20 }}>
-                            <svg width="14" height="14" style={{ marginRight: 8 }}>
-                              <rect width="14" height="14" fill={`url(#${patternId})`} stroke="#000000" />
-                            </svg>
-                            <span style={{ color: '#000000' }}>{entry.dataKey}</span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  );
-                }} />
-
-                {(() => {
-                  const first = Array.isArray(trendData) && trendData.length ? trendData[0] : null;
-                  const barSubjects = first ? Object.keys(first).filter(k => k !== 'name' && k !== 'total') : ['Physics', 'Chemistry', 'Botany', 'Zoology'];
-                  return barSubjects.map((subj, i) => (
-                    <Bar key={`bar-${subj}-${i}`} dataKey={subj} fill={`url(#${PATTERNS[subj] || ''})`} stroke="#000000" strokeWidth={1} radius={[5, 5, 0, 0]} isAnimationActive={false}>
-                      <LabelList dataKey={subj} position="top" fill="#000000" fontSize={10} fontWeight={600} isAnimationActive={false} />
-                    </Bar>
-                  ));
-                })()}
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Notes & Comments */}
-        <div className="border p-4 rounded-lg h-[200px]">
-          <h2 className="text-lg font-bold mb-6">Notes & Comments:</h2>
-          <div className="space-y-6">
-            {Array.from({ length: 5 }, (_, i) => (
-              <hr key={i} className="border-gray-300" />
-            ))}
-          </div>
-        </div>
-
-        {/* Subject-centric SWOT */}
-        <div>
-          <h2 className="text-xl font-bold text-center mt-20 mb-10">Test Analysis</h2>
-          <div className="grid grid-cols-2 gap-3">
-            {(() => {
-              const testParam = tparam;
-              let isOverall = false;
-              if (!testParam || testParam === 'Overall' || testParam === '0') isOverall = true;
-              else {
-                const parsed = parseInt(String(testParam).replace(/^Test\s*/i, ''), 10);
-                if (!Number.isNaN(parsed) && parsed === 0) isOverall = true;
-              }
-
-              const hasBotany = derivedSubjects.includes('Botany');
-              const hasZoology = derivedSubjects.includes('Zoology');
-              const hasBiology = derivedSubjects.includes('Biology');
-
-              const shouldPullOutBiology = isOverall && hasBotany && hasZoology && hasBiology;
-
-              const gridSubjects = shouldPullOutBiology ? derivedSubjects.filter(s => s !== 'Biology') : derivedSubjects;
-
-              return (
-                <>
-                  {gridSubjects.map(subject => (
-                    <div key={subject} className="border border-gray-200 bg-white p-3 rounded-lg">
-                      <h3 className="font-bold mb-1 text-lg uppercase">{subject}</h3>
-                      <div className="space-y-2 text-sm">
-                        {CATEGORIES.map(cat => (
-                          <div key={cat}>
-                            <div className="font-semibold text-sm mb-1">{CATEGORY_LABELS[cat]}</div>
-                            {subjectsSwot[subject] && subjectsSwot[subject][cat] && subjectsSwot[subject][cat].length ? (
-                              <ul className="list-disc list-inside ml-3 space-y-1">
-                                {subjectsSwot[subject][cat].map((topic, idx) => (
-                                  <li key={idx} className="whitespace-pre-wrap text-gray-700">{topic}</li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <div className="italic text-gray-400">No data</div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-
-                  {shouldPullOutBiology && (
-                    <div className="col-span-2 border border-gray-200 bg-white p-3 rounded-lg">
-                      <h3 className="font-bold mb-1 text-lg uppercase">Biology</h3>
-                      <div className="space-y-2 text-sm">
-                        {CATEGORIES.map(cat => (
-                          <div key={cat}>
-                            <div className="font-semibold text-sm mb-1">{CATEGORY_LABELS[cat]}</div>
-                            {subjectsSwot['Biology'] && subjectsSwot['Biology'][cat] && subjectsSwot['Biology'][cat].length ? (
-                              <ul className="list-disc list-inside ml-3 space-y-1">
-                                {subjectsSwot['Biology'][cat].map((topic, idx) => (
-                                  <li key={idx} className="whitespace-pre-wrap text-gray-700">{topic}</li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <div className="italic text-gray-400">No data</div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              );
-            })()}
-          </div>
-        </div>
-
-        <div className="text-center text-sm italic text-black pt-4">Keep going — progress, not perfection.</div>
-        <div className="text-center text-xs text-gray-400 pt-3">Generated by InzightEd</div>
+        {/* Page 2: Study Planner & Insights */}
+        <Page2 
+          data={page2} 
+          getSubjectPattern={getSubjectPattern}
+        />
       </div>
     </div>
   );
 }
+
+// Page 1 Component: Performance Report (B&W Version)
+const Page1 = ({ data, getSubjectPattern }) => {
+  // Normalize subject_wise_data to array
+  const subjectWiseData = Array.isArray(data.subject_wise_data)
+    ? data.subject_wise_data
+    : (data.subject_wise_data ? Object.keys(data.subject_wise_data).map(subject => ({
+        subject,
+        ...data.subject_wise_data[subject]
+      })) : []);
+  
+  // Normalize mistakes_table to array
+  const mistakesTable = Array.isArray(data.mistakes_table)
+    ? data.mistakes_table
+    : (data.mistakes_table ? Object.values(data.mistakes_table) : []);
+  
+  // performance_trend handling
+  const performanceTrend = data.performance_trend || {};
+  
+  return (
+    <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 space-y-6 rounded-lg print:bg-white">
+      {/* Header with Student Name */}
+      <div className="w-full bg-gray-200 border border-black py-4 rounded-md">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-black">Dr. {data.student_name}</h1>
+          <p className="text-sm font-semibold text-black mt-1">Student Performance Report</p>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <BWCard 
+          label="Your Marks" 
+          value={`${data.total_marks} / 720`}
+          patternId="pattern-botany"
+        />
+        <BWCard 
+          label="Your Improvement"
+          value={`${Math.abs(data.improvement_percentage)}%`}
+          patternId="pattern-physics"
+        />
+        <BWCard 
+          label="Average Marks" 
+          value={data.average_marks}
+          patternId="pattern-chemistry"
+        />
+      </div>
+
+      {/* Subject-wise Performance */}
+      <div>
+        <h2 className="text-lg font-bold text-black mb-3 border-b-2 border-black pb-2">Subject-wise Performance</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {subjectWiseData?.map((subject, index) => (
+            <SubjectPieChartBW 
+              key={index}
+              subject={subject}
+              getSubjectPattern={getSubjectPattern}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Performance Trend */}
+      <div>
+        <h2 className="text-lg font-bold text-black mb-3 pb-2" style={{ borderBottom: '2px solid rgba(0,0,0,0.6)' }}>Performance Trend</h2>
+        <div className="p-4 rounded-md" style={{ border: '2px solid rgba(0,0,0,0.6)' }}>
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart
+              data={formatTotalTrendData(performanceTrend)}
+              margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.3)" />
+              <XAxis
+                dataKey="test_num"
+                label={{ value: 'Test Number', position: 'insideBottom', offset: -5 }}
+                padding={{ left: 20, right: 20 }}
+                stroke="rgba(0,0,0,0.7)"
+                tick={{ fill: 'rgba(0,0,0,0.7)' }}
+              />
+              <YAxis
+                label={{ value: 'Total Marks', angle: -90, position: 'insideLeft' }}
+                domain={[dataMin => Math.max(0, dataMin - 20), dataMax => dataMax + 20]}
+                stroke="rgba(0,0,0,0.7)"
+                tick={{ fill: 'rgba(0,0,0,0.7)' }}
+              />
+              <Tooltip formatter={(value) => [value, 'Total Marks']} contentStyle={{ color: 'rgba(0,0,0,0.7)' }} />
+              <Legend wrapperStyle={{ color: 'rgba(0,0,0,0.7)' }} />
+              <Line
+                type="monotone"
+                dataKey="total_marks"
+                stroke="rgba(0,0,0,0.7)"
+                strokeWidth={3}
+                dot={{ r: 6, fill: 'rgba(0,0,0,0.7)', stroke: 'rgba(0,0,0,0.7)', strokeWidth: 1.5 }}
+              >
+                <LabelList dataKey="total_marks" position="top" dy={-8} style={{ fontSize: 14, fontWeight: 'bold', fill: 'rgba(0,0,0,0.7)' }} />
+              </Line>
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Mistakes Table */}
+      <div>
+        <h2 className="text-lg font-bold text-black mb-3 pb-2" style={{ borderBottom: '2px solid rgba(0,0,0,0.6)' }}>Mistakes to Focus On</h2>
+        <div className="overflow-x-auto rounded-md" style={{ border: '2px solid rgba(0,0,0,0.6)' }}>
+          <table className="w-full border-collapse">
+            <thead>
+              <tr style={{ backgroundColor: 'rgba(0,0,0,0.6)', color: '#ffffff' }}>
+                <th className="p-2 text-left font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>S.no</th>
+                <th className="p-2 text-left font-bold" style={{ minWidth: '120px', border: '1px solid rgba(0,0,0,0.6)' }}>Subject</th>
+                <th className="p-2 text-left font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>Subtopic</th>
+                <th className="p-2 text-left font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>Mistake Detail</th>
+              </tr>
+            </thead>
+            <tbody>
+              {mistakesTable?.map((mistake, index) => (
+                <tr key={index} className={`${index % 2 === 0 ? 'bg-gray-100' : 'bg-white'}`} style={{ border: '1px solid rgba(0,0,0,0.6)' }}>
+                  <td className="p-2 font-semibold" style={{ fontSize: '1.1em', border: '1px solid rgba(0,0,0,0.6)' }}>{index + 1}</td>
+                  <td className="p-2" style={{ fontSize: '1.1em', minWidth: '120px', border: '1px solid rgba(0,0,0,0.6)' }}>
+                    <div style={{ display: 'inline-block' }}>
+                      <SubjectTagBW subject={mistake.subject} getSubjectPattern={getSubjectPattern} />
+                    </div>
+                  </td>
+                  <td className="p-2 text-sm" style={{ fontSize: '1.1em', border: '1px solid rgba(0,0,0,0.6)' }}>{mistake.subtopic}</td>
+                  <td className="p-2 text-sm" style={{ fontSize: '1.1em', border: '1px solid rgba(0,0,0,0.6)' }}>{mistake.checkpoint || mistake.mistake_detail || ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Encouragement Message */}
+      <div className="text-center py-4 border-2 border-black bg-gray-50 rounded-md">
+        <p className="text-sm italic text-black " style={{ fontSize: '1.1em' }}>
+          "You're doing super good and progressing great – <span className="font-bold">Keep it up!</span>"
+        </p>
+      </div>
+    </div>
+  );
+};
+
+// Page 2 Component: Study Planner & Insights (B&W Version)
+const Page2 = ({ data, getSubjectPattern }) => {
+  // Normalize subjects to an array
+  const subjects = Array.isArray(data?.subjects) ? data.subjects : (data?.subjects ? Object.keys(data.subjects) : []);
+  
+  // Normalize study_planner to array
+  const studyPlanner = Array.isArray(data?.study_planner) 
+    ? data.study_planner 
+    : (data?.study_planner ? Object.values(data.study_planner) : []);
+  
+  // Normalize frequent_mistakes to array
+  const frequentMistakes = Array.isArray(data?.frequent_mistakes)
+    ? data.frequent_mistakes
+    : (data?.frequent_mistakes ? Object.values(data.frequent_mistakes) : []);
+  
+  // Normalize class_vs_you to array
+  const classVsYou = Array.isArray(data?.class_vs_you)
+    ? data.class_vs_you
+    : (data?.class_vs_you ? Object.values(data.class_vs_you) : []);
+
+  return (
+    <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 space-y-6 rounded-lg print:bg-white">
+      {/* Study Planner */}
+      <div>
+        <h2 className="text-lg font-bold text-black mb-3 pb-2" style={{ borderBottom: '2px solid rgba(0,0,0,0.6)' }}>6-Day Study Planner</h2>
+        <div className="overflow-x-auto rounded-md" style={{ border: '2px solid rgba(0,0,0,0.6)' }}>
+          <table className="w-full border-collapse">
+            <thead>
+              <tr style={{ backgroundColor: 'rgba(0,0,0,0.6)', color: '#ffffff' }}>
+                <th className="p-2 text-left font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>Day</th>
+                {subjects?.map((subject, idx) => (
+                  <th key={idx} className="p-2 text-left font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>{subject}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {studyPlanner?.map((day, index) => (
+                <tr key={index} className={`${index % 2 === 0 ? 'bg-gray-100' : 'bg-white'}`} style={{ border: '1px solid rgba(0,0,0,0.6)' }}>
+                  <td className="p-2 font-semibold" style={{ fontSize: '1.1em', border: '1px solid rgba(0,0,0,0.6)' }}>Day {day.day}</td>
+                  {subjects?.map((subject, subIdx) => (
+                    <td key={subIdx} className="p-2 text-sm" style={{ fontSize: '0.95em', border: '1px solid rgba(0,0,0,0.6)' }}>
+                      {day[subject] || '-'}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Frequent Mistakes */}
+      <div>
+        <h2 className="text-lg font-bold text-black mb-3 pb-2" style={{ borderBottom: '2px solid rgba(0,0,0,0.6)' }}>Frequent Mistakes</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {frequentMistakes?.map((mistake, index) => (
+            <div key={index} className="border-2 border-black bg-white p-4 rounded-md">
+              <div className="mb-2">
+                <SubjectTagBW subject={mistake.subject} getSubjectPattern={getSubjectPattern} />
+              </div>
+              <p className="text-sm text-black font-semibold">Topic: {mistake.topic}</p>
+              <p className="text-xs text-gray-700 mt-1">Error Count: {mistake.error_count}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Class vs You */}
+      <div>
+        <h2 className="text-lg font-bold text-black mb-3 pb-2" style={{ borderBottom: '2px solid rgba(0,0,0,0.6)' }}>Class vs You</h2>
+        <div className="overflow-x-auto rounded-md" style={{ border: '2px solid rgba(0,0,0,0.6)' }}>
+          <table className="w-full border-collapse">
+            <thead>
+              <tr style={{ backgroundColor: 'rgba(0,0,0,0.6)', color: '#ffffff' }}>
+                <th className="p-2 text-left font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>Subject</th>
+                <th className="p-2 text-left font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>Your Score</th>
+                <th className="p-2 text-left font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>Class Average</th>
+                <th className="p-2 text-left font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>Difference</th>
+              </tr>
+            </thead>
+            <tbody>
+              {classVsYou?.map((item, index) => (
+                <tr key={index} className={`${index % 2 === 0 ? 'bg-gray-100' : 'bg-white'}`} style={{ border: '1px solid rgba(0,0,0,0.6)' }}>
+                  <td className="p-2 font-semibold" style={{ fontSize: '1.1em', border: '1px solid rgba(0,0,0,0.6)' }}>
+                    <SubjectTagBW subject={item.subject} getSubjectPattern={getSubjectPattern} />
+                  </td>
+                  <td className="p-2" style={{ fontSize: '1.1em', border: '1px solid rgba(0,0,0,0.6)' }}>{item.your_score}</td>
+                  <td className="p-2" style={{ fontSize: '1.1em', border: '1px solid rgba(0,0,0,0.6)' }}>{item.class_average}</td>
+                  <td className="p-2" style={{ fontSize: '1.1em', border: '1px solid rgba(0,0,0,0.6)' }}>
+                    {item.difference > 0 ? '+' : ''}{item.difference}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Footer Note */}
+      <div className="text-center py-4">
+        <p className="text-sm text-gray-600 italic">Practice consistently and focus on weak areas for maximum improvement</p>
+        <p className="text-xs text-gray-400 mt-2">Generated by InzightEd</p>
+      </div>
+    </div>
+  );
+};
+
+// Helper Component: Modern B&W Card with Pattern Strip
+const BWCard = ({ label, value, patternId }) => (
+  <div className="border-2 border-black bg-white flex items-stretch shadow-none rounded-md" style={{ overflow: 'hidden' }}>
+    <svg width="14" height="100%" preserveAspectRatio="none" className="hidden sm:block">
+      <rect width="14" height="100%" fill={patternId ? `url(#${patternId})` : '#000'} />
+    </svg>
+    <div className="flex-1 p-4">
+      <p className="text-xs uppercase tracking-wide font-semibold text-black mb-2">{label}</p>
+      <div className="flex items-baseline gap-3">
+        <p className="text-3xl font-extrabold text-black leading-tight" style={{ fontSize: '2.0625rem' }}>{value}</p>
+      </div>
+      <div className="mt-2 border-t border-dashed border-black pt-2">
+        <p className="text-xs text-gray-700">&nbsp;</p>
+      </div>
+    </div>
+  </div>
+);
+
+// Helper Component: Subject Tag with Pattern Block
+const SubjectTagBW = ({ subject, getSubjectPattern }) => {
+  const pattern = getSubjectPattern(subject);
+  return (
+    <div className="inline-flex items-center gap-2 border border-black px-2 py-1 rounded">
+      <svg width="16" height="16">
+        <rect width="16" height="16" fill={`url(#${pattern.id})`} stroke="black" strokeWidth="1" />
+      </svg>
+      <span className="text-sm font-semibold text-black">{subject}</span>
+    </div>
+  );
+};
+
+// Helper Component: Subject Pie Chart B&W (Pattern-based)
+const SubjectPieChartBW = ({ subject, getSubjectPattern }) => {
+  const pattern = getSubjectPattern(subject.subject);
+  
+  const pieData = [
+    { name: 'Correct', value: subject.correct || 0, pattern: pattern.id },
+    { name: 'Incorrect', value: subject.incorrect || 0, pattern: 'none' },
+    { name: 'Skipped', value: subject.skipped || 0, pattern: 'none' },
+  ].filter(d => d.value > 0);
+
+  return (
+    <div className="border-2 border-black bg-white p-3 rounded-md">
+      <h3 className="text-center font-bold text-sm mb-2 text-black">{subject.subject}</h3>
+      <ResponsiveContainer width="100%" height={150}>
+        <PieChart>
+          <Pie
+            data={pieData}
+            dataKey="value"
+            nameKey="name"
+            cx="50%"
+            cy="50%"
+            outerRadius={50}
+            stroke="black"
+            strokeWidth={2}
+          >
+            {pieData.map((entry, index) => (
+              <Cell 
+                key={`cell-${index}`} 
+                fill={entry.pattern !== 'none' ? `url(#${entry.pattern})` : (
+                  entry.name === 'Incorrect' ? '#d0d0d0' : '#f0f0f0'
+                )} 
+              />
+            ))}
+            <LabelList
+              dataKey="value"
+              position="inside"
+              style={{ fontSize: '12px', fontWeight: 'bold', fill: 'black' }}
+            />
+          </Pie>
+          <Tooltip />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="text-xs text-center space-y-1 mt-2">
+        <div className="flex justify-between">
+          <span>Correct:</span>
+          <span className="font-bold">{subject.correct || 0}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Incorrect:</span>
+          <span className="font-bold">{subject.incorrect || 0}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Skipped:</span>
+          <span className="font-bold">{subject.skipped || 0}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Helper function to format trend data for total marks
+const formatTotalTrendData = (subWiseMarks) => {
+  if (!subWiseMarks || typeof subWiseMarks !== 'object') return [];
+  
+  const testNums = Object.keys(subWiseMarks).sort((a, b) => Number(a) - Number(b));
+  
+  return testNums.map(testNum => {
+    const marks = subWiseMarks[testNum];
+    let total = 0;
+    if (marks && typeof marks === 'object') {
+      total = Object.values(marks).reduce((sum, val) => sum + (Number(val) || 0), 0);
+    }
+    return {
+      test_num: `Test ${testNum}`,
+      total_marks: total
+    };
+  });
+}
+
