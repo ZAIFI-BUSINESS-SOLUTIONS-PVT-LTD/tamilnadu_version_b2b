@@ -110,7 +110,7 @@ export default function StudentReport() {
   const { page1, page2 } = reportData;
 
   return (
-    <div className="min-h-screen bg-white">
+    <>
       {/* SVG Pattern Definitions */}
       <svg width="0" height="0" style={{ position: 'absolute' }}>
         <defs>
@@ -118,23 +118,66 @@ export default function StudentReport() {
         </defs>
       </svg>
 
-      <div className="max-w-7xl mx-auto bg-white p-6 space-y-8">
-        {/* Page 1: Performance Report */}
-        <Page1 
-          data={page1} 
-          getSubjectPattern={getSubjectPattern}
-        />
+      {/* Print-specific styles */}
+      <style>{`
+        /* Black & White Print Optimization */
+        @media print {
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+          
+          /* Page setup */
+          .print-page {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 10mm;
+            margin: 0;
+            box-sizing: border-box;
+            page-break-inside: avoid;
+            background: white !important;
+          }
+          
+          .print-page:not(:last-child) {
+            page-break-after: always;
+          }
+          
+          /* Remove screen-only styling in print */
+          body {
+            background: white !important;
+          }
+          
+          .min-h-screen {
+            min-height: auto !important;
+            background: white !important;
+            padding: 0 !important;
+          }
+          
+          /* Ensure patterns print correctly */
+          svg pattern line,
+          svg pattern circle {
+            stroke: black !important;
+            fill: black !important;
+          }
+        }
+      `}</style>
 
-        {/* Page Break for PDF */}
-        <div style={{ pageBreakAfter: 'always' }}></div>
-
-        {/* Page 2: Study Planner & Insights */}
-        <Page2 
-          data={page2} 
-          getSubjectPattern={getSubjectPattern}
-        />
+      <div className="min-h-screen bg-white p-4 md:p-8">
+        <div className="print-page">
+          <Page1 
+            data={page1} 
+            getSubjectPattern={getSubjectPattern}
+          />
+        </div>
+        <div className="print-page">
+          <Page2 
+            data={page2} 
+            getSubjectPattern={getSubjectPattern}
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -199,6 +242,39 @@ const Page1 = ({ data, getSubjectPattern }) => {
         </div>
       </div>
 
+      {/* Improvement Message */}
+      {(() => {
+        const imp = Number(data.improvement_percentage) || 0;
+        const absImp = Math.abs(imp).toFixed(1);
+        let message = '';
+
+        if (imp > 0) {
+          if (imp < 5) {
+            message = `"Good effort ${data.student_name}! You improved by ${absImp}% since the last test — keep pushing, you're on the right track."`;
+          } else if (imp < 10) {
+            message = `"Great work ${data.student_name}! You improved by ${absImp}% since the last test — nice progress, keep it up!"`;
+          } else {
+            message = `"Outstanding ${data.student_name}! You improved by ${absImp}% since the last test — excellent progress!"`;
+          }
+        } else if (imp < 0) {
+          if (absImp < 5) {
+            message = `"Heads up ${data.student_name}. Your score dropped by ${absImp}% since the last test — let's focus on a few key topics to bounce back stronger."`;
+          } else if (absImp < 10) {
+            message = `"Don't worry ${data.student_name}. There's a ${absImp}% dip from the last test — concentrate on targeted practice and you'll recover quickly."`;
+          } else {
+            message = `"We noticed a ${absImp}% decrease since the last test, ${data.student_name}. Let's prioritize weak areas in your study plan to regain momentum — you can do this!"`;
+          }
+        } else {
+          message = `"You're steady, ${data.student_name}. No change since the last test — keep practicing to push your score higher."`;
+        }
+
+        return (
+          <div className="border-2 border-black p-4 bg-gray-50 rounded-md">
+            <p className="text-sm font-semibold text-black text-center italic " style={{ fontSize: '1.1em' }}>{message}</p>
+          </div>
+        );
+      })()}
+
       {/* Performance Trend */}
       <div>
         <h2 className="text-lg font-bold text-black mb-3 pb-2" style={{ borderBottom: '2px solid rgba(0,0,0,0.6)' }}>Performance Trend</h2>
@@ -208,7 +284,6 @@ const Page1 = ({ data, getSubjectPattern }) => {
               data={formatTotalTrendData(performanceTrend)}
               margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.3)" />
               <XAxis
                 dataKey="test_num"
                 label={{ value: 'Test Number', position: 'insideBottom', offset: -5 }}
@@ -249,6 +324,7 @@ const Page1 = ({ data, getSubjectPattern }) => {
                 <th className="p-2 text-left font-bold" style={{ minWidth: '120px', border: '1px solid rgba(0,0,0,0.6)' }}>Subject</th>
                 <th className="p-2 text-left font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>Subtopic</th>
                 <th className="p-2 text-left font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>Mistake Detail</th>
+                <th className="p-2 text-center font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>✓</th>
               </tr>
             </thead>
             <tbody>
@@ -262,6 +338,14 @@ const Page1 = ({ data, getSubjectPattern }) => {
                   </td>
                   <td className="p-2 text-sm" style={{ fontSize: '1.1em', border: '1px solid rgba(0,0,0,0.6)' }}>{mistake.subtopic}</td>
                   <td className="p-2 text-sm" style={{ fontSize: '1.1em', border: '1px solid rgba(0,0,0,0.6)' }}>{mistake.checkpoint || mistake.mistake_detail || ''}</td>
+                  <td className="p-2 text-center" style={{ fontSize: '1.1em', border: '1px solid rgba(0,0,0,0.6)' }}>
+                    <div
+                      className="w-5 h-5 rounded-sm flex items-center justify-center font-bold bg-white text-black mx-auto"
+                      style={{ border: '2px solid rgba(0,0,0,0.6)' }}
+                    >
+                      {/* Empty checkbox for PDF */}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -300,27 +384,39 @@ const Page2 = ({ data, getSubjectPattern }) => {
     : (data?.class_vs_you ? Object.values(data.class_vs_you) : []);
 
   return (
-    <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 space-y-6 rounded-lg print:bg-white">
-      {/* Study Planner */}
+    <div className="bg-white p-6 space-y-6">
+      {/* Header */}
+      <div className="w-full bg-gray-200 py-4 rounded-md" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-black">Study Planner & Insights</h1>
+          <p className="text-sm font-semibold text-black mt-1">Personalized plan and key insights</p>
+        </div>
+      </div>
+
+      {/* Study Planner Table - Pattern underlines for subjects */}
       <div>
-        <h2 className="text-lg font-bold text-black mb-3 pb-2" style={{ borderBottom: '2px solid rgba(0,0,0,0.6)' }}>6-Day Study Planner</h2>
-        <div className="overflow-x-auto rounded-md" style={{ border: '2px solid rgba(0,0,0,0.6)' }}>
+        <h2 className="text-lg font-bold text-black mb-3 border-b-2 border-black pb-2">6-Day Study Plan</h2>
+        <div className="overflow-x-auto rounded-md" style={{ borderWidth: '2px', borderStyle: 'solid', borderColor: 'rgba(0,0,0,0.6)' }}>
           <table className="w-full border-collapse">
             <thead>
               <tr style={{ backgroundColor: 'rgba(0,0,0,0.6)', color: '#ffffff' }}>
-                <th className="p-2 text-left font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>Day</th>
-                {subjects?.map((subject, idx) => (
-                  <th key={idx} className="p-2 text-left font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>{subject}</th>
+                <th className="p-2 text-center font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>Day</th>
+                {subjects.map((subject, index) => (
+                  <th key={index} className="p-2 text-center font-bold relative" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>
+                    <div>{subject}</div>
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {studyPlanner?.map((day, index) => (
                 <tr key={index} className={`${index % 2 === 0 ? 'bg-gray-100' : 'bg-white'}`} style={{ border: '1px solid rgba(0,0,0,0.6)' }}>
-                  <td className="p-2 font-semibold" style={{ fontSize: '1.1em', border: '1px solid rgba(0,0,0,0.6)' }}>Day {day.day}</td>
-                  {subjects?.map((subject, subIdx) => (
-                    <td key={subIdx} className="p-2 text-sm" style={{ fontSize: '0.95em', border: '1px solid rgba(0,0,0,0.6)' }}>
-                      {day[subject] || '-'}
+                  <td className="p-2 text-center font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>Day {day.day}</td>
+                  {subjects.map((subject, subIndex) => (
+                    <td key={subIndex} className="p-2 text-center" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>
+                      {day[subject] ? (
+                        <span className="text-xs text-black" style={{ fontSize: '1.1em' }}>{day[subject]}</span>
+                      ) : null}
                     </td>
                   ))}
                 </tr>
@@ -332,15 +428,23 @@ const Page2 = ({ data, getSubjectPattern }) => {
 
       {/* Frequent Mistakes */}
       <div>
-        <h2 className="text-lg font-bold text-black mb-3 pb-2" style={{ borderBottom: '2px solid rgba(0,0,0,0.6)' }}>Frequent Mistakes</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <h2 className="text-lg font-bold text-black mb-3 border-b-2 border-black pb-2">Frequent Mistakes</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {frequentMistakes?.map((mistake, index) => (
-            <div key={index} className="border-2 border-black bg-white p-4 rounded-md">
-              <div className="mb-2">
-                <SubjectTagBW subject={mistake.subject} getSubjectPattern={getSubjectPattern} />
+            <div 
+              key={index}
+              className="overflow-hidden rounded-md"
+              style={{ border: '2px solid rgba(0,0,0,0.6)' }}
+            >
+              {/* Pattern header strip */}
+              <svg width="100%" height="24">
+                <rect width="100%" height="24" fill={`url(#${getSubjectPattern(mistake.subject).id})`} />
+              </svg>
+              <div className="p-3 bg-white">
+                <h3 className="text-sm font-bold mb-1 text-black" style={{ fontSize: '1.1em' }}>{mistake.subject}</h3>
+                <p className="text-xs mb-2 text-black" style={{ fontSize: '1.1em' }}>{mistake.subtopic}</p>
+                <p className="text-2xl font-bold text-black">{mistake.frequency} Times</p>
               </div>
-              <p className="text-sm text-black font-semibold">Topic: {mistake.topic}</p>
-              <p className="text-xs text-gray-700 mt-1">Error Count: {mistake.error_count}</p>
             </div>
           ))}
         </div>
@@ -348,39 +452,41 @@ const Page2 = ({ data, getSubjectPattern }) => {
 
       {/* Class vs You */}
       <div>
-        <h2 className="text-lg font-bold text-black mb-3 pb-2" style={{ borderBottom: '2px solid rgba(0,0,0,0.6)' }}>Class vs You</h2>
-        <div className="overflow-x-auto rounded-md" style={{ border: '2px solid rgba(0,0,0,0.6)' }}>
-          <table className="w-full border-collapse">
-            <thead>
-              <tr style={{ backgroundColor: 'rgba(0,0,0,0.6)', color: '#ffffff' }}>
-                <th className="p-2 text-left font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>Subject</th>
-                <th className="p-2 text-left font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>Your Score</th>
-                <th className="p-2 text-left font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>Class Average</th>
-                <th className="p-2 text-left font-bold" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>Difference</th>
-              </tr>
-            </thead>
-            <tbody>
-              {classVsYou?.map((item, index) => (
-                <tr key={index} className={`${index % 2 === 0 ? 'bg-gray-100' : 'bg-white'}`} style={{ border: '1px solid rgba(0,0,0,0.6)' }}>
-                  <td className="p-2 font-semibold" style={{ fontSize: '1.1em', border: '1px solid rgba(0,0,0,0.6)' }}>
-                    <SubjectTagBW subject={item.subject} getSubjectPattern={getSubjectPattern} />
-                  </td>
-                  <td className="p-2" style={{ fontSize: '1.1em', border: '1px solid rgba(0,0,0,0.6)' }}>{item.your_score}</td>
-                  <td className="p-2" style={{ fontSize: '1.1em', border: '1px solid rgba(0,0,0,0.6)' }}>{item.class_average}</td>
-                  <td className="p-2" style={{ fontSize: '1.1em', border: '1px solid rgba(0,0,0,0.6)' }}>
-                    {item.difference > 0 ? '+' : ''}{item.difference}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <h2 className="text-lg font-bold text-black mb-3 border-b-2 border-black pb-2">Class vs You</h2>
+        <div className="p-4 bg-gray-50 rounded-md" style={{ border: '2px solid rgba(0,0,0,0.6)' }}>
+          <p className="text-xs text-black mb-3 font-semibold" style={{ fontSize: '1.1em' }}>
+            Questions where most of the class got it right, but you got it wrong:
+          </p>
+          <div className="space-y-2">
+            {classVsYou?.slice(0, 3).map((item, index) => (
+              <div key={index} className="border border-black p-3 bg-white">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-black" style={{ fontSize: '1.1em' }}>Q{item.question_num}</span>
+                    <span className="text-xs text-black" style={{ fontSize: '1.1em' }}>
+                      Class Correct: <span className="font-bold">{item.correct_count}</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className="font-bold" style={{ fontSize: '1.1em' }}>
+                      You: ✖ {item.student_option}
+                    </span>
+                    <span className="font-bold" style={{ fontSize: '1.1em' }}>
+                      Correct: ✔ {item.correct_option}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Footer Note */}
-      <div className="text-center py-4">
-        <p className="text-sm text-gray-600 italic">Practice consistently and focus on weak areas for maximum improvement</p>
-        <p className="text-xs text-gray-400 mt-2">Generated by InzightEd</p>
+      {/* Motivational Footer - No emojis */}
+      <div className="text-center py-4 bg-gray-50 rounded-md" style={{ border: '2px solid rgba(0,0,0,0.6)' }}>
+        <p className="text-sm italic text-black " style={{ fontSize: '1.1em' }}>
+          "You're doing super good and progressing great – <span className="font-bold">Keep it up!</span>"
+        </p>
       </div>
     </div>
   );
@@ -408,11 +514,11 @@ const BWCard = ({ label, value, patternId }) => (
 const SubjectTagBW = ({ subject, getSubjectPattern }) => {
   const pattern = getSubjectPattern(subject);
   return (
-    <div className="inline-flex items-center gap-2 border border-black px-2 py-1 rounded">
+    <div className="flex items-center gap-2">
       <svg width="16" height="16">
-        <rect width="16" height="16" fill={`url(#${pattern.id})`} stroke="black" strokeWidth="1" />
-      </svg>
-      <span className="text-sm font-semibold text-black">{subject}</span>
+          <rect width="16" height="16" fill={`url(#${pattern.id})`} stroke="rgba(0,0,0,0.6)" strokeWidth="1" />
+        </svg>
+      <span className="font-bold text-xs text-black">{subject}</span>
     </div>
   );
 };
@@ -422,57 +528,59 @@ const SubjectPieChartBW = ({ subject, getSubjectPattern }) => {
   const pattern = getSubjectPattern(subject.subject);
   
   const pieData = [
-    { name: 'Correct', value: subject.correct || 0, pattern: pattern.id },
-    { name: 'Incorrect', value: subject.incorrect || 0, pattern: 'none' },
-    { name: 'Skipped', value: subject.skipped || 0, pattern: 'none' },
-  ].filter(d => d.value > 0);
+    { name: 'Correct', value: subject.correct_count, fill: 'rgba(0,0,0,0.6)' }, // Soft black for print
+    { name: 'Incorrect', value: subject.incorrect_count, fill: `url(#${pattern.id})` }, // Subject pattern
+    { name: 'Skipped', value: subject.skipped_count, fill: '#fff', stroke: 'rgba(0,0,0,0.6)' } // White with softened border
+  ].filter(item => item.value > 0);
 
   return (
-    <div className="border-2 border-black bg-white p-3 rounded-md">
-      <h3 className="text-center font-bold text-sm mb-2 text-black">{subject.subject}</h3>
-      <ResponsiveContainer width="100%" height={150}>
+    <div className="border-2 border-black p-3 bg-white rounded-md">
+      <div className="flex items-center justify-center gap-2 mb-2">
+          <svg width="12" height="12">
+          <rect width="12" height="12" fill={`url(#${pattern.id})`} stroke="rgba(0,0,0,0.6)" strokeWidth="1" />
+        </svg>
+        <h3 className="text-center font-bold text-black text-sm">{subject.subject}</h3>
+      </div>
+      <ResponsiveContainer width="100%" height={120}>
         <PieChart>
           <Pie
             data={pieData}
-            dataKey="value"
-            nameKey="name"
             cx="50%"
             cy="50%"
+            innerRadius={25}
             outerRadius={50}
-            stroke="black"
-            strokeWidth={2}
+            dataKey="value"
+            label={false}
+            stroke="rgba(0,0,0,0.6)"
+            strokeWidth={1}
           >
             {pieData.map((entry, index) => (
-              <Cell 
-                key={`cell-${index}`} 
-                fill={entry.pattern !== 'none' ? `url(#${entry.pattern})` : (
-                  entry.name === 'Incorrect' ? '#d0d0d0' : '#f0f0f0'
-                )} 
-              />
+              <Cell key={index} fill={entry.fill} stroke={entry.stroke || 'rgba(0,0,0,0.6)'} strokeWidth={1} />
             ))}
-            <LabelList
-              dataKey="value"
-              position="inside"
-              style={{ fontSize: '12px', fontWeight: 'bold', fill: 'black' }}
-            />
           </Pie>
           <Tooltip />
         </PieChart>
       </ResponsiveContainer>
-      <div className="text-xs text-center space-y-1 mt-2">
-        <div className="flex justify-between">
-          <span>Correct:</span>
-          <span className="font-bold">{subject.correct || 0}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Incorrect:</span>
-          <span className="font-bold">{subject.incorrect || 0}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Skipped:</span>
-          <span className="font-bold">{subject.skipped || 0}</span>
-        </div>
+      <div className="mt-2 space-y-1 text-xs border-t border-black pt-2">
+        {pieData.map((item, index) => (
+          <div key={index} className="flex items-center justify-between">
+            <div className="flex items-center gap-1">
+                {item.fill && typeof item.fill === 'string' && item.fill.startsWith('url(') ? (
+                <svg width="12" height="12">
+                  <rect width="12" height="12" fill={item.fill} stroke="rgba(0,0,0,0.6)" strokeWidth="1" />
+                </svg>
+              ) : (
+                <div className="w-3 h-3 rounded-sm" style={{ background: item.fill, border: '1px solid rgba(0,0,0,0.6)' }}></div>
+              )}
+              <span className="text-black" style={{ fontSize: '1.1em' }}>{item.name}</span>
+            </div>
+            <span className="font-bold text-black" style={{ fontSize: '1.1em' }}>{item.value}</span>
+          </div>
+        ))}
       </div>
+      <p className="text-center mt-2 text-xs font-bold text-black border-t border-black pt-2">
+        Avg: {subject.subject_average_marks}
+      </p>
     </div>
   );
 };
