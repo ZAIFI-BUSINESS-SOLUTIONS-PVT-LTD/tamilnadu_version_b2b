@@ -496,13 +496,13 @@ const BWCard = ({ label, value, patternId }) => (
     <svg width="10" height="100%" preserveAspectRatio="none">
       <rect width="10" height="100%" fill={patternId ? `url(#${patternId})` : '#000'} />
     </svg>
-    <div className="flex-1" style={{ padding: '10px' }}>
+    <div className="flex-1" style={{ padding: '10px 10px 8px 10px' }}>
       <p className="uppercase tracking-wide font-semibold text-black" style={{ fontSize: '9px', marginBottom: '4px' }}>{label}</p>
       <div className="flex items-baseline">
         <p className="font-extrabold text-black leading-tight" style={{ fontSize: '22px' }}>{value}</p>
       </div>
-      <div className="border-t border-dashed border-black" style={{ marginTop: '6px', paddingTop: '4px' }}>
-        <p style={{ fontSize: '8px' }}>&nbsp;</p>
+      <div className="border-t border-dashed border-black" style={{ marginTop: '4px', paddingTop: '2px' }}>
+        <p style={{ fontSize: '1px', lineHeight: '1px' }}>&nbsp;</p>
       </div>
     </div>
   </div>
