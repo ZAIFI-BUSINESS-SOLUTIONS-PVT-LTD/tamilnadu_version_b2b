@@ -163,14 +163,14 @@ export default function StudentReport() {
         }
       `}</style>
 
-      <div className="min-h-screen bg-white p-4 md:p-8">
-        <div className="print-page">
+      <div className="min-h-screen bg-white" style={{ padding: '0' }}>
+        <div className="print-page" style={{ maxWidth: '210mm', margin: '0 auto' }}>
           <Page1 
             data={page1} 
             getSubjectPattern={getSubjectPattern}
           />
         </div>
-        <div className="print-page">
+        <div className="print-page" style={{ maxWidth: '210mm', margin: '0 auto' }}>
           <Page2 
             data={page2} 
             getSubjectPattern={getSubjectPattern}
@@ -200,7 +200,7 @@ const Page1 = ({ data, getSubjectPattern }) => {
   const performanceTrend = data.performance_trend || {};
   
   return (
-    <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 space-y-6 rounded-lg print:bg-white">
+    <div className="bg-white space-y-6" style={{ padding: '20px' }}>
       {/* Header with Student Name */}
       <div className="w-full bg-gray-200 border border-black py-4 rounded-md">
         <div className="text-center">
@@ -210,7 +210,7 @@ const Page1 = ({ data, getSubjectPattern }) => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
         <BWCard 
           label="Your Marks" 
           value={`${data.total_marks} / 720`}
@@ -231,7 +231,7 @@ const Page1 = ({ data, getSubjectPattern }) => {
       {/* Subject-wise Performance */}
       <div>
         <h2 className="text-lg font-bold text-black mb-3 border-b-2 border-black pb-2">Subject-wise Performance</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
           {subjectWiseData?.map((subject, index) => (
             <SubjectPieChartBW 
               key={index}
@@ -384,7 +384,7 @@ const Page2 = ({ data, getSubjectPattern }) => {
     : (data?.class_vs_you ? Object.values(data.class_vs_you) : []);
 
   return (
-    <div className="bg-white p-6 space-y-6">
+    <div className="bg-white space-y-6" style={{ padding: '20px' }}>
       {/* Header */}
       <div className="w-full bg-gray-200 py-4 rounded-md" style={{ border: '1px solid rgba(0,0,0,0.6)' }}>
         <div className="text-center">
@@ -429,7 +429,7 @@ const Page2 = ({ data, getSubjectPattern }) => {
       {/* Frequent Mistakes */}
       <div>
         <h2 className="text-lg font-bold text-black mb-3 border-b-2 border-black pb-2">Frequent Mistakes</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
           {frequentMistakes?.map((mistake, index) => (
             <div 
               key={index}
