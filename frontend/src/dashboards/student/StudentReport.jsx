@@ -282,11 +282,11 @@ const Page1 = ({ data, getSubjectPattern }) => {
           <ResponsiveContainer width="100%" height={145}>
             <LineChart
               data={formatTotalTrendData(performanceTrend)}
-              margin={{ top: 20, right: 40, left: 5, bottom: 10 }}
+              margin={{ top: 20, right: 30, left: 8, bottom: 10 }}
             >
               <XAxis
                 dataKey="test_num"
-                padding={{ left: 5, right: 15 }}
+                padding={{ left: 0, right: 8 }}
                 stroke="rgba(0,0,0,0.7)"
                 tick={{ fill: 'rgba(0,0,0,0.7)', fontSize: 8 }}
                 height={30}
