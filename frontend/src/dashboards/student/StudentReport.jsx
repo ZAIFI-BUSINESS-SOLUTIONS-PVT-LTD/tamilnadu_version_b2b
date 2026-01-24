@@ -282,14 +282,14 @@ const Page1 = ({ data, getSubjectPattern }) => {
           <ResponsiveContainer width="100%" height={145}>
             <LineChart
               data={formatTotalTrendData(performanceTrend)}
-              margin={{ top: 20, right: 30, left: 8, bottom: 10 }}
+              margin={{ top: 20, right: 20, left: 20, bottom: 10 }}
             >
               <XAxis
                 dataKey="test_num"
-                padding={{ left: 0, right: 8 }}
                 stroke="rgba(0,0,0,0.7)"
                 tick={{ fill: 'rgba(0,0,0,0.7)', fontSize: 8 }}
                 height={30}
+                interval={0}
               />
               <YAxis
                 domain={[dataMin => Math.max(0, dataMin - 20), dataMax => dataMax + 20]}
