@@ -583,7 +583,10 @@ const formatTotalTrendData = (subWiseMarks) => {
   
   const testNums = Object.keys(subWiseMarks).sort((a, b) => Number(a) - Number(b));
   
-  return testNums.map(testNum => {
+  // Get only the last 10 tests
+  const last10Tests = testNums.slice(-10);
+  
+  return last10Tests.map(testNum => {
     const marks = subWiseMarks[testNum];
     let total = 0;
     if (marks && typeof marks === 'object') {
