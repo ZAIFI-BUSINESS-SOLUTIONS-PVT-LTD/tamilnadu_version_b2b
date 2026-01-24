@@ -467,10 +467,10 @@ const Page2 = ({ data, getSubjectPattern }) => {
                   </div>
                   <div className="flex items-center" style={{ gap: '10px' }}>
                     <span className="font-bold" style={{ fontSize: '9px' }}>
-                      You: ✖ {item.student_option}
+                      You: X {item.student_option}
                     </span>
                     <span className="font-bold" style={{ fontSize: '9px' }}>
-                      Correct: ✔ {item.correct_option}
+                      Correct: ✓ {item.correct_option}
                     </span>
                   </div>
                 </div>
@@ -496,14 +496,9 @@ const BWCard = ({ label, value, patternId }) => (
     <svg width="10" height="100%" preserveAspectRatio="none">
       <rect width="10" height="100%" fill={patternId ? `url(#${patternId})` : '#000'} />
     </svg>
-    <div className="flex-1" style={{ padding: '10px 10px 8px 10px' }}>
-      <p className="uppercase tracking-wide font-semibold text-black" style={{ fontSize: '9px', marginBottom: '4px' }}>{label}</p>
-      <div className="flex items-baseline">
-        <p className="font-extrabold text-black leading-tight" style={{ fontSize: '22px' }}>{value}</p>
-      </div>
-      <div className="border-t border-dashed border-black" style={{ marginTop: '4px', paddingTop: '2px' }}>
-        <p style={{ fontSize: '1px', lineHeight: '1px' }}>&nbsp;</p>
-      </div>
+    <div className="flex-1 flex flex-col justify-center" style={{ padding: '8px 10px' }}>
+      <p className="uppercase tracking-wide font-semibold text-black" style={{ fontSize: '9px', marginBottom: '2px' }}>{label}</p>
+      <p className="font-extrabold text-black leading-none" style={{ fontSize: '22px' }}>{value}</p>
     </div>
   </div>
 );
