@@ -624,6 +624,7 @@ action_plan_prompt = """
 - Use simple, easy-to-understand Indian-English
 - Avoid complex academic language or technical jargon
 - Each action should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
+- Do NOT use Hindi words written in English (Romanized Hindi/Hinglish). Use only English words.
 - Be motivational yet honest about areas needing work
 - Each action should reference the specific topic/subject it relates to
 
@@ -710,6 +711,7 @@ checklist_prompt = """
 - Must be diagnostic and factual, not prescriptive
 - Use simple, easy-to-understand Indian-English.
 - Each checkpoint should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
+- Do NOT use Hindi words written in English (Romanized Hindi/Hinglish). Use only English words.
 - Avoid solution-oriented language (no "should do", "need to practice")
 - Be direct and clear about the mistake or gap
 - Each checkpoint should reference the specific topic/subject where the problem occurred
@@ -809,6 +811,7 @@ Each topic includes:
 - Focus on study methods and habits, NOT specific content to learn
 - Use simple, easy-to-understand Indian-English
 - Each tip should be at the reading level of a 10-year-old Indian student. Use only very simple English words. Do NOT use difficult or formal words.
+- Do NOT use Hindi words written in English (Romanized Hindi/Hinglish). Use only English words.
 - Be specific to their performance patterns
 - Motivational yet realistic
 - Examples: time management, revision techniques, practice strategies, learning methods
