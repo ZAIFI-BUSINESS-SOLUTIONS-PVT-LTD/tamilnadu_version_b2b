@@ -368,9 +368,21 @@ def get_student_report_card(request):
         
         page1_data["subject_wise_data"] = subject_wise_data
 
-        # Performance Trend Line Graph - Send sub_wise_marks as-is
+        # Performance Trend Line Graph - Send only last 10 tests
         # Format: { "1": {"Botany": 138, "Physics": 78, ...}, "2": {...}, ... }
-        page1_data["performance_trend"] = current_report.sub_wise_marks or {}
+        sub_wise_marks = current_report.sub_wise_marks or {}
+        if sub_wise_marks:
+            # Sort test numbers and get last 10
+            sorted_test_nums = sorted([int(k) for k in sub_wise_marks.keys()])
+            last_10_tests = sorted_test_nums[-10:]
+            # Filter to only include last 10 tests
+            page1_data["performance_trend"] = {
+                str(test_num): sub_wise_marks[str(test_num)]
+                for test_num in last_10_tests
+                if str(test_num) in sub_wise_marks
+            }
+        else:
+            page1_data["performance_trend"] = {}
 
         # Mistakes Table (from checkpoints - first TWO checkpoints per subject)
         mistakes_table = []

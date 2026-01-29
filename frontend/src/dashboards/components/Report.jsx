@@ -552,7 +552,10 @@ const formatTotalTrendData = (subWiseMarks) => {
   
   const testNums = Object.keys(subWiseMarks).sort((a, b) => parseInt(a) - parseInt(b));
   
-  return testNums.map(testNum => {
+  // Get only the last 10 tests
+  const last10Tests = testNums.slice(-10);
+  
+  return last10Tests.map(testNum => {
     const subjects = subWiseMarks[testNum];
     const total = Object.values(subjects || {}).reduce((sum, val) => sum + (Number(val) || 0), 0);
     
