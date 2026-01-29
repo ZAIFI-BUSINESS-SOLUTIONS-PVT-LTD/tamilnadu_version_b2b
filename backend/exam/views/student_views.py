@@ -248,7 +248,10 @@ def get_student_checkpoints(request):
 def get_student_report_card(request):
     """
     Get comprehensive report card data for a specific test.
-    POST body: {"test_num": <test_number>} (optional, defaults to last test)
+    POST body: {
+        "test_num": <test_number> (optional, defaults to last test),
+        "student_id": <student_id> (optional, for educator/institution context)
+    }
     
     Returns data for two-page report card:
     - Page 1: Performance metrics, subject-wise charts, improvement trend, mistakes table
@@ -259,11 +262,43 @@ def get_student_report_card(request):
         from exam.models.test import Test
         from collections import defaultdict
         
-        student_id = request.user.student_id
-        student = Student.objects.filter(student_id=student_id).first()
+        # Get student_id from request body (for educator/institution) or from JWT (for student)
+        request_student_id = request.data.get("student_id")
+        
+        if request_student_id:
+            # Educator/Institution context - verify access
+            student_id = request_student_id
+            student = Student.objects.filter(student_id=student_id).first()
+            
+            if not student:
+                return Response({"error": "Student not found"}, status=404)
+            
+            # Verify educator/institution has access to this student
+            from exam.models.educator import Educator
+            from exam.models.manager import Manager
+            
+            user_email = request.user.email
+            
+            # Check if user is an educator with access to this student's class
+            educator = Educator.objects.filter(email=user_email, class_id=student.class_id).first()
+            
+            # Check if user is an institution manager with access to this student
+            if not educator:
+                manager = Manager.objects.filter(email=user_email).first()
+                if manager:
+                    # Verify student belongs to an educator in this institution
+                    educator = Educator.objects.filter(class_id=student.class_id, institution=manager.institution).first()
+                    if not educator:
+                        return Response({"error": "Unauthorized: Student does not belong to your institution"}, status=403)
+                else:
+                    return Response({"error": "Unauthorized: Access denied"}, status=403)
+        else:
+            # Student context - use JWT student_id
+            student_id = request.user.student_id
+            student = Student.objects.filter(student_id=student_id).first()
 
-        if not student:
-            return Response({"error": "Student not found"}, status=404)
+            if not student:
+                return Response({"error": "Student not found"}, status=404)
 
         class_id = student.class_id
         
