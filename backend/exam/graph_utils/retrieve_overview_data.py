@@ -51,10 +51,16 @@ def get_key_strength_data(kg_manager):
     MATCH (s:Subject {name: sc.subject})-[:CONTAINS]->(c:CHAPTER {name: sc.chapter})
     MATCH (c)-[:CONTAINS]->(:Topic)-[:CONTAINS]->(:Subtopic)-[:CONTAINS]->(q:Question {isCorrect: true})
     OPTIONAL MATCH (q)-[:HAS_FEEDBACK]->(f:Feedback)
-    OPTIONAL MATCH (q)-[:HAS_MISCONCEPTION]->(m:Misconception)
     RETURN sc.subject AS subject, sc.chapter AS chapter, 
-           q.number AS n, q.text AS txt, q.type AS type, q.optedAnswer AS ans,
-           q.imdesp AS img, f.text AS fb, m.type AS err
+           q.number AS n, q.text AS txt, q.type AS type,
+           CASE 
+             WHEN q.optedAnswer IN ['A', '1'] THEN q.option_1
+             WHEN q.optedAnswer IN ['B', '2'] THEN q.option_2
+             WHEN q.optedAnswer IN ['C', '3'] THEN q.option_3
+             WHEN q.optedAnswer IN ['D', '4'] THEN q.option_4
+             ELSE ''
+           END AS ans,
+           q.imdesp AS img, f.text AS fb
     """
 
     subject_chapter_pairs = [
@@ -75,8 +81,7 @@ def get_key_strength_data(kg_manager):
                 "type": record["type"],
                 "ans": record["ans"],
                 "img": record["img"],
-                "fb": record["fb"],
-                "err": record["err"]
+                "fb": record["fb"]
             }
             structured.setdefault(subj, {}).setdefault(chap, []).append(q)
         warnings = result.consume()
@@ -131,11 +136,17 @@ def get_area_for_improvement_data(kg_manager):
     MATCH (s:Subject {name: sc.subject})-[:CONTAINS]->(c:CHAPTER {name: sc.chapter})
     MATCH (c)-[:CONTAINS]->(:Topic)-[:CONTAINS]->(:Subtopic)-[:CONTAINS]->(q:Question {isCorrect: true})
     OPTIONAL MATCH (q)-[:HAS_FEEDBACK]->(f:Feedback)
-    OPTIONAL MATCH (q)-[:HAS_MISCONCEPTION]->(m:Misconception)
 
     RETURN sc.subject AS subject, sc.chapter AS chapter, 
-           q.number AS n, q.text AS txt, q.type AS type, q.optedAnswer AS ans,
-           q.imdesp AS img, f.text AS fb, m.type AS err
+           q.number AS n, q.text AS txt, q.type AS type,
+           CASE 
+             WHEN q.optedAnswer IN ['A', '1'] THEN q.option_1
+             WHEN q.optedAnswer IN ['B', '2'] THEN q.option_2
+             WHEN q.optedAnswer IN ['C', '3'] THEN q.option_3
+             WHEN q.optedAnswer IN ['D', '4'] THEN q.option_4
+             ELSE ''
+           END AS ans,
+           q.imdesp AS img, f.text AS fb
     """
 
     chapter_pairs = [
@@ -156,8 +167,7 @@ def get_area_for_improvement_data(kg_manager):
                 "type": record["type"],
                 "ans": record["ans"],
                 "img": record["img"],
-                "fb": record["fb"],
-                "err": record["err"]
+                "fb": record["fb"]
             }
             structured.setdefault(subj, {}).setdefault(chap, []).append(q)
         warnings = result.consume()
@@ -199,11 +209,20 @@ def get_consistency_vulnerability_data(kg_manager):
     OPTIONAL MATCH (q)-[:HAS_MISCONCEPTION]->(m:Misconception)
     RETURN s.name AS subject, c.name AS chapter,
            q.number AS number, q.text AS text, q.type AS type,
-           q.optedAnswer AS optedAnswer, q.imdesp AS img,
+           CASE 
+             WHEN q.optedAnswer IN ['A', '1'] THEN q.option_1
+             WHEN q.optedAnswer IN ['B', '2'] THEN q.option_2
+             WHEN q.optedAnswer IN ['C', '3'] THEN q.option_3
+             WHEN q.optedAnswer IN ['D', '4'] THEN q.option_4
+             ELSE ''
+           END AS ans,
+           q.imdesp AS img,
            COALESCE(f.text, "") AS fb,
            CASE WHEN m.type IS NOT NULL AND m.description IS NOT NULL
                 THEN m.type + ": " + m.description
-                ELSE "" END AS err
+                ELSE "" END AS err,
+           q.isCorrect AS isCorrect,
+           CASE WHEN q.optedAnswer IS NOT NULL THEN true ELSE false END AS wasAttempted
     """
 
     with kg_manager.get_session() as session:
@@ -239,17 +258,29 @@ def get_consistency_vulnerability_data(kg_manager):
                 (questions_df["chapter"] == chapter_name)
             ]
 
-            questions = ch_questions_df[[
-                "number", "text", "type", "optedAnswer", "img", "fb", "err"
-            ]].rename(columns={
-                "number": "n", "text": "txt", "type": "type", "optedAnswer": "ans",
-                "img": "img", "fb": "fb", "err": "err"
-            }).to_dict(orient="records")
+            # Group questions by status
+            correct_df = ch_questions_df[ch_questions_df["isCorrect"] == True]
+            incorrect_df = ch_questions_df[(ch_questions_df["isCorrect"] == False) & (ch_questions_df["wasAttempted"] == True)]
+            skipped_df = ch_questions_df[(ch_questions_df["isCorrect"] == False) & (ch_questions_df["wasAttempted"] == False)]
+
+            correct_questions = correct_df[["number", "text", "type", "ans", "img", "fb", "err"]].rename(
+                columns={"number": "n", "text": "txt"}
+            ).to_dict(orient="records")
+            
+            incorrect_questions = incorrect_df[["number", "text", "type", "ans", "img", "fb", "err"]].rename(
+                columns={"number": "n", "text": "txt"}
+            ).to_dict(orient="records")
+            
+            skipped_questions = skipped_df[["number", "text", "type", "ans", "img", "fb", "err"]].rename(
+                columns={"number": "n", "text": "txt"}
+            ).to_dict(orient="records")
 
             subject_data["chapters"].append({
                 "name": chapter_name,
                 "score": ch["score"],
-                "questions": questions
+                "correct_questions": correct_questions,
+                "incorrect_questions": incorrect_questions,
+                "skipped_questions": skipped_questions
             })
 
         response["subjects"].append(subject_data)

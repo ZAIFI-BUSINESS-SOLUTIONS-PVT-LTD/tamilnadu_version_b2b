@@ -115,28 +115,22 @@ def get_key_strength_data_pg(student_id, class_id):
                 
                 selected_answer = response.selected_answer if response else None
                 
-                # Get feedback
+                # Get feedback and actual option text
                 feedback = ""
-                err = ""
+                actual_option_text = ""
                 if selected_answer:
                     option_map = {'A': '1', 'B': '2', 'C': '3', 'D': '4', '1': '1', '2': '2', '3': '3', '4': '4'}
                     option_num = option_map.get(str(selected_answer).strip().upper(), '1')
                     feedback = getattr(qa, f'option_{option_num}_feedback', '')
-                    mis_type = getattr(qa, f'option_{option_num}_type', '')
-                    mis_desc = getattr(qa, f'option_{option_num}_misconception', '')
-                    if mis_type and mis_desc:
-                        err = f"{mis_type}: {mis_desc}"
-                    elif mis_type:
-                        err = mis_type
+                    actual_option_text = getattr(qa, f'option_{option_num}', '')
                 
                 q = {
                     "n": qa.question_number,
                     "txt": qa.question_text,
                     "type": qa.typeOfquestion,
-                    "ans": selected_answer or '',
+                    "ans": actual_option_text,
                     "img": qa.im_desp or '',
-                    "fb": feedback,
-                    "err": err
+                    "fb": feedback
                 }
                 
                 chapter = qa.chapter
@@ -244,28 +238,22 @@ def get_area_for_improvement_data_pg(student_id, class_id):
                 
                 selected_answer = response_obj.selected_answer if response_obj else None
                 
-                # Get feedback
+                # Get feedback and actual option text
                 feedback = ""
-                err = ""
+                actual_option_text = ""
                 if selected_answer:
                     option_map = {'A': '1', 'B': '2', 'C': '3', 'D': '4', '1': '1', '2': '2', '3': '3', '4': '4'}
                     option_num = option_map.get(str(selected_answer).strip().upper(), '1')
                     feedback = getattr(qa, f'option_{option_num}_feedback', '')
-                    mis_type = getattr(qa, f'option_{option_num}_type', '')
-                    mis_desc = getattr(qa, f'option_{option_num}_misconception', '')
-                    if mis_type and mis_desc:
-                        err = f"{mis_type}: {mis_desc}"
-                    elif mis_type:
-                        err = mis_type
+                    actual_option_text = getattr(qa, f'option_{option_num}', '')
                 
                 q = {
                     "n": qa.question_number,
                     "txt": qa.question_text,
                     "type": qa.typeOfquestion,
-                    "ans": selected_answer or '',
+                    "ans": actual_option_text,
                     "img": qa.im_desp or '',
-                    "fb": feedback,
-                    "err": err
+                    "fb": feedback
                 }
                 
                 chapter = qa.chapter
@@ -322,14 +310,14 @@ def get_consistency_vulnerability_data_pg(student_id, class_id):
     
     accuracy_df = pd.DataFrame(records)
     
-    # Get all questions for subjects/chapters
+    # Get all questions for subjects/chapters with their correctness status
     question_results = StudentResult.objects.filter(
         student_id=student_id,
         class_id=class_id
-    ).values_list('test_num', 'subject', 'chapter', 'question_number')
+    ).values_list('test_num', 'subject', 'chapter', 'question_number', 'is_correct', 'was_attempted')
     
     questions_dict = {}
-    for test_num, subject, chapter, q_num in question_results:
+    for test_num, subject, chapter, q_num, is_correct, was_attempted in question_results:
         try:
             qa = QuestionAnalysis.objects.get(
                 class_id=class_id,
@@ -346,13 +334,15 @@ def get_consistency_vulnerability_data_pg(student_id, class_id):
             
             selected_answer = response.selected_answer if response else None
             
-            # Get feedback
+            # Get feedback, misconception, and actual option text
             feedback = ""
             err = ""
+            actual_option_text = ""
             if selected_answer:
                 option_map = {'A': '1', 'B': '2', 'C': '3', 'D': '4', '1': '1', '2': '2', '3': '3', '4': '4'}
                 option_num = option_map.get(str(selected_answer).strip().upper(), '1')
                 feedback = getattr(qa, f'option_{option_num}_feedback', '')
+                actual_option_text = getattr(qa, f'option_{option_num}', '')
                 mis_type = getattr(qa, f'option_{option_num}_type', '')
                 mis_desc = getattr(qa, f'option_{option_num}_misconception', '')
                 if mis_type and mis_desc:
@@ -360,19 +350,33 @@ def get_consistency_vulnerability_data_pg(student_id, class_id):
                 elif mis_type:
                     err = mis_type
             
-            key = (subject, chapter)
-            if key not in questions_dict:
-                questions_dict[key] = []
-            
-            questions_dict[key].append({
+            question_obj = {
                 "n": qa.question_number,
                 "txt": qa.question_text,
                 "type": qa.typeOfquestion,
-                "ans": selected_answer or '',
+                "ans": actual_option_text,
                 "img": qa.im_desp or '',
                 "fb": feedback,
                 "err": err
-            })
+            }
+            
+            # Group by (subject, chapter) and status (correct/incorrect/skipped)
+            key = (subject, chapter)
+            if key not in questions_dict:
+                questions_dict[key] = {
+                    "correct": [],
+                    "incorrect": [],
+                    "skipped": []
+                }
+            
+            # Categorize question
+            if is_correct:
+                questions_dict[key]["correct"].append(question_obj)
+            elif was_attempted:
+                questions_dict[key]["incorrect"].append(question_obj)
+            else:
+                questions_dict[key]["skipped"].append(question_obj)
+                
         except QuestionAnalysis.DoesNotExist:
             continue
     
@@ -401,12 +405,18 @@ def get_consistency_vulnerability_data_pg(student_id, class_id):
         
         for ch in least_consistent:
             chapter_name = ch["name"]
-            questions = questions_dict.get((subject, chapter_name), [])
+            questions_data = questions_dict.get((subject, chapter_name), {
+                "correct": [],
+                "incorrect": [],
+                "skipped": []
+            })
             
             subject_data["chapters"].append({
                 "name": chapter_name,
                 "score": ch["score"],
-                "questions": questions
+                "correct_questions": questions_data["correct"],
+                "incorrect_questions": questions_data["incorrect"],
+                "skipped_questions": questions_data["skipped"]
             })
         
         response["subjects"].append(subject_data)

@@ -13,7 +13,7 @@ from exam.models.test import Test
 
 # --------------------- Threshold Constants ---------------------
 STRENGTH_WEIGHTED_THRESHOLD = 0.6
-WEAKNESS_WEIGHTED_THRESHOLD = 0.9
+WEAKNESS_WEIGHTED_THRESHOLD = 0.85
 
 
 def calculate_weighted_score(total, correct):
@@ -97,28 +97,25 @@ def fetch_correct_questions_analysis_pg(student_id, class_id, test_num, subject,
             
             selected_answer = response.selected_answer if response else None
             
+            # Get actual option text for better LLM understanding
+            option_text = ""
             feedback = ""
-            mis_type = ""
-            mis_desc = ""
             if selected_answer:
                 option_map = {'A': '1', 'B': '2', 'C': '3', 'D': '4', '1': '1', '2': '2', '3': '3', '4': '4'}
                 option_num = option_map.get(str(selected_answer).strip().upper(), '1')
+                option_text = getattr(qa, f'option_{option_num}', '')
                 feedback = getattr(qa, f'option_{option_num}_feedback', '')
-                mis_type = getattr(qa, f'option_{option_num}_type', '')
-                mis_desc = getattr(qa, f'option_{option_num}_misconception', '')
             
             records.append({
                 'TestName': f"Test{test_num}",
                 'Topic': qa.topic,
                 'Subtopic': qa.subtopic,
                 'QuestionNumber': qa.question_number,
-                'OptedAnswer': selected_answer or '',
+                'OptedAnswer': option_text or selected_answer or '',
                 'QuestionText': qa.question_text,
                 'Type': qa.typeOfquestion,
                 'ImgDesc': qa.im_desp or '',
                 'Feedback': feedback,
-                'MisType': mis_type,
-                'MisDesc': mis_desc,
                 'IsCorrect': True
             })
         except QuestionAnalysis.DoesNotExist:
@@ -232,13 +229,14 @@ def fetch_wrong_questions_analysis_pg(student_id, class_id, test_num, subject, t
             
             selected_answer = response.selected_answer if response else None
             
-            feedback = ""
+            # Get actual option text for better LLM understanding
+            option_text = ""
             mis_type = ""
             mis_desc = ""
             if selected_answer:
                 option_map = {'A': '1', 'B': '2', 'C': '3', 'D': '4', '1': '1', '2': '2', '3': '3', '4': '4'}
                 option_num = option_map.get(str(selected_answer).strip().upper(), '1')
-                feedback = getattr(qa, f'option_{option_num}_feedback', '')
+                option_text = getattr(qa, f'option_{option_num}', '')
                 mis_type = getattr(qa, f'option_{option_num}_type', '')
                 mis_desc = getattr(qa, f'option_{option_num}_misconception', '')
             
@@ -247,11 +245,10 @@ def fetch_wrong_questions_analysis_pg(student_id, class_id, test_num, subject, t
                 'Topic': qa.topic,
                 'Subtopic': qa.subtopic,
                 'QuestionNumber': qa.question_number,
-                'OptedAnswer': selected_answer or '',
+                'OptedAnswer': option_text or selected_answer or '',
                 'QuestionText': qa.question_text,
                 'Type': qa.typeOfquestion,
                 'ImgDesc': qa.im_desp or '',
-                'Feedback': feedback,
                 'MisType': mis_type,
                 'MisDesc': mis_desc
             })
@@ -457,20 +454,33 @@ def best_topic_analysis_pg(student_id, class_id, test_num):
         lambda row: calculate_weighted_score(row["Total"], row["Correct"]), axis=1
     )
     
+    # Select top topics per subject
     best_topics_df = df_scores.sort_values(
         by=["WeightedScore"], ascending=False
     ).groupby("Subject").head(10)
     
-    best_topics_df = best_topics_df[best_topics_df["WeightedScore"] >= STRENGTH_WEIGHTED_THRESHOLD]
+    # Cascading threshold: try 0.6, then 0.5, then 0.4 to ensure data is returned
+    thresholds = [STRENGTH_WEIGHTED_THRESHOLD, 0.5, 0.4]
+    filtered_df = pd.DataFrame()  # Start with empty
+    
+    for threshold in thresholds:
+        filtered_df = best_topics_df[best_topics_df["WeightedScore"] >= threshold]
+        # Check if we have at least some data for any subject
+        if not filtered_df.empty:
+            break
     
     subject_data = {}
-    for subject, group in best_topics_df.groupby("Subject"):
+    for subject, group in filtered_df.groupby("Subject"):
         topics = group["Topic"].tolist()
         if topics:
             df = fetch_correct_questions_analysis_pg(student_id, class_id, test_num, subject, topics)
-            subject_data[subject] = df.to_dict(orient='records')
+            # Group by topic for better LLM understanding
+            topic_grouped = {}
+            for topic, topic_df in df.groupby('Topic'):
+                topic_grouped[topic] = topic_df.to_dict(orient='records')
+            subject_data[subject] = topic_grouped
         else:
-            subject_data[subject] = []
+            subject_data[subject] = {}
     
     return subject_data
 
@@ -497,9 +507,13 @@ def most_challenging_topic_analysis_pg(student_id, class_id, test_num):
         topics = group["Topic"].tolist()
         if topics:
             df = fetch_wrong_questions_analysis_pg(student_id, class_id, test_num, subject, topics)
-            subject_data[subject] = df.to_dict(orient='records')
+            # Group by topic for better LLM understanding
+            topic_grouped = {}
+            for topic, topic_df in df.groupby('Topic'):
+                topic_grouped[topic] = topic_df.to_dict(orient='records')
+            subject_data[subject] = topic_grouped
         else:
-            subject_data[subject] = []
+            subject_data[subject] = {}
     
     return subject_data
 
