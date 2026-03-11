@@ -226,7 +226,7 @@ def generate_checkpoints_testwise(student_id, class_id, test_num):
             subject_checkpoints = None
             for attempt in range(3):
                 try:
-                    result = call_gemini_api_with_rotation(full_prompt, "gemini-2.0-flash", return_structured=True)
+                    result = call_gemini_api_with_rotation(full_prompt, "gemini-2.5-flash", return_structured=True)
                     
                     if isinstance(result, dict):
                         if result.get("ok"):

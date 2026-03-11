@@ -198,7 +198,7 @@ im_desp: {q['im_desp']}
 """
 
 
-    result = call_gemini_api_with_rotation(prompt, "gemini-2.0-flash", return_structured=True)
+    result = call_gemini_api_with_rotation(prompt, "gemini-2.5-flash", return_structured=True)
 
     # Normalize structured result to plain text
     if isinstance(result, dict):
@@ -211,7 +211,7 @@ im_desp: {q['im_desp']}
         response = result or ""
 
     while not response:
-        result = call_gemini_api_with_rotation(prompt, "gemini-2.0-flash", return_structured=True)
+        result = call_gemini_api_with_rotation(prompt, "gemini-2.5-flash", return_structured=True)
         if isinstance(result, dict):
             if result.get("ok"):
                 response = result.get("response", "") or ""

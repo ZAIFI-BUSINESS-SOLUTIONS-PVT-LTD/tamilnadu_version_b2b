@@ -87,7 +87,7 @@ def get_total_questions(images: List[BytesIO]) -> int:
         "Count the total number of questions (every question with a question number, mostly 180/200). "
         "Return just a single integer, nothing else."
     )
-    model = "gemini-2.0-flash"
+    model = "gemini-2.5-flash"
     result = call_gemini_api_with_rotation(prompt, model, images, return_structured=True)
     if isinstance(result, dict):
         if result.get("ok"):
@@ -119,7 +119,7 @@ def extract_text_from_images(images: List[BytesIO], start: int, end: int) -> str
 @traceable()
 def extract_text_from_content(ocr: str, start: int, end: int) -> str:
     prompt = f"extract from question number {start} till {end}" + str(ocr_prompt) + ocr
-    result = call_gemini_api_with_rotation(prompt, "gemini-2.0-flash", return_structured=True)
+    result = call_gemini_api_with_rotation(prompt, "gemini-2.5-flash", return_structured=True)
     if isinstance(result, dict):
         if result.get("ok"):
             return result.get("response", "") or ""
@@ -335,7 +335,7 @@ def get_subject_from_q_paper(pdf_path: str) -> Optional[str]:
 
         first_page_image = images[0]
         prompt = "Analyze the provided image of a question paper's first page and identify the subject. The subject is likely to be Physics, Chemistry, Botany, Zoology, or Biology. Return only the subject name as a single word."
-        model = "gemini-2.0-flash-lite"
+        model = "gemini-2.5-flash-lite"
         result = call_gemini_api_with_rotation(prompt, model, [first_page_image], return_structured=True)
         if isinstance(result, dict):
             if result.get("ok"):

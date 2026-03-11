@@ -29,7 +29,7 @@ output format:
 - Do not return NULL.
 """ + str(data)
 
-    result = call_gemini_api_with_rotation(full_prompt, "gemini-2.0-flash", return_structured=True)
+    result = call_gemini_api_with_rotation(full_prompt, "gemini-2.5-flash", return_structured=True)
 
     # Normalize structured result to plain text for backward compatibility
     if isinstance(result, dict):
@@ -211,7 +211,7 @@ Based on the following student insights under "{label}", generate exactly 3 shar
 Insights:
 {json.dumps(insight_list, indent=2)}
 """
-            result = call_gemini_api_with_rotation(prompt, "gemini-2.0-flash", return_structured=True)
+            result = call_gemini_api_with_rotation(prompt, "gemini-2.5-flash", return_structured=True)
 
             # Normalize structured result
             if isinstance(result, dict):
@@ -227,7 +227,7 @@ Insights:
 
             if not cleaned or not isinstance(cleaned, list) or len(cleaned) < 1:
                 logger.warning(f"⚠️ Gemini response invalid for {label}, retrying...")
-                result = call_gemini_api_with_rotation(prompt, "gemini-2.0-flash", return_structured=True)
+                result = call_gemini_api_with_rotation(prompt, "gemini-2.5-flash", return_structured=True)
                 if isinstance(result, dict) and result.get("ok"):
                     retry_response = result.get("response", "") or ""
                 else:
@@ -300,7 +300,7 @@ def generate_action_plan(student_id, class_id, test_num):
         # Call Gemini with retry (structured)
         for attempt in range(3):
             try:
-                result = call_gemini_api_with_rotation(full_prompt, "gemini-2.0-flash", return_structured=True)
+                result = call_gemini_api_with_rotation(full_prompt, "gemini-2.5-flash", return_structured=True)
 
                 if isinstance(result, dict):
                     if result.get("ok"):
@@ -448,7 +448,7 @@ def generate_checklist(student_id, class_id, test_num):
         # Call Gemini with retry (structured)
         for attempt in range(3):
             try:
-                result = call_gemini_api_with_rotation(full_prompt, "gemini-2.0-flash", return_structured=True)
+                result = call_gemini_api_with_rotation(full_prompt, "gemini-2.5-flash", return_structured=True)
 
                 if isinstance(result, dict):
                     if result.get("ok"):
@@ -599,7 +599,7 @@ def generate_study_tips(student_id, class_id, test_num):
         # Call Gemini with retry (structured)
         for attempt in range(3):
             try:
-                result = call_gemini_api_with_rotation(full_prompt, "gemini-2.0-flash", return_structured=True)
+                result = call_gemini_api_with_rotation(full_prompt, "gemini-2.5-flash", return_structured=True)
 
                 if isinstance(result, dict):
                     if result.get("ok"):

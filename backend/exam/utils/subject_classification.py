@@ -19,7 +19,7 @@ def classify_biology_questions(questions_list: list) -> list:
             Question: {question['question_text']}
             Options: {question['options']}
             """
-            model = "gemini-2.0-flash"
+            model = "gemini-2.5-flash"
             result = call_gemini_api_with_rotation(prompt, model, return_structured=True)
             if isinstance(result, dict):
                 if result.get("ok"):

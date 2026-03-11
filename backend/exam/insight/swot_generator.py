@@ -76,7 +76,7 @@ output format (JSON):
 - Each Insights word count should be strictly between 8 to 12.
 """ + str(data)
     for attempt in range(1, max_retries + 1):
-        result = call_gemini_api_with_rotation(full_prompt, "gemini-2.0-flash", return_structured=True)
+        result = call_gemini_api_with_rotation(full_prompt, "gemini-2.5-flash", return_structured=True)
 
         # Normalize to response text for backward compatibility
         if isinstance(result, dict):
@@ -406,7 +406,7 @@ Based on the following insights under "{label}", generate exactly 2 clear, teach
 Insights:
 {json.dumps(insight_list, indent=2)}
 """
-            result = call_gemini_api_with_rotation(prompt, "gemini-2.0-flash", return_structured=True)
+            result = call_gemini_api_with_rotation(prompt, "gemini-2.5-flash", return_structured=True)
 
             # Normalize structured result
             if isinstance(result, dict):
@@ -419,7 +419,7 @@ Insights:
                 response = result or ""
 
             while not response:
-                result = call_gemini_api_with_rotation(prompt, "gemini-2.0-flash", return_structured=True)
+                result = call_gemini_api_with_rotation(prompt, "gemini-2.5-flash", return_structured=True)
                 if isinstance(result, dict):
                     if result.get("ok"):
                         response = result.get("response", "") or ""
@@ -431,7 +431,7 @@ Insights:
 
             cleaned = clean_gemini_json_block(response)
             if not cleaned or not isinstance(cleaned, list):
-                result = call_gemini_api_with_rotation(prompt, "gemini-2.0-flash", return_structured=True)
+                result = call_gemini_api_with_rotation(prompt, "gemini-2.5-flash", return_structured=True)
                 if isinstance(result, dict) and result.get("ok"):
                     retry_response = result.get("response", "") or ""
                 else:

@@ -31,12 +31,9 @@ MAX_DELAY = 60  # Max delay before retrying
 MODEL_FAILURE_THRESHOLD = 3  # Number of model-unavailable errors before switching to fallback
 DEFAULT_FALLBACK_MODELS = [
     "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-exp",
-    "gemini-2.0-flash-lite",
-    "gemini-2.0-flash-lite-001",
-    "gemini-1.5-flash-latest",
-    "gemini-1.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-3.1-flash-lite-preview",
+    "gemini-3-flash-preview",
 ]
 MODEL_UNAVAILABLE_PATTERNS = [
     "model not available",
