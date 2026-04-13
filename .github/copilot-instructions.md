@@ -6,12 +6,12 @@ Big picture
 - Monorepo with three main runtime pieces:
   - Django backend: code lives in `backend/` (entry: [backend/manage.py](backend/manage.py)).
   - React frontend (Vite): in `frontend/` (entry and scripts in [frontend/package.json](frontend/package.json)).
-  - Node microservice for PDFs: `pdf_service/` (see [pdf_service/src/server.js](pdf_service/src/server.js) and [pdf_service/S3_UPLOAD_GUIDE.md](pdf_service/S3_UPLOAD_GUIDE.md)).
+  - Node microservice for PDFs: `pdf_service/` (see [pdf_service/src/server.js](pdf_service/src/server.js) and [docs/deployment/pdf-service.md](docs/deployment/pdf-service.md)).
   - Orchestration: `docker-compose.yml` for full-stack local runs and `start-services.ps1` helper for Windows.
 
 Key architecture & integration points
 - Async tasks: Celery configured in [backend/inzighted/celery.py](backend/inzighted/celery.py). Start workers from `backend/` with `celery -A inzighted worker -l info`.
-- Uploads and storage: `uploads/` and `staticfiles/` used by Django; `pdf_service` contains S3-related code and a guide.
+- Uploads and storage: `uploads/` and `staticfiles/` used by Django; PDF service S3 config and compression are in [docs/deployment/pdf-service.md](docs/deployment/pdf-service.md).
 - Graph and analytics code: heavy domain logic under [backend/exam/graph_utils/](backend/exam/graph_utils/) — useful examples: `create_graph.py`, `retrieve_*` modules.
 - Data ingestion: CSV/seed scripts follow `populate_*` naming in [backend/exam/ingestions/](backend/exam/ingestions/) (e.g., `populate_analysis.py`).
 - LLM-related helpers: look in [backend/exam/llm_call/](backend/exam/llm_call/) for decorators and call patterns used across generators.
@@ -41,7 +41,7 @@ Files to inspect first (quick tour)
 - [backend/exam/ingestions/populate_analysis.py](backend/exam/ingestions/populate_analysis.py)
 - [backend/exam/llm_call/decorators.py](backend/exam/llm_call/decorators.py)
 - [frontend/package.json](frontend/package.json)
-- [pdf_service/S3_UPLOAD_GUIDE.md](pdf_service/S3_UPLOAD_GUIDE.md)
+- [docs/deployment/pdf-service.md](docs/deployment/pdf-service.md)
 - [docker-compose.yml](docker-compose.yml)
 
 When submitting changes or generating code
@@ -49,9 +49,14 @@ When submitting changes or generating code
 - When adding endpoints, update `backend/inzighted/urls.py` and wire views under `backend/exam/views/`.
 - For async work, prefer Celery tasks and declare them in `exam/services/` or `inzighted/celery.py` patterns.
 
+Feature & deployment documentation
+- Feature docs: [docs/features/](docs/features/) — whatsapp, report-card, checkpoints, misconception-inference, answer-key-validation
+- Architecture: [docs/architecture/](docs/architecture/) — postgresql-migration (Neo4j→PG, complete), react-query-plan
+- Deployment: [docs/deployment/](docs/deployment/) — whatsapp-production, pdf-service
+
 What this agent cannot assume
 - No guaranteed local DB or environment — prefer to document commands and rely on `docker-compose` for full-stack reproducibility.
-- Do not assume external credentials (S3, DB). Refer to `pdf_service/S3_UPLOAD_GUIDE.md` and `backend/inzighted/settings.py` for expected env vars.
+- Do not assume external credentials (S3, DB). Refer to [docs/deployment/pdf-service.md](docs/deployment/pdf-service.md) and `backend/inzighted/settings.py` for expected env vars.
 
 If something is unclear
 - Ask a short, targeted question referencing a file (e.g., "Which DB does `settings.py` point to in dev?").
